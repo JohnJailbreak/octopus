@@ -203,14 +203,14 @@ static oct_status dir_stat(void *ctx, uint64_t node, oct_node_stat *stat)
     return convert(&st, stat) ? OCT_OK : OCT_E_UNSUPPORTED;
 }
 
-typedef struct entry {
+typedef struct listing_entry {
     char         *name;
     oct_node_stat stat;
-} entry;
+} listing_entry;
 
 static int compare_entries(const void *a, const void *b)
 {
-    return strcmp(((const entry *)a)->name, ((const entry *)b)->name);
+    return strcmp(((const listing_entry *)a)->name, ((const listing_entry *)b)->name);
 }
 
 static oct_status dir_list(void *ctx, uint64_t directory, oct_node_visitor visit, void *visit_context)
@@ -226,7 +226,7 @@ static oct_status dir_list(void *ctx, uint64_t directory, oct_node_visitor visit
         close(fd);
         return from_errno(saved);
     }
-    entry *entries = NULL;
+    listing_entry *entries = NULL;
     size_t count = 0, capacity = 0;
     oct_status status = OCT_OK;
     for (;;) {
@@ -245,7 +245,7 @@ static oct_status dir_list(void *ctx, uint64_t directory, oct_node_visitor visit
         if (fstatat(dirfd(stream), name, &st, AT_SYMLINK_NOFOLLOW) != 0 || !convert(&st, &converted)) continue;
         if (count == capacity) {
             size_t grown_capacity = capacity ? capacity * 2 : 32;
-            entry *grown = realloc(entries, grown_capacity * sizeof *grown);
+            listing_entry *grown = realloc(entries, grown_capacity * sizeof *grown);
             if (!grown) {
                 status = OCT_E_NO_MEMORY;
                 break;

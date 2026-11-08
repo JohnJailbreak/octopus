@@ -23,8 +23,10 @@ struct Backdrop: View {
 
         /// Opacity follows alpha * (1 - t^2)^2 across the ellipse radius t.
         var stops: [Gradient.Stop] {
-            [0.0, 0.2, 0.4, 0.6, 0.8, 1.0].map { t in
-                Gradient.Stop(color: color.opacity(alpha * pow(1 - t * t, 2)), location: t)
+            let radii: [Double] = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+            return radii.map { (t: Double) -> Gradient.Stop in
+                let falloff = (1 - t * t) * (1 - t * t)
+                return Gradient.Stop(color: color.opacity(alpha * falloff), location: CGFloat(t))
             }
         }
     }

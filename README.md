@@ -104,7 +104,7 @@ On a Mac: `brew install xcodegen && xcodegen generate && open Octopus.xcodeproj`
 - **C tests:** 1,671 checks pass, and they also pass cleanly under the sanitizers.
 - **Fuzzing:** 300,000 fuzzing iterations ran without faults. The GCC analyzer reports nothing.
 - **Transcript replay:** a 22-exchange enumeration session replays byte for byte. The expected bytes were computed by a separate encoder written from the PIMA 15740 and MTP 1.0 layouts. The session is modelled on the documented MTP flow; it is not a capture from Windows.
-- **Swift:** the Swift sources were never compiled while being written. The first CI run is their first build.
+- **Swift:** the Swift sources are compiled only in CI. The first run built every app file except `Backdrop.swift` without errors or warnings; that file and a C name clash that only appears with Clang modules are fixed.
 
 ## Design notes and differences from Caz
 
