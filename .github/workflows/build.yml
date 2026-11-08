@@ -1,0 +1,80 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  core:
+    name: Core (Linux, GCC)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unit tests
+        run: make test
+      - name: Sanitizers (address, undefined behaviour, leaks)
+        run: make sanitize
+      - name: Fuzz the responder
+        run: make fuzz FUZZ_RUNS=300000
+      - name: Static analysis
+        run: make analyze
+
+  app:
+    name: iOS app (Xcode)
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain
+        run: xcodebuild -version
+      - name: Core tests (Apple Clang)
+        run: make test sanitize
+      - name: Generate the Xcode project
+        run: |
+          brew install xcodegen
+          xcodegen generate
+      - name: App tests (iOS Simulator)
+        run: |
+          mkdir -p build
+          UDID=$(xcrun simctl list devices available --json | python3 -c '
+          import json, sys
+          devices = json.load(sys.stdin)["devices"]
+          phones = [d for runtime, items in devices.items() if ".iOS-" in runtime for d in items if d["name"].startswith("iPhone")]
+          print(phones[-1]["udid"] if phones else "")
+          ')
+          test -n "$UDID" || { echo "No iPhone simulator is available"; exit 1; }
+          xcodebuild test -project Octopus.xcodeproj -scheme Octopus -destination "id=$UDID" \
+            -resultBundlePath build/OctopusTests.xcresult CODE_SIGNING_ALLOWED=NO
+      - name: Build for device
+        run: |
+          xcodebuild build -project Octopus.xcodeproj -scheme Octopus -configuration Release \
+            -destination 'generic/platform=iOS' -derivedDataPath build/DerivedData \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            MARKETING_VERSION="0.1.${{ github.run_number }}" CURRENT_PROJECT_VERSION="${{ github.run_number }}"
+      - name: Package Octopus.tipa and Octopus.ipa
+        run: |
+          APP=build/DerivedData/Build/Products/Release-iphoneos/Octopus.app
+          codesign --force --sign - --timestamp=none "$APP"
+          rm -rf build/package && mkdir -p build/package/Payload
+          cp -R "$APP" build/package/Payload/
+          (cd build/package && zip -qry ../Octopus.tipa Payload)
+          cp build/Octopus.tipa build/Octopus.ipa
+          (cd build && shasum -a 256 Octopus.tipa Octopus.ipa > SHA256SUMS)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Octopus-0.1.${{ github.run_number }}
+          path: |
+            build/Octopus.tipa
+            build/Octopus.ipa
+            build/SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: OctopusTests-xcresult
+          path: build/OctopusTests.xcresult
+          if-no-files-found: ignore

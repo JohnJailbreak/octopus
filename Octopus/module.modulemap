@@ -1,0 +1,7 @@
+module OctopusCore {
+    header "Core/oct_store.h"
+    header "Protocol/oct_ptp.h"
+    header "Protocol/oct_responder.h"
+    header "Core/oct_service.h"
+    export *
+}
