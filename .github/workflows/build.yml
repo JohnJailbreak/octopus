@@ -1,10 +1,17 @@
 name: Build
 
+# Every push to main that passes all checks is published as a GitHub Release
+# tagged v<MARKETING_VERSION>.<run number>, for example v0.1.42. Pull requests
+# are built and tested but never released.
+
 on:
   push:
     branches: [main]
   pull_request:
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 defaults:
   run:
@@ -28,8 +35,17 @@ jobs:
   app:
     name: iOS app (Xcode)
     runs-on: macos-15
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
+      - name: Version
+        id: version
+        run: |
+          BASE=$(sed -nE 's/^[[:space:]]*MARKETING_VERSION:[[:space:]]*"?([0-9][0-9.]*)"?.*$/\1/p' project.yml | head -n 1)
+          test -n "$BASE" || { echo "MARKETING_VERSION is missing from project.yml"; exit 1; }
+          echo "version=$BASE.$GITHUB_RUN_NUMBER" >> "$GITHUB_OUTPUT"
+          echo "Building Octopus $BASE.$GITHUB_RUN_NUMBER"
       - name: Toolchain
         run: xcodebuild -version
       - name: Core tests (Apple Clang)
@@ -55,7 +71,7 @@ jobs:
           xcodebuild build -project Octopus.xcodeproj -scheme Octopus -configuration Release \
             -destination 'generic/platform=iOS' -derivedDataPath build/DerivedData \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
-            MARKETING_VERSION="0.1.${{ github.run_number }}" CURRENT_PROJECT_VERSION="${{ github.run_number }}"
+            MARKETING_VERSION="${{ steps.version.outputs.version }}" CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER"
       - name: Package Octopus.tipa and Octopus.ipa
         run: |
           APP=build/DerivedData/Build/Products/Release-iphoneos/Octopus.app
@@ -67,7 +83,7 @@ jobs:
           (cd build && shasum -a 256 Octopus.tipa Octopus.ipa > SHA256SUMS)
       - uses: actions/upload-artifact@v4
         with:
-          name: Octopus-0.1.${{ github.run_number }}
+          name: Octopus-${{ steps.version.outputs.version }}
           path: |
             build/Octopus.tipa
             build/Octopus.ipa
@@ -78,3 +94,47 @@ jobs:
           name: OctopusTests-xcresult
           path: build/OctopusTests.xcresult
           if-no-files-found: ignore
+
+  release:
+    name: Publish release
+    # Pushes and manual runs on main; never pull requests. Runs only when both
+    # build jobs succeeded, so a failing commit is not published.
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: [core, app]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.app.outputs.version }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: Octopus-${{ needs.app.outputs.version }}
+          path: release
+      - name: Write release notes
+        run: |
+          {
+            echo "Octopus $VERSION, built from \`${GITHUB_SHA::7}\`."
+            echo
+            git log -1 --format=%B "$GITHUB_SHA"
+            echo
+            echo "Install \`Octopus.tipa\` with TrollStore, or \`Octopus.ipa\` on a jailbroken device."
+            echo "Both are the same ad-hoc signed build; \`SHA256SUMS\` lists their checksums."
+            echo
+            echo "Build log: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          } > release-notes.md
+          cat release-notes.md
+      - name: Create the release
+        run: |
+          TAG="v$VERSION"
+          FILES=(release/Octopus.tipa release/Octopus.ipa release/SHA256SUMS)
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            # A re-run of the same workflow run: refresh the files, keep the release.
+            gh release upload "$TAG" "${FILES[@]}" --clobber
+          else
+            gh release create "$TAG" "${FILES[@]}" --target "$GITHUB_SHA" \
+              --title "Octopus $VERSION" --notes-file release-notes.md
+          fi

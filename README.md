@@ -93,9 +93,10 @@ On every push, GitHub Actions does the following:
 2. Generates the Xcode project with XcodeGen.
 3. Runs the XCTest suite on an iOS Simulator.
 4. Builds for device.
-5. Uploads `Octopus.tipa` and `Octopus.ipa`. These are ad-hoc signed, for TrollStore or a jailbroken device.
+5. Uploads `Octopus.tipa` and `Octopus.ipa` as build artifacts. These are ad-hoc signed, for TrollStore or a jailbroken device.
+6. On `main`, once every check has passed, publishes both files as a GitHub Release tagged `v<version>`, with the commit message as the release notes. Pull requests are built and tested but never released.
 
-Versions are `0.1.<run number>`.
+Versions are `MARKETING_VERSION` from `project.yml` plus the run number, for example `0.1.42`. Raise `MARKETING_VERSION` to start a new series.
 
 On a Mac: `brew install xcodegen && xcodegen generate && open Octopus.xcodeproj`.
 
