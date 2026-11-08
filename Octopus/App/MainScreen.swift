@@ -2,7 +2,7 @@ import SwiftUI
 import UIKit
 
 enum AppWindow: String, CaseIterable, Identifiable {
-    case usb, filesystem, activity, settings, update
+    case usb, filesystem, activity, settings, update, debugLog
 
     /// The menu's rows. The update window opens from Update Available and from Settings > Check for Updates.
     static let menu: [AppWindow] = [.usb, .filesystem, .activity, .settings]
@@ -16,6 +16,7 @@ enum AppWindow: String, CaseIterable, Identifiable {
         case .activity: return "Activity"
         case .settings: return "Settings"
         case .update: return "Update"
+        case .debugLog: return "Debug Log"
         }
     }
 
@@ -26,6 +27,7 @@ enum AppWindow: String, CaseIterable, Identifiable {
         case .activity: return "list.bullet.rectangle"
         case .settings: return "gearshape"
         case .update: return "arrow.down.circle"
+        case .debugLog: return "doc.text.magnifyingglass"
         }
     }
 }
@@ -63,7 +65,8 @@ struct MainScreen: View {
                         UpdateFlowView(updater: updater, screenWidth: layout.size.width)
                             .frame(width: layout.windowSize.width, height: layout.windowSize.height)
                     } else {
-                        WindowView(kind: window, layout: layout, close: closeWindow, showUpdate: { openWindow(.update) })
+                        WindowView(kind: window, layout: layout, close: closeWindow, showUpdate: { openWindow(.update) },
+                                   showDebugLog: { openWindow(.debugLog) })
                     }
                 }
                 .position(x: layout.size.width / 2, y: layout.size.height / 2)
@@ -78,6 +81,7 @@ struct MainScreen: View {
             if OctopusNotificationDelegate.openRequested { openUpdateWhenReady() }   // the tap launched Octopus
         }
         .onChange(of: scenePhase) { _, phase in
+            DebugLog.log(.debug, "app", "phase", "\(phase)")
             if phase == .active {
                 // At once, so the Update Available a notification promised is there when Octopus opens.
                 updater.checkOnActivation()

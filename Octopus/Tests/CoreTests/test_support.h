@@ -61,6 +61,8 @@ void run_store_tests(void);
 void run_protocol_tests(void);
 void run_responder_tests(void);
 void run_service_tests(void);
+void run_log_tests(void);
+void run_link_tests(void);
 
 oct_store *open_synthetic(bool scratch);
 

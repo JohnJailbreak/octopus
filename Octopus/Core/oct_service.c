@@ -4,6 +4,8 @@
 #define _POSIX_C_SOURCE 200809L
 #endif
 #include "oct_service.h"
+#include "oct_link.h"
+#include "oct_log.h"
 
 #include <pthread.h>
 #include <stdarg.h>
@@ -46,6 +48,7 @@ struct oct_service {
     uint32_t           next_step;
     uint32_t           starts;
     uint32_t           stops;
+    char               log_component[OCT_LOG_NAME_MAX + 1]; /* empty: no debug-log lines */
 };
 
 const char *oct_service_state_name(oct_service_state state)
@@ -94,6 +97,17 @@ static void vemit(oct_service *s, oct_event_kind kind, uint32_t step, bool faile
     char text[512];
     vsnprintf(text, sizeof text, format, args);
     oct_copy_utf8(event->text, sizeof event->text, text);
+    if (!s->log_component[0]) return;
+    /* The debug log gets the state changes, the operations and their steps. OCT_EVENT_LOG repeats the steps. */
+    oct_log_level level = failed ? OCT_LOG_ERROR : OCT_LOG_INFO;
+    switch (kind) {
+    case OCT_EVENT_STATE: oct_logf(level, s->log_component, "state", "%s", event->text); break;
+    case OCT_EVENT_OPERATION_BEGIN: oct_logf(OCT_LOG_INFO, s->log_component, "begin", "%s", event->text); break;
+    case OCT_EVENT_STEP_BEGIN: oct_logf(OCT_LOG_DEBUG, s->log_component, "step_begin", "%s", event->text); break;
+    case OCT_EVENT_STEP_END: oct_logf(level, s->log_component, "step", "%s", event->text); break;
+    case OCT_EVENT_OPERATION_END: oct_logf(level, s->log_component, "end", "%s", event->text); break;
+    case OCT_EVENT_LOG: break;
+    }
 }
 
 static void emit(oct_service *s, oct_event_kind kind, uint32_t step, bool failed, const char *format, ...)
@@ -143,6 +157,7 @@ static void record_error(oct_service *s, const char *text)
 {
     oct_copy_utf8(s->last_error, sizeof s->last_error, text);
     s->has_error = true;
+    if (s->log_component[0]) oct_logf(OCT_LOG_ERROR, s->log_component, "failure", "%s", text);
 }
 
 static bool transition_allowed(int from, oct_service_state to)
@@ -600,6 +615,22 @@ static bool phase_close(self_test *t)
     return true;
 }
 
+/* The transport adapter, end to end: a temporary service on a loopback link (oct_link_self_test). */
+static bool phase_transport(self_test *t)
+{
+    phase_begin(t, "Checking the transport adapter");
+    uint32_t checks = 0;
+    char failure[OCT_EVENT_TEXT_MAX] = "";
+    oct_status status = oct_link_self_test(&checks, failure, sizeof failure);
+    t->checks += checks;
+    if (status != OCT_OK) {
+        fail_text(t, "%s", failure[0] ? failure : oct_status_name(status));
+        return false;
+    }
+    phase_end(t, "Transport adapter: %u checks, fragmented input", (unsigned)checks);
+    return true;
+}
+
 static oct_status run_self_test(oct_service *s, oct_store *store, bool verbose, uint32_t *checks, char *failure,
                                 size_t capacity)
 {
@@ -613,7 +644,7 @@ static oct_status run_self_test(oct_service *s, oct_store *store, bool verbose, 
     oct_status status = oct_responder_create(store, &identity, &t->responder);
     bool passed = status == OCT_OK && phase_device_info(t) && phase_session(t) && phase_enumerate(t) &&
                   phase_object_info(t) && phase_read(t) && phase_properties(t) && phase_invalid(t) &&
-                  phase_writes(t) && phase_close(t);
+                  phase_writes(t) && phase_close(t) && phase_transport(t);
     if (!passed && verbose && t->step) step_end(s, t->step, true, "%s", t->failure);
     if (status == OCT_OK && !passed) status = OCT_E_IO;
     *checks = t->checks;
@@ -740,6 +771,7 @@ oct_status oct_service_create(oct_service **out)
     oct_copy_utf8(s->device_name, sizeof s->device_name, "iPhone");
     oct_copy_utf8(s->serial_number, sizeof s->serial_number, "0");
     oct_copy_utf8(s->system_version, sizeof s->system_version, "unknown");
+    oct_copy_utf8(s->log_component, sizeof s->log_component, "service");
     *out = s;
     return OCT_OK;
 }
@@ -940,6 +972,20 @@ oct_status oct_service_get_status(oct_service *s, oct_service_status *out)
     out->stops = s->stops;
     out->dropped_events = s->dropped_events;
     out->scratch = s->store && s->config.scratch;
+    out->transport_state = OCT_TRANSPORT_UNAVAILABLE;
+    if (s->has_transport && s->transport.ops->status) {
+        oct_transport_status transport = { 0 };
+        s->transport.ops->status(s->transport.context, &transport);
+        out->transport_state = transport.state;
+        out->transport_transactions = transport.transactions;
+        oct_copy_utf8(out->transport_failure, sizeof out->transport_failure, transport.failure);
+    } else if (s->has_transport) {
+        int state = atomic_load(&s->state);
+        out->transport_state = state == OCT_SERVICE_STARTING    ? OCT_TRANSPORT_INITIALIZING
+                               : state == OCT_SERVICE_WAITING   ? OCT_TRANSPORT_WAITING
+                               : state == OCT_SERVICE_CONNECTED ? OCT_TRANSPORT_HOST_CONNECTED
+                                                                : OCT_TRANSPORT_UNAVAILABLE;
+    }
     pthread_mutex_unlock(&s->lock);
     return OCT_OK;
 }
@@ -1031,6 +1077,42 @@ oct_status oct_service_host_detached(oct_service *s)
     }
     pthread_mutex_unlock(&s->lock);
     return status;
+}
+
+oct_status oct_service_reset_session(oct_service *s)
+{
+    if (!s) return OCT_E_INVALID_ARGUMENT;
+    pthread_mutex_lock(&s->lock);
+    oct_status status = OCT_E_STATE;
+    if (!s->stopping && s->responder && atomic_load(&s->state) == OCT_SERVICE_CONNECTED) {
+        oct_responder_reset(s->responder);
+        emit(s, OCT_EVENT_LOG, 0, false, "Session reset by the host");
+        status = OCT_OK;
+    }
+    pthread_mutex_unlock(&s->lock);
+    return status;
+}
+
+void oct_service_set_log_component(oct_service *s, const char *component)
+{
+    if (!s) return;
+    pthread_mutex_lock(&s->lock);
+    oct_copy_utf8(s->log_component, sizeof s->log_component, component ? component : "");
+    pthread_mutex_unlock(&s->lock);
+}
+
+const char *oct_transport_state_name(oct_transport_state state)
+{
+    switch (state) {
+    case OCT_TRANSPORT_UNAVAILABLE: return "Unavailable";
+    case OCT_TRANSPORT_INITIALIZING: return "Initializing";
+    case OCT_TRANSPORT_WAITING: return "Waiting for a connection";
+    case OCT_TRANSPORT_HOST_CONNECTED: return "Host connected";
+    case OCT_TRANSPORT_SESSION_ACTIVE: return "Session active";
+    case OCT_TRANSPORT_ERROR: return "Error";
+    case OCT_TRANSPORT_DISCONNECTED: return "Disconnected";
+    }
+    return "Unknown";
 }
 
 oct_status oct_service_receive(oct_service *s, const uint8_t *bytes, size_t length, oct_buf *out)

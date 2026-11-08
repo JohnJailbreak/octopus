@@ -111,11 +111,19 @@ final class Updater: ObservableObject {
                 self.lastFetch = Date()
                 switch outcome {
                 case .failure(let failure):
+                    DebugLog.log(.warning, "update", "check_failed", failure.reason)
                     self.finishCheck(.failed(failure.reason))   // offline or rate limited: the next check tries again
                 case .success(let releases):
                     self.checked = true
                     self.lastChecked = Preferences.lastUpdateCheck
+                    let had = self.available?.name
                     self.choose(from: releases, app: Self.versionParts(AppInfo.shortVersion))
+                    if self.available?.name != had {
+                        DebugLog.log(.info, "update", "available",
+                                     self.available.map { "\($0.name) is available" } ?? "Up to date (\(AppInfo.shortVersion))")
+                    } else {
+                        DebugLog.log(.debug, "update", "checked", "\(releases.count) releases, nothing new")
+                    }
                     self.finishCheck(self.isAvailable ? .available : .upToDate)
                 }
             }
@@ -318,6 +326,7 @@ final class Updater: ObservableObject {
     /// TrollStore is asked to install it from its link instead, as in Caz.
     func startDownload() {
         guard let url = available?.tipaURL, !isBusy else { return }
+        DebugLog.log(.info, "update", "download", "Downloading \(available?.name ?? "the update")")
         stage = .downloading
         progress = 0
         target = 0
@@ -385,6 +394,8 @@ final class Updater: ObservableObject {
     /// wasn't found, 6 it couldn't start, 7 it failed; -1 the helper didn't start, -2 it was killed. Installing usually
     /// closes Octopus before the answer arrives.
     private func installed(_ outcome: RootHelper.Outcome) {
+        DebugLog.log(outcome.status == 0 ? .info : .error, "update", "install",
+                     "Update helper exit \(outcome.status)\(outcome.errors.last.map { ": \($0)" } ?? "")")
         if outcome.status == 0 {
             timer?.invalidate()
             progress = 1
@@ -426,6 +437,7 @@ final class Updater: ObservableObject {
     }
 
     private func fail(_ message: String) {
+        DebugLog.log(.error, "update", "failed", message)
         timer?.invalidate()
         stage = .failed(message)
     }

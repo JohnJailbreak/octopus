@@ -5,6 +5,38 @@ run number (0.2.42 is a push of 0.2), so the versions below are the ones where s
 notes, its commit messages, are on its [release page](https://github.com/m9z2w4d8vw-blip/octopus/releases) and in
 the app's changelog.
 
+## v0.3
+
+A debug log, the transport adapter, and connection states taken from what Octopus observes.
+
+- **The debug log.** Settings > Diagnostics > Debug Log shows `octopus-debug.log`, shared by the app and its C core:
+  millisecond UTC timestamps, four levels, and a component and an event on every line. It records the service, the
+  storage, the self-test, update checks and installs, and every transport state change and failure with its reason;
+  with **Detailed logging** on, every request too, with its operation code, transaction ID, response code, sizes and
+  duration. Filter it by severity, copy what's shown, export it through the share sheet, or clear it. It persists
+  across launches, rotates at 512 KB keeping three older files, uses a fixed amount of memory, and keeps working in
+  memory when no folder takes the file. It never records names or contents of files.
+- **The transport adapter.** `oct_link` carries PTP containers between a byte-level driver and the responder, as the
+  USB Still Image Capture Device Definition lays out: fragmented input, separate data and response transfers with
+  zero-length-packet flags, the session and the transaction in progress, disconnects, stalls, and the Cancel, Device
+  Reset and Get Device Status requests. A loopback driver exercises it with the real responder, and the self-test now
+  drives it end to end.
+- **Connection states.** USB Connection lists the service's states (disabled, initializing, responder ready, error)
+  and the transport's (unavailable, initializing, waiting for a connection, host connected, session active, error,
+  disconnected), marking only those Octopus has observed, and shows the last transport failure.
+- **The device report.** Debug Log > Report reads, without changing anything, the iPhone's USB device configurations,
+  the PTP capabilities `ptpd` reports and `ptpd`'s launch description, and adds a summary to the log, with serial
+  numbers redacted.
+- **Windows diagnostics.** `tools/windows/octopus-usb-diagnostics.ps1` reports, read-only, how Windows sees the
+  iPhone: devices, instance IDs, interface classes, drivers, services, the storages Explorer shows, recent Plug and
+  Play events, and optional capture tools.
+- **Tests.** 561 new C checks, 2,232 in all: the log's persistence, rotation, concurrency and failures, and the
+  adapter's fragmentation, framing, malformed input, sessions, interruptions, failures and concurrency. CI now also
+  runs the C suite under ThreadSanitizer (`make tsan`), which found a race in the log during development. XCTest
+  covers the Swift side of the log, the device report and the connection stages.
+
+Windows still can't see Octopus: there is no USB driver yet.
+
 ## v0.2
 
 Updates install from the app, and Octopus has a new look.

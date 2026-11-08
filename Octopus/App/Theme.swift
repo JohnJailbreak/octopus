@@ -80,12 +80,16 @@ enum Preferences {
     static let scratchFolder = "scratchFolder"
     /// Settings > Update notifications.
     static let updateNotifications = "updateNotifications"
+    /// Settings > Diagnostics > Detailed logging: DEBUG lines, one per transaction.
+    static let detailedLogging = "detailedLogging"
     private static let notifiedVersionKey = "notifiedVersion"
     private static let lastUpdateCheckKey = "lastUpdateCheck"
 
     static func bool(_ key: String, default fallback: Bool) -> Bool {
         UserDefaults.standard.object(forKey: key) as? Bool ?? fallback
     }
+
+    static var detailedLoggingEnabled: Bool { bool(detailedLogging, default: false) }
 
     static var updateNotificationsEnabled: Bool {
         get { bool(updateNotifications, default: false) }

@@ -30,7 +30,7 @@ endif
 PLAIN     := $(patsubst Octopus/%.c,build/plain/%.o,$(CORE))
 SANITIZED := $(patsubst Octopus/%.c,build/san/%.o,$(CORE))
 
-.PHONY: all test sanitize fuzz analyze check clean
+.PHONY: tsan all test sanitize fuzz analyze check clean
 
 all: test
 
@@ -59,6 +59,12 @@ test: build/core-tests
 sanitize: build/core-tests-san
 	TZ=UTC0 $(SAN_ENV) ./build/core-tests-san $(FIXTURES)
 	CC="$(CC)" HELPER_CFLAGS="$(STD) $(CFLAGS) $(WARN) $(SAN)" $(SAN_ENV) $(PYTHON) $(HELPER_TESTS)
+
+# ThreadSanitizer over the whole C suite: the debug log and the transport adapter are shared between threads.
+tsan: $(CORE) $(TESTS) $(HEADERS)
+	@mkdir -p build
+	$(CC) $(STD) $(CFLAGS) $(WARN) -fsanitize=thread $(CORE) $(TESTS) $(LDLIBS) -o build/core-tests-tsan
+	TZ=UTC0 TSAN_OPTIONS=halt_on_error=1 ./build/core-tests-tsan $(FIXTURES)
 
 fuzz: build/core-fuzz
 	$(SAN_ENV) ./build/core-fuzz $(FUZZ_RUNS)

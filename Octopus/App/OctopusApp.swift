@@ -7,6 +7,8 @@ struct OctopusApp: App {
     @StateObject private var updater = Updater()
 
     init() {
+        // The debug log first, so everything after it is recorded (DebugLog, Octopus/Core/oct_log.c).
+        DebugLog.start()
         // Banners while Octopus is open, and a tap on an update notification opens the update window.
         UNUserNotificationCenter.current().delegate = OctopusNotificationDelegate.shared
     }

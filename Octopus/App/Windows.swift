@@ -9,6 +9,8 @@ struct WindowView: View {
     let close: () -> Void
     /// Settings > Check for Updates found one: the update window, as Update Available opens it.
     let showUpdate: () -> Void
+    /// Settings > Debug Log.
+    let showDebugLog: () -> Void
     @State private var selection: StorageObject? = nil
 
     private var shape: RoundedRectangle { RoundedRectangle(cornerRadius: 16, style: .continuous) }
@@ -73,7 +75,9 @@ struct WindowView: View {
         case .activity:
             ActivityWindow(close: close)
         case .settings:
-            SettingsWindow(showUpdate: showUpdate)
+            SettingsWindow(showUpdate: showUpdate, showDebugLog: showDebugLog)
+        case .debugLog:
+            DebugLogWindow()
         case .update:
             EmptyView()   // the main screen shows the update flow itself, without a window card
         }
@@ -152,6 +156,11 @@ struct InfoRow: View {
 struct ConnectionWindow: View {
     @EnvironmentObject private var service: ServiceController
 
+    private func stageRow(_ stage: ConnectionStage, current: Bool) -> some View {
+        StateRow(title: stage.title, current: current, seen: service.observedStages.contains(stage),
+                 supported: !stage.needsTransport || service.status.transportAvailable)
+    }
+
     var body: some View {
         let status = service.status
         WindowList {
@@ -160,20 +169,40 @@ struct ConnectionWindow: View {
                 InfoRow(title: "USB transport",
                         value: status.transportAvailable ? status.transportName : "Not in this build",
                         tint: status.transportAvailable ? Theme.chevron : Theme.failure)
-                InfoRow(title: "Host", value: service.state == .connected ? "Connected" : "Not connected")
+                InfoRow(title: "Transport", value: ConnectionStage(transport: status.transportState).title,
+                        tint: status.transportState == .error ? Theme.failure : Theme.chevron)
+                InfoRow(title: "Host",
+                        value: status.transportState == .hostConnected || status.transportState == .sessionActive
+                            ? "Connected" : "Not connected")
                 InfoRow(title: "Session", value: status.sessionOpen ? "Open (ID \(status.sessionID))" : "None")
             } header: {
                 SectionHeader("Status")
             }
+            if !status.transportFailure.isEmpty {
+                Section {
+                    Text(status.transportFailure)
+                        .font(.system(size: 13))
+                        .foregroundStyle(Theme.failure)
+                        .windowRow()
+                } header: {
+                    SectionHeader("Last transport failure")
+                }
+            }
             Section {
-                ForEach(ServiceState.allCases, id: \.self) { state in
-                    StateRow(state: state, current: service.state == state,
-                             supported: state.isSupported(withTransport: status.transportAvailable))
+                ForEach(ConnectionStage.service, id: \.self) { stage in
+                    stageRow(stage, current: ConnectionStage(service: service.state) == stage)
                 }
             } header: {
-                SectionHeader("States")
+                SectionHeader("Service")
+            }
+            Section {
+                ForEach(ConnectionStage.transport, id: \.self) { stage in
+                    stageRow(stage, current: ConnectionStage(transport: status.transportState) == stage)
+                }
+            } header: {
+                SectionHeader("USB transport")
             } footer: {
-                SectionFooter("Octopus only shows states it can observe. Waiting for connection and Connected need the live USB transport, which this build does not include.")
+                SectionFooter("Octopus marks only the states it has observed: Current, or Seen since launch. The transport states need a USB driver. This build has the tested transport adapter but no driver yet, so the transport stays unavailable.")
             }
             Section {
                 InfoRow(title: "Protocol", value: "PTP 1.0, MTP 1.0 objects")
@@ -189,8 +218,9 @@ struct ConnectionWindow: View {
 }
 
 struct StateRow: View {
-    let state: ServiceState
+    let title: String
     let current: Bool
+    let seen: Bool
     let supported: Bool
 
     var body: some View {
@@ -199,7 +229,7 @@ struct StateRow: View {
                 .fill(current ? Theme.accent : Color.white.opacity(0.25))
                 .frame(width: 8, height: 8)
             VStack(alignment: .leading, spacing: 2) {
-                Text(state.title)
+                Text(title)
                     .font(.system(size: 15))
                     .foregroundStyle(.white)
                 if !supported {
@@ -213,6 +243,10 @@ struct StateRow: View {
                 Text("Current")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(Theme.accent)
+            } else if seen {
+                Text("Seen")
+                    .font(.system(size: 12))
+                    .foregroundStyle(Color.white.opacity(0.5))
             }
         }
         .opacity(supported ? 1 : 0.55)
@@ -403,6 +437,8 @@ struct ActivityWindow: View {
 
 struct SettingsWindow: View {
     let showUpdate: () -> Void
+    let showDebugLog: () -> Void
+    @AppStorage(Preferences.detailedLogging) private var detailedLogging = false
     @EnvironmentObject private var updater: Updater
     @AppStorage(Preferences.haptics) private var haptics = true
     @AppStorage(Preferences.selfTestOnEnable) private var selfTest = true
@@ -464,6 +500,32 @@ struct SettingsWindow: View {
                 updatesFooter
             }
             Section {
+                Toggle(isOn: $detailedLogging) { Text("Detailed logging") }
+                    .font(.system(size: 15))
+                    .windowRow()
+                Button {
+                    Haptics.light()
+                    showDebugLog()
+                } label: {
+                    HStack {
+                        Text("Debug Log")
+                            .foregroundStyle(.white)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(Theme.chevron)
+                    }
+                    .font(.system(size: 15))
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(PressDimStyle())
+                .windowRow()
+            } header: {
+                SectionHeader("Diagnostics")
+            } footer: {
+                SectionFooter("Detailed logging records every request a computer makes. The log never holds file names or contents.")
+            }
+            Section {
                 InfoRow(title: "Version", value: AppInfo.version)
                 InfoRow(title: "Core", value: CoreService.version)
                 InfoRow(title: "System", value: "iOS \(UIDevice.current.systemVersion)")
@@ -504,6 +566,9 @@ struct SettingsWindow: View {
                 notificationsRefused = on && !enabled
                 if notificationsOn != enabled { notificationsOn = enabled }
             }
+        }
+        .onChange(of: detailedLogging) { _, on in
+            DebugLog.setDetailed(on)
         }
         .onChange(of: updateNotifications) { _, on in
             if notificationsOn != on { notificationsOn = on }   // turned off in iOS Settings meanwhile

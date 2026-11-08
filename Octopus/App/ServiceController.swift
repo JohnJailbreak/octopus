@@ -72,6 +72,74 @@ struct CoreEvent: Sendable, Equatable {
     }
 }
 
+/// The transport's own state, as the core reports it (oct_transport_state).
+enum TransportState: Hashable, Sendable {
+    case unavailable, initializing, waiting, hostConnected, sessionActive, error, disconnected
+
+    init(_ raw: oct_transport_state) {
+        switch raw {
+        case OCT_TRANSPORT_INITIALIZING: self = .initializing
+        case OCT_TRANSPORT_WAITING: self = .waiting
+        case OCT_TRANSPORT_HOST_CONNECTED: self = .hostConnected
+        case OCT_TRANSPORT_SESSION_ACTIVE: self = .sessionActive
+        case OCT_TRANSPORT_ERROR: self = .error
+        case OCT_TRANSPORT_DISCONNECTED: self = .disconnected
+        default: self = .unavailable
+        }
+    }
+}
+
+/// What the USB Connection window lists: the service's states, then the transport's. A stage is marked only when
+/// the core reports it, so nothing here is assumed.
+enum ConnectionStage: CaseIterable, Hashable, Sendable {
+    case serviceDisabled, serviceInitializing, responderReady, serviceError
+    case transportUnavailable, transportInitializing, waiting, hostConnected, sessionActive, transportError, disconnected
+
+    static let service: [ConnectionStage] = [.serviceDisabled, .serviceInitializing, .responderReady, .serviceError]
+    static let transport: [ConnectionStage] = [.transportUnavailable, .transportInitializing, .waiting, .hostConnected,
+                                               .sessionActive, .transportError, .disconnected]
+
+    init(service state: ServiceState) {
+        switch state {
+        case .disabled: self = .serviceDisabled
+        case .starting: self = .serviceInitializing
+        case .ready, .waitingForConnection, .connected: self = .responderReady
+        case .error: self = .serviceError
+        }
+    }
+
+    init(transport state: TransportState) {
+        switch state {
+        case .unavailable: self = .transportUnavailable
+        case .initializing: self = .transportInitializing
+        case .waiting: self = .waiting
+        case .hostConnected: self = .hostConnected
+        case .sessionActive: self = .sessionActive
+        case .error: self = .transportError
+        case .disconnected: self = .disconnected
+        }
+    }
+
+    var title: String {
+        switch self {
+        case .serviceDisabled: return "Service disabled"
+        case .serviceInitializing: return "Service initializing"
+        case .responderReady: return "Responder ready"
+        case .serviceError: return "Service error"
+        case .transportUnavailable: return "Transport unavailable"
+        case .transportInitializing: return "Transport initializing"
+        case .waiting: return "Waiting for a connection"
+        case .hostConnected: return "Host connected"
+        case .sessionActive: return "Session active"
+        case .transportError: return "Transport error"
+        case .disconnected: return "Disconnected"
+        }
+    }
+
+    /// Every transport stage but Unavailable needs a transport, which this build doesn't have on the iPhone.
+    var needsTransport: Bool { ConnectionStage.transport.contains(self) && self != .transportUnavailable }
+}
+
 struct CoreStatus: Equatable, Sendable {
     var state: ServiceState = .disabled
     var transportAvailable = false
@@ -85,6 +153,9 @@ struct CoreStatus: Equatable, Sendable {
     var scratch = false
     var starts: UInt32 = 0
     var stops: UInt32 = 0
+    var transportState: TransportState = .unavailable
+    var transportFailure = ""
+    var transportTransactions: UInt64 = 0
 }
 
 struct StorageSnapshot: Equatable, Sendable {
@@ -272,7 +343,10 @@ final class CoreService: @unchecked Sendable {
                           transactions: raw.transactions,
                           scratch: raw.scratch,
                           starts: raw.starts,
-                          stops: raw.stops)
+                          stops: raw.stops,
+                          transportState: TransportState(raw.transport_state),
+                          transportFailure: string(fromCArray: raw.transport_failure),
+                          transportTransactions: raw.transport_transactions)
     }
 
     func storage() -> StorageSnapshot? {
@@ -329,6 +403,8 @@ final class CoreService: @unchecked Sendable {
 @MainActor
 final class ServiceController: ObservableObject {
     @Published private(set) var state: ServiceState = .disabled
+    /// The stages the core has reported since launch.
+    @Published private(set) var observedStages: Set<ConnectionStage> = []
     @Published private(set) var isBusy = false
     @Published private(set) var lastError: String?
     @Published private(set) var status = CoreStatus()
@@ -362,6 +438,9 @@ final class ServiceController: ObservableObject {
             return lastError ?? "Octopus couldn't enable USB access."
         case .ready where !status.transportAvailable:
             return "No USB transport in this build yet, so Windows can't see Octopus."
+        case .waitingForConnection where status.transportState == .error,
+             .connected where status.transportState == .error:
+            return status.transportFailure.isEmpty ? "The USB transport failed." : status.transportFailure
         default:
             return nil
         }
@@ -372,6 +451,7 @@ final class ServiceController: ObservableObject {
     }
 
     func enable() {
+        DebugLog.log(.info, "app", "request", "Enable USB Access")
         let configuration = CoreConfiguration(
             scratch: Preferences.bool(Preferences.scratchFolder, default: false),
             selfTest: Preferences.bool(Preferences.selfTestOnEnable, default: true))
@@ -379,10 +459,12 @@ final class ServiceController: ObservableObject {
     }
 
     func disable() {
+        DebugLog.log(.info, "app", "request", "Disable USB Access")
         run(title: "Disabling") { core in core.stop() }
     }
 
     func runSelfTest() {
+        DebugLog.log(.info, "app", "request", "Run Self-Test")
         run(title: "Testing") { core in core.selfTest() }
     }
 
@@ -395,6 +477,8 @@ final class ServiceController: ObservableObject {
     func refresh() {
         status = core.status()
         state = status.state
+        let seen = observedStages.union([ConnectionStage(service: state), ConnectionStage(transport: status.transportState)])
+        if seen != observedStages { observedStages = seen }
         lastError = core.lastError()
         storage = core.storage()
         tree = storage == nil ? [] : core.tree()

@@ -18,7 +18,7 @@ static oct_status loopback_start(void *context, oct_service *service)
 
 static void loopback_stop(void *context) { ((loopback *)context)->stops++; }
 
-static const oct_transport_ops loopback_ops = { "Loopback", loopback_start, loopback_stop };
+static const oct_transport_ops loopback_ops = { "Loopback", loopback_start, loopback_stop, NULL };
 
 static oct_event events[256];
 

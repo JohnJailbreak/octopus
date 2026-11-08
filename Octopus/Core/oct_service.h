@@ -1,8 +1,9 @@
 /*
  * Octopus service: owns the storage and responder and runs their lifecycle as
- * an explicit state machine. The app talks only to this interface. A live USB
- * transport plugs in through oct_transport without changing it; this build
- * has none, so the service stops at Ready and never claims a connection.
+ * an explicit state machine. The app talks only to this interface. A transport
+ * plugs in through oct_transport without changing it: oct_link (oct_link.h)
+ * adapts a byte-level driver to it. The app has no USB driver yet, so it
+ * stops at Ready and never claims a connection.
  *
  * All functions are thread-safe. Transport callbacks must not call back into
  * the service synchronously from start().
@@ -36,6 +37,24 @@ typedef enum oct_event_kind {
 
 #define OCT_EVENT_TEXT_MAX 160
 
+/* The transport's own state, as the transport reports it. Without one it is
+ * Unavailable; the app shows only what a transport actually reports. */
+typedef enum oct_transport_state {
+    OCT_TRANSPORT_UNAVAILABLE = 0,    /* no transport, or not started */
+    OCT_TRANSPORT_INITIALIZING = 1,   /* the transport is starting */
+    OCT_TRANSPORT_WAITING = 2,        /* listening for a host */
+    OCT_TRANSPORT_HOST_CONNECTED = 3, /* a host is attached; no session */
+    OCT_TRANSPORT_SESSION_ACTIVE = 4, /* the host has a session open */
+    OCT_TRANSPORT_ERROR = 5,          /* the transport failed */
+    OCT_TRANSPORT_DISCONNECTED = 6    /* the host went away; listening for the next */
+} oct_transport_state;
+
+typedef struct oct_transport_status {
+    oct_transport_state state;
+    uint64_t            transactions;
+    char                failure[OCT_EVENT_TEXT_MAX]; /* the last meaningful failure, or empty */
+} oct_transport_status;
+
 typedef struct oct_event {
     uint32_t          sequence;
     oct_event_kind    kind;
@@ -58,6 +77,8 @@ typedef struct oct_transport_ops {
     const char *name;
     oct_status (*start)(void *context, oct_service *service);
     void       (*stop)(void *context);
+    /* Optional. Called with the service locked: it must not call back into the service. */
+    void       (*status)(void *context, oct_transport_status *out);
 } oct_transport_ops;
 
 typedef struct oct_transport {
@@ -79,9 +100,13 @@ typedef struct oct_service_status {
     uint32_t          stops;
     uint32_t          dropped_events;
     char              transport_name[32];
+    oct_transport_state transport_state;
+    uint64_t          transport_transactions;
+    char              transport_failure[OCT_EVENT_TEXT_MAX];
 } oct_service_status;
 
 const char *oct_service_state_name(oct_service_state state);
+const char *oct_transport_state_name(oct_transport_state state);
 const char *oct_event_text(const oct_event *event);
 const char *oct_object_info_name(const oct_object_info *info);
 
@@ -89,6 +114,9 @@ oct_status oct_service_create(oct_service **out);
 void       oct_service_destroy(oct_service *service);
 oct_status oct_service_set_identity(oct_service *service, const char *device_name,
                                     const char *serial_number, const char *system_version);
+/* The debug log's component for this service's lines ("service" by default); NULL silences them, as for the
+ * temporary service of the transport self-test. */
+void       oct_service_set_log_component(oct_service *service, const char *component);
 /* Allowed only while disabled or in error. NULL removes the transport. */
 oct_status oct_service_set_transport(oct_service *service, const oct_transport *transport);
 
@@ -117,6 +145,8 @@ oct_status oct_service_read(oct_service *service, uint32_t handle, uint64_t offs
 /* Transport side. */
 oct_status oct_service_host_attached(oct_service *service);
 oct_status oct_service_host_detached(oct_service *service);
+/* Ends the session but keeps the host attached, as a USB Device Reset request does. */
+oct_status oct_service_reset_session(oct_service *service);
 oct_status oct_service_receive(oct_service *service, const uint8_t *bytes, size_t length, oct_buf *out);
 
 #ifdef __cplusplus

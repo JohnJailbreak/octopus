@@ -28,6 +28,8 @@ jobs:
         run: make test
       - name: Sanitizers (address, undefined behaviour, leaks)
         run: make sanitize
+      - name: ThreadSanitizer (the debug log and the transport adapter)
+        run: make tsan
       - name: Fuzz the responder
         run: make fuzz FUZZ_RUNS=300000
       - name: Static analysis

@@ -32,10 +32,12 @@ PTP and its extension MTP, the portable-device protocols. The iPhone speaks PTP 
 Octopus gives it the rest of that role: a file-object provider and an MTP responder that serve an organised filesystem,
 with browsing, downloads, uploads, renaming and deletion where permitted.
 
-**Status:** the app, the file-object provider and the PTP/MTP responder (20 operations) are built and tested, and
-updates install from the app. **There is no live USB transport yet, so Windows can't see Octopus in this build.** The
-app says so rather than pretending otherwise. Serving this storage over the iPhone's real USB connection is the next
-milestone (see [Known limitations](#known-limitations)).
+**Status:** the app, the file-object provider, the PTP/MTP responder (20 operations) and the transport adapter that
+will carry it over USB are built and tested, and updates install from the app. Version 0.2 runs on an iPhone 13 with
+iOS 17.0: the service starts and its self-test passes. **There is no USB driver yet, so Windows can't see Octopus in
+this build.** The app says so rather than pretending otherwise. Windows already lists the iPhone's own PTP interface
+as a portable device; serving Octopus's storage through it is the next milestone (see
+[Known limitations](#known-limitations)).
 
 > [!WARNING]
 > Octopus is experimental and in development. Today it serves only files it generates itself: nothing from the
@@ -88,14 +90,16 @@ without TrollStore.
   **Disable USB Access**, which releases everything.
 - **The header** reads *by Parv*, or, when something needs you, says what in the warning colour: after Enable USB
   Access, that this build has no USB transport yet.
-- **USB Connection** shows the service state, the transport and session, which states this build can reach, and the
-  responder's counters.
+- **USB Connection** shows the service and the transport, the host and session, the last transport failure, and every
+  state in two lists, the service's and the transport's, marked Current or Seen only when Octopus has observed them,
+  then the responder's counters.
 - **Filesystem** shows the storage, the object tree and, for each object, its metadata and contents, read through the
   provider.
-- **Activity** shows the operation log. **Run Self-Test** replays a recorded PTP/MTP session through the responder and
-  checks every reply.
+- **Activity** shows the operation log. **Run Self-Test** replays a recorded PTP/MTP session through the responder,
+  checks every reply, then drives the transport adapter end to end.
 - **Settings** has haptics, self-test while enabling, the writable Scratch folder, **Update notifications** and
-  **Check for Updates**, the versions, Dopamine's license and a link to this repository.
+  **Check for Updates**, **Detailed logging** and the **Debug Log**, the versions, Dopamine's license and a link to
+  this repository.
 - **Update Available** appears above the button when a newer release is out; see [Updates](#updates).
 
 ### Updates
@@ -115,6 +119,25 @@ so an unchanged release list doesn't count against its limit of 60 checks an hou
 
 Each release's notes are its push's commit messages, so they read as the changelog; see
 [Building and testing](#building-and-testing).
+
+### The debug log
+
+**Settings > Diagnostics > Debug Log** shows `octopus-debug.log`, which the app and its C core share. Each line has a
+UTC timestamp to the millisecond, a level (DEBUG, INFO, WARN or ERROR), a component, an event and a message. It
+records the service starting and stopping, the storage it built, the self-test, update checks and installs, and every
+transport state change and failure with its reason; the last failure is pinned at the top of the screen. With
+**Detailed logging** on, every request a computer makes is logged too: its operation code, transaction ID, response
+code, bytes in and out, and how long it took. Names and contents of files are never logged.
+
+- **Filter** by severity: All, Info, Warnings or Errors.
+- **Copy** copies the lines shown; **Export** shares the whole log as one file through the share sheet.
+- **Report** adds a read-only summary of how this iPhone presents itself over USB: its USB configurations, the PTP
+  capabilities `ptpd` reports, and `ptpd`'s launch description, with serial numbers redacted.
+- **Clear** empties the log, after asking.
+
+The log persists across launches and rotates at 512 KB, keeping three older files. It lives in the app's Library/Logs
+folder or, if iOS refuses that, in `/var/mobile/Library/Caches/Octopus`. If no folder takes it, it keeps its recent
+lines in memory and says so in its first lines.
 
 ### The storage
 
@@ -138,7 +161,9 @@ and never follows links out of it.
 
 | Symptom | Likely cause | What to do |
 | --- | --- | --- |
-| Windows doesn't list the iPhone | This build has no USB transport | Nothing yet: the header says so, and it's the next milestone. |
+| Windows doesn't show Octopus's files | This build has no USB driver | Nothing yet: the header says so, and it's the next milestone. To report what Windows sees, run the [Windows diagnostics](#logs). |
+| You need the reason for a failure | The debug log keeps it | **Settings > Diagnostics > Debug Log** shows the last failure at the top. **Export** it and attach it to an issue. |
+| The Debug Log says it keeps lines in memory only | No folder accepted the log file | Its first lines say which folders refused and why; include them in an issue. |
 | Enable USB Access ends in *Error* | A step failed; the header keeps the reason | Open **Activity** for the failing step, then Disable and Enable again. |
 | Run Self-Test reports a failure | A reply differed from the recorded session | Note the failing exchange in **Activity** and open an issue with it. |
 | **Update Available** never appears | Octopus checks at launch and whenever it comes to the front; it was offline, or GitHub's limit of 60 checks an hour was reached | **Check for Updates** in Settings says why, or install from the [latest release](https://github.com/m9z2w4d8vw-blip/octopus/releases/latest). |
@@ -150,8 +175,43 @@ and never follows links out of it.
 
 ## Logs
 
-**Activity** keeps the operation log: each step of enabling and disabling, the self-test's exchanges, and errors with
-their reasons. When an update fails, the update window shows the helper's reason.
+**Activity** keeps this launch's operation log: each step of enabling and disabling, the self-test's exchanges, and
+errors with their reasons. [The debug log](#the-debug-log) keeps more, across launches, and exports as a file. When an
+update fails, the update window shows the helper's reason.
+
+On Windows, `tools/windows/octopus-usb-diagnostics.ps1` reports how Windows sees the iPhone:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\windows\octopus-usb-diagnostics.ps1
+```
+
+It lists the Apple and portable devices with their instance IDs, hardware and compatible IDs (which give each USB
+interface's class), drivers and problem codes; the Windows Portable Devices and Apple services; the storages File
+Explorer shows; recent Plug and Play events; and whether USBPcap or Wireshark is installed, which Octopus never needs.
+It changes nothing, needs no administrator rights, shortens serial numbers unless you pass `-ShowSerials`, and saves
+its report as a text file in the current folder.
+
+<details>
+<summary><b>The debug log's lines</b></summary>
+
+<br>
+
+```text
+2026-11-08T19:51:02.123Z INFO  service    step Octopus storage: 6 objects, 4.7 KB
+2026-11-08T19:51:04.501Z DEBUG link       transaction op=0x1007 GetObjectHandles tid=4 rc=0x2001 OK in=24 out=40 time=0.31ms
+```
+
+| Component | What it logs |
+| --- | --- |
+| `app` | launches, the scene going to the front or the back, Enable, Disable and Run Self-Test |
+| `service` | its states, each operation and step, and failures with their reasons |
+| `link` | the transport's states, host connections, every transaction, cancels, resets, timeouts and malformed input |
+| `selftest` | the transport adapter's self-test, at DEBUG only: it provokes faults on purpose |
+| `update` | update checks that find something or fail, downloads, and the helper's exit code |
+| `device` | the device report |
+| `log` | the log itself: folders refused, the level changing, clearing |
+
+</details>
 
 <details>
 <summary><b>The update helper's messages and exit codes</b></summary>
@@ -186,9 +246,20 @@ when an update fails.
    GetObjectPropList, with ten object properties. Malformed input is answered with an error and never read out of
    bounds, an OpenSession during a session keeps it and follows the host's numbering, and data phases are buffered up
    to 32 MiB.
-4. **The transport, next:** the research behind Octopus recommends extending the iPhone's own PTP responder (`ptpd`)
-   with a new storage provider, through a root helper, rather than replacing it.
-5. **Updates:** the app reads GitHub's release list, downloads the newest `Octopus.tipa` and starts `octopushelper` as
+4. **The transport adapter:** `oct_link` sits between a byte-level USB driver and the service, as the USB Still Image
+   Capture Device Definition lays out PTP over USB. It reassembles containers from fragmented input, hands each to the
+   responder, sends the data and the response as separate transfers (flagging those that need a zero-length packet),
+   tracks the session and the transaction in progress, and handles disconnects, stalls, and the Cancel, Device Reset
+   and Get Device Status requests. It reports its state and last failure to the app. A loopback driver drives it in
+   the tests and in the self-test.
+5. **The USB driver, next:** the piece that would feed the adapter from the iPhone's USB PTP interface. That interface
+   belongs to the iPhone's own PTP responder (`ptpd`); the research behind Octopus recommends extending `ptpd` with a
+   new storage provider, through a root helper, rather than replacing it. No documented interface does that, so this
+   step starts from read-only evidence: what **Report** collects on the iPhone and the Windows diagnostics collect on
+   the PC.
+6. **The debug log:** `oct_log` is one log for the C core and the app: thread-safe, a fixed amount of memory, and a
+   file that rotates by size.
+7. **Updates:** the app reads GitHub's release list, downloads the newest `Octopus.tipa` and starts `octopushelper` as
    root through TrollStore's persona spawn. The helper accepts only a regular file directly inside Octopus's two
    download folders, finds TrollStore's installer through the metadata of its bundle container, runs
    `trollstorehelper install` in its own session, so the install finishes after Octopus closes, and deletes the
@@ -210,21 +281,24 @@ root helper.
 │   │   ├── Updater.swift          checking GitHub, downloading, installing through the helper
 │   │   ├── UpdateViews.swift      Update Available, the changelog and the download circle
 │   │   ├── UpdateNotifications.swift    Update notifications and the background check
+│   │   ├── DebugLog.swift, DebugLogView.swift    the debug log's bridge to the core, and Settings > Debug Log
+│   │   ├── DeviceReport.swift     Debug Log > Report: how the iPhone presents itself over USB, read-only
 │   │   ├── Backdrop.swift, Theme.swift    the Slate backdrop; colours, geometry and motion
 │   │   └── Spawn/                 starting the helper as root (C, imported by Swift as OctopusSpawn)
-│   ├── Core/                  the file-object provider, its backends and the service (C11)
+│   ├── Core/                  the file-object provider, its backends, the service, the transport adapter, the log (C11)
 │   ├── Protocol/              PTP/MTP containers, datasets, properties and the responder (C11)
 │   ├── RootHelper/            octopushelper, which installs updates with TrollStore (C)
 │   ├── Resources/             Fonarto and its license, the asset catalog, Dopamine's license
 │   ├── Tests/
-│   │   ├── CoreTests/             C tests, the recorded transcript, the fuzzer
+│   │   ├── CoreTests/             C tests, the log and the transport adapter included; the transcript; the fuzzer
 │   │   ├── HelperTests/           the helper and the spawn bridge, compiled on the host
 │   │   ├── RepoTests/             this README, the changelog and the update path's shared values
-│   │   └── AppTests/              XCTest: the bridge, the controller, the layout and the updater
+│   │   └── AppTests/              XCTest: the bridge, the controller, the layout, the updater and the debug log
 │   ├── Octopus.entitlements   what TrollStore grants the app
 │   └── module.modulemap       exposes the core (OctopusCore) and the spawn bridge (OctopusSpawn) to Swift
 ├── docs/                      CHANGELOG.md (every release), images/
 ├── tools/                     release_version.sh (the version a build publishes), package.sh (signing, the .tipa)
+│   └── windows/               octopus-usb-diagnostics.ps1: how Windows sees the iPhone, read-only
 ├── Makefile, project.yml      the native build and tests; the XcodeGen project (the .xcodeproj isn't committed)
 └── .github/workflows/         CI: test, build, package, publish
 ```
@@ -246,7 +320,8 @@ flowchart LR
 ```
 
 Every push runs `.github/workflows/build.yml`. On Linux it runs the core's tests, the update helper's and the
-repository's, all again under the sanitizers, then 300,000 fuzzing iterations and GCC's static analyzer. On macOS it
+repository's, all again under the sanitizers, the C suite under ThreadSanitizer, then 300,000 fuzzing iterations and
+GCC's static analyzer. On macOS it
 runs the tests and sanitizers again with Apple Clang, runs XCTest on an iOS Simulator and builds for device, and
 `tools/package.sh` adds the helper, signs both with `ldid` and zips the app. Each push to `main` that passes publishes
 a release named after its version (`project.yml`'s `MARKETING_VERSION` plus the run number, so `0.2.42`) with
@@ -264,6 +339,7 @@ The core, the helper and the repository checks need GCC or Clang and Python 3:
 ```sh
 make test       # the core's tests and transcript replay, the helper and spawn tests, the repository checks
 make sanitize   # the core's and the helper's tests under ASan, UBSan and LeakSanitizer
+make tsan       # the C suite under ThreadSanitizer: the log and the transport adapter are shared between threads
 make fuzz       # randomised and mutated PTP/MTP input against the responder
 make analyze    # GCC's static analyzer over the core, the update helper and the spawn bridge
 ```
@@ -278,15 +354,23 @@ xcodebuild build -project Octopus.xcodeproj -scheme Octopus -configuration Relea
 bash tools/package.sh   # build/Octopus.tipa and build/Octopus.ipa
 ```
 
-- **The core:** 1,671 checks pass, also under the sanitizers; 300,000 fuzzing iterations run without faults;
-  the analyzer reports nothing. A 22-exchange enumeration session replays byte for byte against an encoder written
+- **The core:** 2,232 checks pass, also under the sanitizers and ThreadSanitizer; 300,000 fuzzing iterations run
+  without faults; the analyzer reports nothing. A 22-exchange enumeration session replays byte for byte against an encoder written
   separately from the PIMA 15740 and MTP 1.0 layouts. The session follows the documented MTP flow; it isn't a capture
   from Windows.
 - **The update path:** the helper is built in a test mode that starts nothing and puts every device path under a
   temporary folder, then run through each exit code and the rules for which files it takes. The spawn bridge is
   built as is and checked for its output, exit codes, signals, output cap and environment.
-- **The app:** XCTest covers the bridge to the core, the controller's states, the layout and the updater's choices.
-  The Swift is compiled only in CI.
+- **The debug log:** persistence across reopening, rotation (sizes, order across files, starting over, clearing),
+  eight threads writing at once without a torn line, and failures: a directory, a missing folder, a full disk, and
+  memory-only logging.
+- **The transport adapter,** against the real responder: every piece size from 1 to 40 bytes, two containers in one
+  piece, a chunked upload, zero-length-packet flags, malformed and oversized containers, random garbage, repeated
+  sessions, Device Reset, interrupted transfers (unplugged, stalled, cancelled, a missing data phase), driver
+  failures, control requests racing transactions, and stopping while busy.
+- **The app:** XCTest covers the bridge to the core, the controller's states, the layout, the updater's choices, the
+  debug log's format, persistence, clearing and export, the device report and the connection stages. The Swift is
+  compiled only in CI.
 
 </details>
 
@@ -300,14 +384,18 @@ bash tools/package.sh   # build/Octopus.tipa and build/Octopus.ipa
 >    with TrollStore.
 > 3. Delete Octopus in TrollStore, then install it again.
 
-The root helper does one thing: it hands TrollStore's installer a `.tipa` or `.ipa` that is a regular file directly
+The device report and the Windows diagnostics script only read. The root helper does one thing: it hands TrollStore's installer a `.tipa` or `.ipa` that is a regular file directly
 inside Octopus's own download folders, then deletes it. The storage Octopus serves is generated in memory, and the
 directory backend refuses any directory without its marker file.
 
 ## Known limitations
 
-- **No USB transport yet.** Windows can't see Octopus in this build. Next: serve this storage over the iPhone's real
-  USB PTP function and record the exact requests Windows sends, which then become a replay fixture for the responder.
+- **No USB driver yet.** Windows can't see Octopus in this build. The transport adapter is ready and tested; what's
+  missing is the piece that feeds it from the iPhone's USB PTP interface, which belongs to Apple's `ptpd`. Next: study
+  what Report and the Windows diagnostics collect, then serve the storage through that interface and record the exact
+  requests Windows sends, which become a replay fixture for the responder.
+- **The transport's live states are unobserved on hardware.** Waiting, Host connected, Session active and
+  Disconnected have only been seen through the loopback driver.
 - **Generated files only.** Nothing from the iPhone's own filesystem is served yet.
 - **Transfers up to 32 MiB.** Data phases are buffered; larger files need streaming.
 - **No events.** The responder sends none, so a host isn't told about changes made on the iPhone.

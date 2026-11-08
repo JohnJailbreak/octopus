@@ -3,6 +3,8 @@ module OctopusCore {
     header "Protocol/oct_ptp.h"
     header "Protocol/oct_responder.h"
     header "Core/oct_service.h"
+    header "Core/oct_log.h"
+    header "Core/oct_link.h"
     export *
 }
 
