@@ -45,6 +45,104 @@ final class DiagnosticsTests: XCTestCase {
         XCTAssertEqual(runner.results.first { $0.id == "adapter.mtp_enumeration" }?.status, .pass)
         XCTAssertEqual(runner.results.first { $0.id == "app.debug_log" }?.status, .pass)
         XCTAssertEqual(runner.results.first { $0.id == "updates.helper_root" }?.status, .skipped)
+        // Without any file, the results still leave as text.
+        XCTAssertTrue(runner.resultsText.contains("[BLOCKED] USB transport for Octopus"), runner.resultsText)
+        XCTAssertTrue(runner.resultsText.contains("[PASS] MTP enumeration of the read-only storage"))
+    }
+
+    /// A scratch folder for one test, removed afterwards.
+    private func scratchFolder() throws -> URL {
+        let folder = FileManager.default.temporaryDirectory
+            .appendingPathComponent("export-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        addTeardownBlock { try? FileManager.default.removeItem(at: folder) }
+        return folder
+    }
+
+    /// A regular file where the preferred folder should be, as the iPhone's unusable container is.
+    private func blocker(in folder: URL) throws -> URL {
+        let file = folder.appendingPathComponent("container")
+        try Data("not a folder".utf8).write(to: file)
+        return file
+    }
+
+    private func verify(_ url: URL) -> Int {
+        var entries = 0
+        var error = [CChar](repeating: 0, count: 1024)
+        let capacity = error.count
+        XCTAssertEqual(oct_zip_verify(url.path, &entries, &error, capacity), OCT_OK, Diagnostics.string(error))
+        return entries
+    }
+
+    func testTheArchiveFallsBackWhenThePreferredFolderFails() throws {
+        startLog()
+        let folder = try scratchFolder()
+        let preferred = try blocker(in: folder).appendingPathComponent("tmp")
+        let fallback = folder.appendingPathComponent("Caches/Octopus/Diagnostics", isDirectory: true)
+        let url = try Diagnostics.makeArchive(results: [], environment: .sample, started: Date(), finished: Date(),
+                                              directories: [preferred.path, fallback.path])
+        XCTAssertEqual(url.deletingLastPathComponent().standardizedFileURL.path, fallback.standardizedFileURL.path)
+        XCTAssertGreaterThanOrEqual(verify(url), 8)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: url.path + ".partial"))
+        let log = DebugLog.entries(limit: 200).map(\.line).joined(separator: "\n")
+        XCTAssertTrue(log.contains("export_fallback"), "the fallback and its reason are logged")
+    }
+
+    func testEveryRefusalIsReportedWhenNoFolderTakesTheArchive() throws {
+        startLog()
+        let file = try blocker(in: try scratchFolder())
+        XCTAssertThrowsError(try Diagnostics.makeArchive(results: [], environment: .sample, started: Date(),
+                                                          finished: Date(),
+                                                          directories: [file.appendingPathComponent("a").path,
+                                                                        file.appendingPathComponent("b").path])) { error in
+            let message = error.localizedDescription
+            XCTAssertTrue(message.contains("/container/a") && message.contains("/container/b"), message)
+            XCTAssertTrue(message.contains("Not a directory"), message)
+        }
+    }
+
+    func testAnUnwritableFolderIsPassedOver() throws {
+        startLog()
+        let folder = try scratchFolder()
+        let locked = folder.appendingPathComponent("locked", isDirectory: true)
+        try FileManager.default.createDirectory(at: locked, withIntermediateDirectories: true)
+        try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: locked.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: locked.path) }
+        let open = folder.appendingPathComponent("open", isDirectory: true)
+        let url = try Diagnostics.makeArchive(results: [], environment: .sample, started: Date(), finished: Date(),
+                                              directories: [locked.path, open.path])
+        XCTAssertTrue(url.path.hasPrefix(open.path), url.path)
+        XCTAssertGreaterThanOrEqual(verify(url), 8)
+    }
+
+    func testExportDiagnosticsBecomesAvailableOnceAnArchiveIsMade() async throws {
+        startLog()
+        let folder = try scratchFolder()
+        let file = try blocker(in: folder)
+        let runner = DiagnosticsRunner()
+        await runner.run(environment: .sample, includeNetwork: false)
+        await runner.export(environment: .sample, directories: [file.appendingPathComponent("tmp").path])
+        XCTAssertNil(runner.archive, "no archive: Export Diagnostics stays unavailable")
+        XCTAssertTrue(runner.exportProblem?.contains("Not a directory") ?? false, runner.exportProblem ?? "")
+        XCTAssertFalse(runner.exporting)
+        await runner.export(environment: .sample, directories: [file.appendingPathComponent("tmp").path,
+                                                                folder.appendingPathComponent("fallback").path])
+        let archive = try XCTUnwrap(runner.archive, "the archive makes Export Diagnostics available")
+        XCTAssertNil(runner.exportProblem)
+        XCTAssertEqual(verify(archive), 7 + DebugLog.files().count) // seven files and the logs
+    }
+
+    func testTheDebugLogExportFallsBackToo() throws {
+        startLog()
+        let folder = try scratchFolder()
+        let file = try blocker(in: folder)
+        let url = try DebugLog.exportFile(in: [file.appendingPathComponent("tmp").path,
+                                               folder.appendingPathComponent("logs").path])
+        XCTAssertTrue(url.path.hasPrefix(folder.appendingPathComponent("logs").path))
+        XCTAssertTrue(((try? String(contentsOf: url, encoding: .utf8)) ?? "").hasPrefix("# Octopus "))
+        XCTAssertThrowsError(try DebugLog.exportFile(in: [file.appendingPathComponent("tmp").path])) { error in
+            XCTAssertTrue(error.localizedDescription.contains("Not a directory"), error.localizedDescription)
+        }
     }
 
     func testTheArchiveHoldsResultsLogsBuildAndConnectivity() throws {

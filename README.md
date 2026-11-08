@@ -139,7 +139,10 @@ steps on a PC.
 pass, and the log's recent warnings and errors), `build.json` (version, build, commit), `settings.json`,
 `connectivity.txt` (the transport's state and the iPhone's USB description) and the debug log files. App container
 IDs are replaced with `<app-container>`, and nothing in it holds file contents. After installing a release, run it
-once and send that ZIP.
+once and send that ZIP. The archive is written to the first folder that takes it: the app's temporary folder, then
+`/var/mobile/Library/Caches/Octopus/Diagnostics`, `/var/tmp/Octopus/Diagnostics` or the debug log's folder, each
+checked before it is used, and read back before it is offered. If none takes it, the screen gives each folder's
+reason, **Retry Export** tries again, and **Share Results as Text** sends the results without a file.
 
 ### The debug log
 
@@ -184,6 +187,7 @@ and never follows links out of it.
 | --- | --- | --- |
 | Windows doesn't show Octopus's files | This build has no USB driver | Nothing yet: the header says so, and it's the next milestone. To report what Windows sees, run the [Windows diagnostics](#logs). |
 | You're reporting a problem with a release | One archive has it all | **Settings > Diagnostics > Run Full Diagnostics**, then **Export Diagnostics**, and send the ZIP. |
+| Diagnostics says the archive couldn't be made | No folder took it; the message names each folder and the system's reason | Tap **Retry Export**, or **Share Results as Text** and send that with the message. |
 | You need the reason for a failure | The debug log keeps it | **Settings > Diagnostics > Debug Log** shows the last failure at the top. **Export** it and attach it to an issue. |
 | The Debug Log says it keeps lines in memory only | No folder accepted the log file | Its first lines say which folders refused and why; include them in an issue. |
 | Enable USB Access ends in *Error* | A step failed; the header keeps the reason | Open **Activity** for the failing step, then Disable and Enable again. |

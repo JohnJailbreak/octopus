@@ -214,6 +214,37 @@ class ZipTests(unittest.TestCase):
                 self.assertEqual(archive.getinfo('results.json').date_time[:3], (2025, 11, 8))
             self.assertEqual(sorted(p.name for p in Path(folder).iterdir()), ['octopus-diagnostics.zip'])
 
+    def test_the_archive_falls_back_when_the_preferred_folder_fails(self):
+        """The iPhone's case: the app's temporary folder can't be created; the Octopus cache folder works."""
+        with tempfile.TemporaryDirectory() as folder:
+            blocker = Path(folder) / 'container'
+            blocker.write_text('not a folder')
+            preferred = blocker / 'tmp'
+            fallback = Path(folder) / 'Caches' / 'Octopus' / 'Diagnostics'
+            run = subprocess.run([str(self.driver), '--first', str(preferred), str(fallback)],
+                                 capture_output=True, text=True)
+            self.assertEqual(run.returncode, 0, run.stdout)
+            written, reasons = run.stdout.splitlines()[:2]
+            self.assertEqual(written, str(fallback / 'octopus-diagnostics.zip'))
+            self.assertIn(str(preferred), reasons)
+            self.assertIn('Not a directory', reasons)
+            with zipfile.ZipFile(written) as archive:
+                self.assertIsNone(archive.testzip())
+                self.assertEqual(len(archive.namelist()), 5)
+            self.assertEqual([p.name for p in fallback.iterdir()], ['octopus-diagnostics.zip'])
+
+    def test_every_refusal_is_reported_when_no_folder_works(self):
+        with tempfile.TemporaryDirectory() as folder:
+            blocker = Path(folder) / 'file'
+            blocker.write_text('x')
+            run = subprocess.run([str(self.driver), '--first', str(blocker / 'a'), str(blocker / 'b')],
+                                 capture_output=True, text=True)
+            self.assertNotEqual(run.returncode, 0)
+            reasons = run.stdout.splitlines()[1]
+            self.assertIn(str(blocker / 'a'), reasons)
+            self.assertIn(str(blocker / 'b'), reasons)
+            self.assertEqual(reasons.count('Not a directory'), 2)
+
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

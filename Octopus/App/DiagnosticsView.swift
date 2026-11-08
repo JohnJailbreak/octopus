@@ -76,7 +76,12 @@ struct DiagnosticsWindow: View {
     private var footer: some View {
         VStack(spacing: 8) {
             if let problem = runner.exportProblem {
-                Text(problem).font(.system(size: 12)).foregroundStyle(Theme.failure)
+                Text(problem)
+                    .font(.system(size: 12))
+                    .foregroundStyle(Theme.failure)
+                    .lineLimit(8)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
             HStack(spacing: 10) {
                 Button {
@@ -85,12 +90,12 @@ struct DiagnosticsWindow: View {
                 } label: {
                     Text("Run Again")
                         .frame(maxWidth: .infinity, minHeight: 44)
-                        .foregroundStyle(runner.running ? Theme.chevron : .white)
+                        .foregroundStyle(busy ? Theme.chevron : .white)
                         .background(Capsule().fill(Color.white.opacity(0.12)))
                 }
                 .buttonStyle(PressDimStyle())
-                .disabled(runner.running)
-                if let archive = runner.archive, !runner.running {
+                .disabled(busy)
+                if let archive = runner.archive, !busy {
                     ShareLink(item: archive) {
                         Text("Export Diagnostics")
                             .frame(maxWidth: .infinity, minHeight: 44)
@@ -98,16 +103,39 @@ struct DiagnosticsWindow: View {
                             .background(Capsule().fill(Theme.accent))
                     }
                     .simultaneousGesture(TapGesture().onEnded { Haptics.light() })
+                } else if runner.exportProblem != nil, !busy {
+                    Button {
+                        Haptics.light()
+                        runner.retryExport()
+                    } label: {
+                        Text("Retry Export")
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                            .foregroundStyle(.black)
+                            .background(Capsule().fill(Theme.accent))
+                    }
+                    .buttonStyle(PressDimStyle())
                 } else {
-                    Text("Export Diagnostics")
+                    Text(runner.exporting ? "Exporting…" : "Export Diagnostics")
                         .frame(maxWidth: .infinity, minHeight: 44)
                         .foregroundStyle(Theme.chevron)
                         .background(Capsule().fill(Color.white.opacity(0.06)))
                 }
             }
             .font(.system(size: 15, weight: .semibold))
+            // Without an archive the results can still leave the iPhone: as text, which needs no file at all.
+            if runner.exportProblem != nil, runner.archive == nil, !busy, !runner.results.isEmpty {
+                ShareLink(item: runner.resultsText) {
+                    Text("Share Results as Text")
+                        .font(.system(size: 14, weight: .semibold))
+                        .frame(maxWidth: .infinity, minHeight: 36)
+                        .foregroundStyle(.white)
+                        .background(Capsule().fill(Color.white.opacity(0.12)))
+                }
+            }
         }
     }
+
+    private var busy: Bool { runner.running || runner.exporting }
 }
 
 private struct DiagnosticRow: View {

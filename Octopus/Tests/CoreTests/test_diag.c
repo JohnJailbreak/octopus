@@ -6,6 +6,8 @@
 #include "../../Core/oct_sha256.h"
 #include "../../Core/oct_zip.h"
 
+#include <dirent.h>
+#include <stdlib.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -82,6 +84,145 @@ static void test_zip(void)
     snprintf(partial, sizeof partial, "%s.partial", path);
     CHECK(access(partial, F_OK) != 0); /* nothing left behind */
     CHECK_EQ(oct_zip_write(NULL, path), OCT_E_INVALID_ARGUMENT);
+}
+
+static bool file_exists(const char *path) { return access(path, F_OK) == 0; }
+
+/* A folder no file can be created in: /sys for root, whom permissions don't stop, or a read-only folder. */
+static bool unwritable_folder(const char *base, char *out, size_t capacity)
+{
+    if (geteuid() == 0) {
+        struct stat info;
+        if (stat("/sys", &info) != 0 || !S_ISDIR(info.st_mode)) return false;
+        snprintf(out, capacity, "/sys");
+        return true;
+    }
+    snprintf(out, capacity, "%s/read-only", base);
+    return mkdir(out, 0555) == 0 || chmod(out, 0555) == 0;
+}
+
+static oct_zip *sample_archive(void)
+{
+    oct_zip *zip = NULL;
+    oct_zip_create(&zip);
+    oct_zip_add(zip, "results.json", "{\"ok\": true}\n", 13, 1762632000);
+    oct_zip_add(zip, "logs/octopus-debug.log", "line one\nline two\n", 18, 1762632000);
+    oct_zip_add(zip, "empty.txt", NULL, 0, 1762632000);
+    return zip;
+}
+
+static void test_zip_destinations(void)
+{
+    char base[] = "/tmp/octopus-export-XXXXXX";
+    CHECK(mkdtemp(base) != NULL);
+    char path[1024], error[1024], blocker[256], unwritable[256];
+
+    /* The real error and the failing path. */
+    oct_zip *zip = sample_archive();
+    snprintf(path, sizeof path, "%s/missing/archive.zip", base);
+    CHECK_EQ(oct_zip_write(zip, path), OCT_E_IO);
+    CHECK(strstr(oct_zip_error(zip), "/missing/archive.zip.partial") != NULL);
+    CHECK(strstr(oct_zip_error(zip), "No such file or directory") != NULL);
+    CHECK(strncmp(oct_zip_error(zip), "Creating ", 9) == 0);
+
+    /* Missing folders are created, parents first. */
+    snprintf(path, sizeof path, "%s/a/b/c", base);
+    CHECK_OK(oct_zip_prepare_directory(path, error, sizeof error));
+    CHECK_STR(error, "");
+    struct stat info;
+    CHECK(stat(path, &info) == 0 && S_ISDIR(info.st_mode));
+    snprintf(path, sizeof path, "%s/a/b/c/", base); /* a trailing slash, and it already exists */
+    CHECK_OK(oct_zip_prepare_directory(path, error, sizeof error));
+    snprintf(path, sizeof path, "%s/a/b/c", base);
+    DIR *folder = opendir(path);
+    size_t leftovers = 0;
+    for (struct dirent *entry; folder && (entry = readdir(folder)) != NULL;) leftovers += entry->d_name[0] != '.';
+    if (folder) closedir(folder);
+    CHECK_EQ(leftovers, 0); /* the probe file is gone */
+
+    /* A file where a folder should be. */
+    snprintf(blocker, sizeof blocker, "%s/blocker", base);
+    FILE *file = fopen(blocker, "w");
+    CHECK(file != NULL);
+    if (file) fclose(file);
+    CHECK_EQ(oct_zip_prepare_directory(blocker, error, sizeof error), OCT_E_IO);
+    CHECK(strstr(error, "Not a directory") != NULL && strstr(error, blocker) != NULL);
+    snprintf(path, sizeof path, "%s/inside", blocker);
+    CHECK_EQ(oct_zip_prepare_directory(path, error, sizeof error), OCT_E_IO);
+    CHECK(strstr(error, "Not a directory") != NULL && strstr(error, "/blocker/inside") != NULL);
+    CHECK_EQ(oct_zip_prepare_directory("", error, sizeof error), OCT_E_INVALID_ARGUMENT);
+
+    /* A folder that exists but takes no files. */
+    bool have_unwritable = unwritable_folder(base, unwritable, sizeof unwritable);
+    if (have_unwritable) {
+        CHECK_EQ(oct_zip_prepare_directory(unwritable, error, sizeof error), OCT_E_IO);
+        CHECK(strstr(error, "Creating a file in") != NULL && strstr(error, unwritable) != NULL);
+    }
+
+    /* The first folder that works takes the archive; the refusals are kept. */
+    char fallback[256], written[1024];
+    snprintf(fallback, sizeof fallback, "%s/fallback", base);
+    const char *folders[] = { path, have_unwritable ? unwritable : path, fallback };
+    CHECK_OK(oct_zip_write_first(zip, folders, 3, "octopus-diagnostics.zip", written, sizeof written));
+    char expected[600];
+    snprintf(expected, sizeof expected, "%s/octopus-diagnostics.zip", fallback);
+    CHECK_STR(written, expected);
+    CHECK(strstr(oct_zip_error(zip), "/blocker/inside") != NULL);
+    if (have_unwritable) CHECK(strstr(oct_zip_error(zip), unwritable) != NULL);
+    size_t entries = 0;
+    CHECK_OK(oct_zip_verify(written, &entries, error, sizeof error));
+    CHECK_EQ(entries, 3);
+    char partial[1100];
+    snprintf(partial, sizeof partial, "%s.partial", written);
+    CHECK(!file_exists(partial));
+
+    /* No folder works: every reason, and no file anywhere. */
+    char second[1024];
+    snprintf(second, sizeof second, "%s/also-inside", blocker);
+    const char *hopeless[] = { path, second };
+    CHECK_EQ(oct_zip_write_first(zip, hopeless, 2, "x.zip", written, sizeof written), OCT_E_IO);
+    CHECK_STR(written, "");
+    CHECK(strstr(oct_zip_error(zip), "/blocker/inside") != NULL);
+    CHECK(strstr(oct_zip_error(zip), "/blocker/also-inside") != NULL);
+    CHECK(strstr(oct_zip_error(zip), "; ") != NULL);
+    CHECK_EQ(oct_zip_write_first(zip, hopeless, 2, "sub/x.zip", written, sizeof written), OCT_E_INVALID_ARGUMENT);
+    CHECK_EQ(oct_zip_write_first(zip, folders, 3, "octopus-diagnostics.zip", written, 8), OCT_E_IO); /* too short */
+    oct_zip_destroy(zip);
+
+    /* Verification catches damage. */
+    snprintf(path, sizeof path, "%s/damaged.zip", base);
+    zip = sample_archive();
+    CHECK_OK(oct_zip_write(zip, path));
+    CHECK_STR(oct_zip_error(zip), "");
+    oct_zip_destroy(zip);
+    FILE *archive = fopen(path, "r+b");
+    CHECK(archive != NULL);
+    if (archive) {
+        fseek(archive, 30 + 12, SEEK_SET); /* the first entry's first data byte */
+        fputc('X', archive);
+        fclose(archive);
+    }
+    CHECK_EQ(oct_zip_verify(path, &entries, error, sizeof error), OCT_E_MALFORMED);
+    CHECK(strstr(error, "results.json has the wrong CRC-32") != NULL);
+    CHECK(truncate(path, 40) == 0);
+    CHECK_EQ(oct_zip_verify(path, &entries, error, sizeof error), OCT_E_MALFORMED);
+    CHECK(strstr(error, "end-of-archive record") != NULL);
+    CHECK_EQ(oct_zip_verify(blocker, &entries, error, sizeof error), OCT_E_MALFORMED); /* empty file */
+    snprintf(path, sizeof path, "%s/missing.zip", base);
+    CHECK_EQ(oct_zip_verify(path, &entries, error, sizeof error), OCT_E_IO);
+    CHECK(strstr(error, "No such file or directory") != NULL);
+    oct_zip *empty = NULL;
+    CHECK_OK(oct_zip_create(&empty));
+    snprintf(path, sizeof path, "%s/empty.zip", base);
+    CHECK_OK(oct_zip_write(empty, path));
+    CHECK_OK(oct_zip_verify(path, &entries, error, sizeof error));
+    CHECK_EQ(entries, 0);
+    oct_zip_destroy(empty);
+
+    if (have_unwritable && geteuid() != 0) chmod(unwritable, 0755);
+    char command[600];
+    snprintf(command, sizeof command, "rm -rf '%s'", base);
+    CHECK(system(command) == 0);
 }
 
 static void test_compatibility(void)
@@ -228,6 +369,7 @@ void run_diag_tests(void)
 {
     test_sha256_and_crc32();
     test_zip();
+    test_zip_destinations();
     test_compatibility();
     test_diagnostics();
     test_find_process();

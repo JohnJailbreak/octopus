@@ -216,16 +216,32 @@ enum DebugLog {
         entries.last { $0.level >= .warning && $0.component != "selftest" }
     }
 
-    /// One file with every line, for the share sheet: octopus-debug-20261108-195102.log in the temporary folder.
-    static func exportFile() throws -> URL {
+    /// One file with every line, for the share sheet: octopus-debug-20261108-195102.log, in the first of
+    /// Diagnostics.exportFolders that takes it. When none does, the error gives each folder's reason.
+    static func exportFile(in folders: [String] = Diagnostics.exportFolders) throws -> URL {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = "yyyyMMdd-HHmmss"
-        let url = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
-            .appendingPathComponent("octopus-debug-\(formatter.string(from: Date())).log")
+        let name = "octopus-debug-\(formatter.string(from: Date())).log"
         let header = "# Octopus \(AppInfo.version), \(systemDescription). Exported \(Date()).\n"
-        try (header + allText()).write(to: url, atomically: true, encoding: .utf8)
-        return url
+        let data = Data((header + allText()).utf8)
+        var reasons: [String] = []
+        for folder in folders {
+            var reason = [CChar](repeating: 0, count: 1024)
+            let capacity = reason.count
+            guard oct_zip_prepare_directory(folder, &reason, capacity) == OCT_OK else {
+                reasons.append(Diagnostics.string(reason))
+                continue
+            }
+            let url = URL(fileURLWithPath: folder, isDirectory: true).appendingPathComponent(name)
+            do {
+                try data.write(to: url, options: .atomic)
+                return url
+            } catch {
+                reasons.append("Writing \(url.path): \((error as NSError).localizedDescription)")
+            }
+        }
+        throw Diagnostics.ArchiveError(reasons.isEmpty ? "No folder was given." : reasons.joined(separator: "; "))
     }
 
     static var systemDescription: String {

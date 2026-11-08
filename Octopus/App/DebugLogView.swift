@@ -14,6 +14,7 @@ struct DebugLogWindow: View {
     @State private var entries: [DebugLog.Entry] = []
     @State private var stats = DebugLog.Stats()
     @State private var exportURL: URL? = nil
+    @State private var exportProblem: String? = nil
     @State private var confirmClear = false
     @State private var notice: String? = nil
 
@@ -106,7 +107,8 @@ struct DebugLogWindow: View {
     private var footer: String {
         let place = stats.fileOpen ? (stats.path as NSString).lastPathComponent : "memory only"
         let size = ByteCountFormatter.string(fromByteCount: Int64(stats.fileBytes), countStyle: .file)
-        return "\(place) · \(size) · \(visible.count) of \(entries.count) lines"
+        let lines = "\(place) · \(size) · \(visible.count) of \(entries.count) lines"
+        return exportProblem.map { "\(lines)\nExport unavailable: \($0)" } ?? lines
     }
 
     private func toolbarButton(_ title: String, symbol: String, action: @escaping () -> Void) -> some View {
@@ -123,7 +125,17 @@ struct DebugLogWindow: View {
         entries = DebugLog.entries()
         stats = DebugLog.stats()
         if let previous = exportURL { try? FileManager.default.removeItem(at: previous) }
-        exportURL = try? DebugLog.exportFile()
+        do {
+            exportURL = try DebugLog.exportFile()
+            exportProblem = nil
+        } catch {
+            exportURL = nil
+            let problem = Diagnostics.redact(error.localizedDescription)
+            if problem != exportProblem { // once per reason, not on every refresh
+                DebugLog.log(.error, "log", "export_failed", "The log couldn't be saved for sharing: \(problem)")
+            }
+            exportProblem = problem
+        }
     }
 
     private func copy() {

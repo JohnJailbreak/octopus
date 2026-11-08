@@ -65,6 +65,9 @@ struct DiagnosticsEnvironment: Codable, Sendable {
         settings = Diagnostics.settingsSnapshot()
     }
 
+    static let unknown = DiagnosticsEnvironment(serviceState: "unknown", transportState: "unknown",
+                                                transportFailure: "", transportTransactions: 0, settings: [:])
+
     init(serviceState: String, transportState: String, transportFailure: String, transportTransactions: UInt64,
          settings: [String: String]) {
         self.serviceState = serviceState
@@ -124,8 +127,10 @@ final class DiagnosticsRunner: ObservableObject {
     @Published private(set) var running = false
     @Published private(set) var archive: URL? = nil
     @Published private(set) var exportProblem: String? = nil
+    @Published private(set) var exporting = false
     private(set) var started: Date? = nil
     private(set) var finished: Date? = nil
+    private(set) var environment: DiagnosticsEnvironment? = nil
 
     func count(_ status: DiagnosticStatus) -> Int { results.filter { $0.status == status }.count }
 
@@ -144,6 +149,7 @@ final class DiagnosticsRunner: ObservableObject {
     }
 
     func run(environment: DiagnosticsEnvironment, includeNetwork: Bool = true) async {
+        self.environment = environment
         running = true
         results = []
         archive = nil
@@ -166,22 +172,40 @@ final class DiagnosticsRunner: ObservableObject {
         DebugLog.log(.info, "diagnostics", "done", summaryLine)
     }
 
-    func export(environment: DiagnosticsEnvironment) async {
+    /// Builds the archive in the first folder that takes it (Diagnostics.exportFolders unless `directories`).
+    func export(environment: DiagnosticsEnvironment, directories: [String]? = nil) async {
+        exporting = true
+        exportProblem = nil
         let results = self.results
         let started = self.started ?? Date()
         let finished = self.finished ?? Date()
+        let folders = directories ?? Diagnostics.exportFolders
         do {
             let url = try await Task.detached(priority: .userInitiated) {
                 try Diagnostics.makeArchive(results: results, environment: environment, started: started,
-                                            finished: finished)
+                                            finished: finished, directories: folders)
             }.value
             if let previous = archive, previous != url { try? FileManager.default.removeItem(at: previous) }
             archive = url
-            DebugLog.log(.info, "diagnostics", "export", "Archive ready: \(url.lastPathComponent)")
+            DebugLog.log(.info, "diagnostics", "export", "Archive ready: \(Diagnostics.redact(url.path))")
         } catch {
-            exportProblem = "The archive couldn't be made: \(error.localizedDescription)"
+            archive = nil
+            exportProblem = "The archive couldn't be made. \(Diagnostics.redact(error.localizedDescription))"
             DebugLog.log(.error, "diagnostics", "export_failed", exportProblem ?? "")
         }
+        exporting = false
+    }
+
+    /// Export Diagnostics again, after a failure, without running the checks again.
+    func retryExport() {
+        guard !running, !exporting, !results.isEmpty, let environment else { return }
+        Task { await export(environment: environment) }
+    }
+
+    /// The results and the failures as plain text, for sharing when no archive can be written.
+    var resultsText: String {
+        Diagnostics.plainText(results: results, environment: environment ?? .unknown, started: started ?? Date(),
+                              finished: finished ?? Date())
     }
 }
 
@@ -436,8 +460,39 @@ enum Diagnostics {
                   system: DebugLog.systemDescription)
     }
 
+    /// Where an export may be written, tried in order: the app's temporary folder; then Octopus's own folders, which
+    /// an unsandboxed TrollStore app can write when its container refuses (on iOS 17 the container's folders can't
+    /// be created); then the folder the debug log is open in, which has taken writes this launch.
+    static var exportFolders: [String] {
+        var folders = [FileManager.default.temporaryDirectory.path]
+        folders += Updater.downloadFolders.map { $0 + "/Diagnostics" }
+        let log = DebugLog.stats()
+        if log.fileOpen, !log.path.isEmpty { folders.append((log.path as NSString).deletingLastPathComponent) }
+        var seen = Set<String>()
+        return folders.filter { !$0.isEmpty && seen.insert(($0 as NSString).standardizingPath).inserted }
+    }
+
+    static let archivePrefix = "octopus-diagnostics-"
+
+    static func makeReport(results: [DiagnosticResult], environment: DiagnosticsEnvironment, started: Date,
+                           finished: Date) -> Report {
+        let iso = ISO8601DateFormatter()
+        var summary: [String: Int] = [:]
+        for status in DiagnosticStatus.allCases { summary[status.rawValue] = results.filter { $0.status == status }.count }
+        return Report(build: buildInfo, started: iso.string(from: started), finished: iso.string(from: finished),
+                      durationSeconds: finished.timeIntervalSince(started), summary: summary,
+                      environment: environment, results: results.map(redacted))
+    }
+
+    /// results.txt and failures.txt in one text, for when no archive can be written.
+    static func plainText(results: [DiagnosticResult], environment: DiagnosticsEnvironment, started: Date,
+                          finished: Date) -> String {
+        textReport(makeReport(results: results, environment: environment, started: started, finished: finished))
+            + "\n" + failures(results)
+    }
+
     static func makeArchive(results: [DiagnosticResult], environment: DiagnosticsEnvironment, started: Date,
-                            finished: Date) throws -> URL {
+                            finished: Date, directories: [String] = Diagnostics.exportFolders) throws -> URL {
         DebugLog.flush()
         var created: OpaquePointer? = nil
         guard oct_zip_create(&created) == OCT_OK, let zip = created else { throw ArchiveError("the archive couldn't start") }
@@ -447,12 +502,8 @@ enum Diagnostics {
             let status = data.withUnsafeBytes { raw in oct_zip_add(zip, name, raw.baseAddress, raw.count, modified) }
             guard status == OCT_OK else { throw ArchiveError("\(name) couldn't be added") }
         }
-        let iso = ISO8601DateFormatter()
-        var summary: [String: Int] = [:]
-        for status in DiagnosticStatus.allCases { summary[status.rawValue] = results.filter { $0.status == status }.count }
-        let report = Report(build: buildInfo, started: iso.string(from: started), finished: iso.string(from: finished),
-                            durationSeconds: finished.timeIntervalSince(started), summary: summary,
-                            environment: environment, results: results.map(redacted))
+        let report = makeReport(results: results, environment: environment, started: started, finished: finished)
+        let summary = report.summary
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         encoder.keyEncodingStrategy = .convertToSnakeCase
@@ -470,10 +521,49 @@ enum Diagnostics {
         let stamp = DateFormatter()
         stamp.locale = Locale(identifier: "en_US_POSIX")
         stamp.dateFormat = "yyyyMMdd-HHmmss"
-        let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("octopus-diagnostics-\(AppInfo.shortVersion)-\(stamp.string(from: finished)).zip")
-        guard oct_zip_write(zip, url.path) == OCT_OK else { throw ArchiveError("the archive couldn't be written") }
+        let name = "\(archivePrefix)\(AppInfo.shortVersion)-\(stamp.string(from: finished)).zip"
+        let folders = directories.filter { !$0.isEmpty }
+        guard !folders.isEmpty else { throw ArchiveError("No folder was given for the archive.") }
+        // Each folder is checked (it exists or can be made, and takes a file), written through a temporary file
+        // synced and renamed, and read back with every CRC checked; the next folder is tried when one fails.
+        var written = [CChar](repeating: 0, count: 4096)
+        let capacity = written.count
+        let status = withCStrings(folders) { list in
+            oct_zip_write_first(zip, list, folders.count, name, &written, capacity)
+        }
+        let reasons = String(cString: oct_zip_error(zip))
+        guard status == OCT_OK else {
+            throw ArchiveError(reasons.isEmpty ? "No folder took the archive." : reasons)
+        }
+        let url = URL(fileURLWithPath: string(written))
+        if !reasons.isEmpty {
+            DebugLog.log(.info, "diagnostics", "export_fallback",
+                         "The archive went to \(redact(url.deletingLastPathComponent().path)) after: \(redact(reasons))")
+        }
+        removeOlderArchives(beside: url)
         return url
+    }
+
+    /// Earlier exports in the same folder; the newest is the one to share.
+    static func removeOlderArchives(beside url: URL) {
+        let folder = url.deletingLastPathComponent()
+        let names = (try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? []
+        for name in names where name.hasPrefix(archivePrefix) && name.hasSuffix(".zip") && name != url.lastPathComponent {
+            try? FileManager.default.removeItem(at: folder.appendingPathComponent(name))
+        }
+    }
+
+    /// The strings as a C array of C strings, valid while `body` runs.
+    static func withCStrings<T>(_ strings: [String], _ body: (UnsafePointer<UnsafePointer<CChar>?>) -> T) -> T {
+        let copies = strings.map { strdup($0) }
+        defer { copies.forEach { free($0) } }
+        let pointers = copies.map { UnsafePointer($0) }
+        return pointers.withUnsafeBufferPointer { buffer in body(buffer.baseAddress!) }
+    }
+
+    /// A NUL-terminated C buffer as a String.
+    static func string(_ buffer: [CChar]) -> String {
+        String(decoding: buffer.prefix(while: { $0 != 0 }).map { UInt8(bitPattern: $0) }, as: UTF8.self)
     }
 
     struct ArchiveError: LocalizedError {
@@ -495,6 +585,9 @@ enum Diagnostics {
         settings.json     Octopus's settings
         connectivity.txt  the transport's state, and how this iPhone presents itself over USB (read-only)
         logs/             the debug log files
+
+        If the app's temporary folder can't take the archive, it is written to Octopus's folder in
+        /var/mobile/Library/Caches instead; the debug log says which folder was used and why.
 
         Kinds: local runs inside the app; simulated talks to a simulated host through the real transport adapter
         and responder, never a computer; external is a real connection to something outside the iPhone.

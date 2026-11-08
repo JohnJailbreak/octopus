@@ -18,6 +18,14 @@ One button runs every safe check and makes one archive to send; the adapter lear
   build information with the commit CI built, the settings, the transport's state and the iPhone's full USB and PTP
   description (all 403 values, where Debug Log > Report stops at 150), and the debug log files. Container IDs are
   redacted. The ZIP writer is C (`oct_zip`), checked by Python's `zipfile`.
+- **Export Diagnostics works on the iPhone.** On 0.4.7 every check ran, but the archive couldn't be written to the
+  app's temporary folder, so there was nothing to export. The archive now goes to the first folder that takes it: the
+  temporary folder, then `/var/mobile/Library/Caches/Octopus/Diagnostics`, `/var/tmp/Octopus/Diagnostics`, or the
+  debug log's own folder. Each is created if missing and proven writable with a probe file first; the archive is
+  synced, renamed into place and read back with every entry's CRC checked. A refused folder is logged with the
+  system's error and its path. If none takes it, the screen says why for each one and offers **Retry Export** and
+  **Share Results as Text**, which needs no file. Debug Log > Export uses the same folders; before, it failed
+  silently.
 - **Compatibility checks** (`oct_compat`): an MTP host's enumeration of the read-only synthetic storage at USB 2.0
   packet sizes, from DeviceInfo to `Documents/example.txt` downloaded whole and in part and matched to its SHA-256; the
   Cancel, Get Device Status and Device Reset class requests; events; and the USB lifecycle.
