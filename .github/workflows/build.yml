@@ -1,12 +1,13 @@
 name: Build
 
-# Every push to main that passes all checks is published as a GitHub Release
-# tagged v<MARKETING_VERSION>.<run number>, for example v0.1.42. Pull requests
-# are built and tested but never released.
+# Every push to main that passes all checks publishes a GitHub Release, v<MARKETING_VERSION>.<run number> (v0.2.42),
+# and a pushed tag like v0.3.0 publishes 0.3.0 (tools/release_version.sh). Each release's notes are the push's commit
+# messages, which the app's updater shows as its changelog. Pull requests are built and tested, never released.
 
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
   workflow_dispatch:
 
@@ -19,11 +20,11 @@ defaults:
 
 jobs:
   core:
-    name: Core (Linux, GCC)
+    name: Core and helper (Linux, GCC)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Unit tests
+      - name: Unit tests, the update helper and the repository checks
         run: make test
       - name: Sanitizers (address, undefined behaviour, leaks)
         run: make sanitize
@@ -42,18 +43,17 @@ jobs:
       - name: Version
         id: version
         run: |
-          BASE=$(sed -nE 's/^[[:space:]]*MARKETING_VERSION:[[:space:]]*"?([0-9][0-9.]*)"?.*$/\1/p' project.yml | head -n 1)
-          test -n "$BASE" || { echo "MARKETING_VERSION is missing from project.yml"; exit 1; }
-          echo "version=$BASE.$GITHUB_RUN_NUMBER" >> "$GITHUB_OUTPUT"
-          echo "Building Octopus $BASE.$GITHUB_RUN_NUMBER"
+          version="$(bash tools/release_version.sh)"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Building Octopus $version"
       - name: Toolchain
         run: xcodebuild -version
-      - name: Core tests (Apple Clang)
+      - name: Core and helper tests (Apple Clang)
         run: make test sanitize
+      - name: XcodeGen and ldid
+        run: brew install xcodegen ldid
       - name: Generate the Xcode project
-        run: |
-          brew install xcodegen
-          xcodegen generate
+        run: xcodegen generate
       - name: App tests (iOS Simulator)
         run: |
           mkdir -p build
@@ -72,15 +72,8 @@ jobs:
             -destination 'generic/platform=iOS' -derivedDataPath build/DerivedData \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
             MARKETING_VERSION="${{ steps.version.outputs.version }}" CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER"
-      - name: Package Octopus.tipa and Octopus.ipa
-        run: |
-          APP=build/DerivedData/Build/Products/Release-iphoneos/Octopus.app
-          codesign --force --sign - --timestamp=none "$APP"
-          rm -rf build/package && mkdir -p build/package/Payload
-          cp -R "$APP" build/package/Payload/
-          (cd build/package && zip -qry ../Octopus.tipa Payload)
-          cp build/Octopus.tipa build/Octopus.ipa
-          (cd build && shasum -a 256 Octopus.tipa Octopus.ipa > SHA256SUMS)
+      - name: Package Octopus.tipa and Octopus.ipa (with the update helper)
+        run: bash tools/package.sh
       - uses: actions/upload-artifact@v4
         with:
           name: Octopus-${{ steps.version.outputs.version }}
@@ -97,9 +90,9 @@ jobs:
 
   release:
     name: Publish release
-    # Pushes and manual runs on main; never pull requests. Runs only when both
-    # build jobs succeeded, so a failing commit is not published.
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    # Pushes to main, tags and manual runs; never pull requests. Runs only when both build jobs succeeded, so a failing
+    # commit is not published.
+    if: (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')) && github.event_name != 'pull_request'
     needs: [core, app]
     runs-on: ubuntu-latest
     permissions:
@@ -108,6 +101,7 @@ jobs:
       VERSION: ${{ needs.app.outputs.version }}
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
+      COMMITS_JSON: ${{ toJSON(github.event.commits) }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
@@ -116,25 +110,52 @@ jobs:
           path: release
       - name: Write release notes
         run: |
-          {
-            echo "Octopus $VERSION, built from \`${GITHUB_SHA::7}\`."
-            echo
-            git log -1 --format=%B "$GITHUB_SHA"
-            echo
-            echo "Install \`Octopus.tipa\` with TrollStore, or \`Octopus.ipa\` on a jailbroken device."
-            echo "Both are the same ad-hoc signed build; \`SHA256SUMS\` lists their checksums."
-            echo
-            echo "Build log: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
-          } > release-notes.md
+          set -euo pipefail
+          # The notes are this push's commit messages, one line each, as in Caz and Speaka: the app's updater shows
+          # them as its changelog, so write commit messages for the people who use Octopus.
+          notes="$(jq -r '.[]? | "- " + (.message | split("\n")[0])' <<< "${COMMITS_JSON:-null}" || true)"
+          [ -n "$notes" ] || notes="- $(git log -1 --format=%s "$GITHUB_SHA")"
+          printf '%s\n' "$notes" > release-notes.md
           cat release-notes.md
-      - name: Create the release
+      - name: Publish
         run: |
-          TAG="v$VERSION"
-          FILES=(release/Octopus.tipa release/Octopus.ipa release/SHA256SUMS)
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            # A re-run of the same workflow run: refresh the files, keep the release.
-            gh release upload "$TAG" "${FILES[@]}" --clobber
+          set -euo pipefail
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            tag="$GITHUB_REF_NAME"        # a tag you pushed yourself, like v0.3.0
           else
-            gh release create "$TAG" "${FILES[@]}" --target "$GITHUB_SHA" \
-              --title "Octopus $VERSION" --notes-file release-notes.md
+            tag="v$VERSION"               # every push to main: v0.2.42
           fi
+          files=(release/Octopus.tipa release/Octopus.ipa release/SHA256SUMS)
+          # GitHub's release service sometimes fails partway, so: up to three tries, 30 s apart, each first clearing
+          # drafts that GitHub Actions left behind (never anyone else's). Inside a function called from `if`, bash
+          # ignores set -e, so every step returns its failure itself.
+          publish() {
+            local id
+            for id in $(gh api "repos/$GH_REPO/releases?per_page=100" \
+                          --jq '.[] | select(.draft and .author.login == "github-actions[bot]") | .id' 2>/dev/null || true); do
+              gh api -X DELETE "repos/$GH_REPO/releases/$id" >/dev/null 2>&1 || true
+            done
+            if gh release view "$tag" >/dev/null 2>&1; then
+              # A re-run of the same version: replace the files and the notes, and make sure it's published.
+              gh release upload "$tag" "${files[@]}" --clobber || return 1
+              gh release edit "$tag" --notes-file release-notes.md --draft=false || return 1
+            elif [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+              gh release create "$tag" "${files[@]}" --verify-tag --title "$VERSION" \
+                --notes-file release-notes.md --latest || return 1
+            else
+              gh release create "$tag" "${files[@]}" --target "$GITHUB_SHA" --title "$VERSION" \
+                --notes-file release-notes.md --latest || return 1
+            fi
+          }
+          for attempt in 1 2 3; do
+            if publish; then
+              break
+            fi
+            if [ "$attempt" = 3 ]; then
+              echo "::error::Publishing failed three times"
+              exit 1
+            fi
+            echo "::warning::Publishing failed (attempt $attempt of 3); trying again in 30 s"
+            sleep 30
+          done
+          echo "Published: https://github.com/$GH_REPO/releases/tag/$tag" | tee -a "$GITHUB_STEP_SUMMARY"

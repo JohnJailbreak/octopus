@@ -2,7 +2,10 @@ import SwiftUI
 import UIKit
 
 enum AppWindow: String, CaseIterable, Identifiable {
-    case usb, filesystem, activity, settings
+    case usb, filesystem, activity, settings, update
+
+    /// The menu's rows. The update window opens from Update Available and from Settings > Check for Updates.
+    static let menu: [AppWindow] = [.usb, .filesystem, .activity, .settings]
 
     var id: String { rawValue }
 
@@ -12,6 +15,7 @@ enum AppWindow: String, CaseIterable, Identifiable {
         case .filesystem: return "Filesystem"
         case .activity: return "Activity"
         case .settings: return "Settings"
+        case .update: return "Update"
         }
     }
 
@@ -21,6 +25,7 @@ enum AppWindow: String, CaseIterable, Identifiable {
         case .filesystem: return "folder"
         case .activity: return "list.bullet.rectangle"
         case .settings: return "gearshape"
+        case .update: return "arrow.down.circle"
         }
     }
 }
@@ -28,6 +33,9 @@ enum AppWindow: String, CaseIterable, Identifiable {
 struct MainScreen: View {
     let layout: Layout
     @EnvironmentObject private var service: ServiceController
+    @EnvironmentObject private var updater: Updater
+    @Environment(\.scenePhase) private var scenePhase
+    @AppStorage(Preferences.updateNotifications) private var updateNotifications = false
     @State private var window: AppWindow? = nil
     @Namespace private var panel
 
@@ -50,12 +58,41 @@ struct MainScreen: View {
                     .contentShape(Rectangle())
                     .onTapGesture(perform: closeWindow)
                     .accessibilityLabel("Close window")
-                WindowView(kind: window, layout: layout, close: closeWindow)
-                    .position(x: layout.size.width / 2, y: layout.size.height / 2)
-                    .transition(.scale(scale: 0.7).combined(with: .opacity))
+                Group {
+                    if window == .update {
+                        UpdateFlowView(updater: updater, screenWidth: layout.size.width)
+                            .frame(width: layout.windowSize.width, height: layout.windowSize.height)
+                    } else {
+                        WindowView(kind: window, layout: layout, close: closeWindow, showUpdate: { openWindow(.update) })
+                    }
+                }
+                .position(x: layout.size.width / 2, y: layout.size.height / 2)
+                .transition(.scale(scale: 0.7).combined(with: .opacity))
             }
         }
         .frame(width: layout.size.width, height: layout.size.height)
+        .onAppear {
+            updater.check()
+            updater.watch(updateNotifications)
+            UpdateNotifications.syncPermission()
+            if OctopusNotificationDelegate.openRequested { openUpdateWhenReady() }   // the tap launched Octopus
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active {
+                // At once, so the Update Available a notification promised is there when Octopus opens.
+                updater.checkOnActivation()
+                UpdateNotifications.syncPermission()
+            }
+            // Update notifications: every 2 minutes while open; in the background, when iOS chooses.
+            updater.watch(updateNotifications && phase == .active)
+            if phase == .background && updateNotifications { UpdateNotifications.schedule() }
+        }
+        .onChange(of: updateNotifications) { _, on in
+            updater.watch(on && scenePhase == .active)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: OctopusNotificationDelegate.openUpdate)) { _ in
+            openUpdateWhenReady()
+        }
     }
 
     private var mainLayer: some View {
@@ -71,6 +108,12 @@ struct MainScreen: View {
                 .opacity(sheetOpen ? 0 : 1)
                 .allowsHitTesting(!sheetOpen)
                 .position(x: layout.size.width / 2, y: layout.menuTop + layout.menuHeight / 2)
+            if updater.isAvailable && !sheetOpen {
+                UpdateLinkButton(title: "Update Available", symbol: "arrow.down.circle") { openWindow(.update) }
+                    .frame(height: layout.updateLinkHeight)
+                    .position(x: layout.size.width / 2, y: layout.updateLinkTop + layout.updateLinkHeight / 2)
+                    .transition(.offset(y: 25).combined(with: .opacity))
+            }
             if sheetOpen {
                 ActivitySheetView(sheet: service.sheet, layout: layout)
                     .frame(width: layout.size.width, height: layout.sheetHeight)
@@ -90,6 +133,7 @@ struct MainScreen: View {
             }
         }
         .frame(width: layout.size.width, height: layout.size.height)
+        .animation(.spring(response: 0.5, dampingFraction: 0.9), value: updater.isAvailable)
     }
 
     private func primaryAction() {
@@ -103,7 +147,18 @@ struct MainScreen: View {
     }
 
     private func closeWindow() {
+        if window == .update && updater.isBusy { return }   // can't back out mid-update
         withAnimation(Motion.window) { window = nil }
+        updater.resetIfIdle()
+    }
+
+    /// After a tap on an update notification: a fresh check, then the update window if there's an update (what the
+    /// notification was about may be installed already).
+    private func openUpdateWhenReady() {
+        OctopusNotificationDelegate.openRequested = false
+        updater.check(again: true) { result in
+            if case .available = result, !updater.isBusy, !service.isBusy { openWindow(.update) }
+        }
     }
 }
 
@@ -141,7 +196,7 @@ struct MenuPanel: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            ForEach(AppWindow.allCases) { kind in
+            ForEach(AppWindow.menu) { kind in
                 MenuRow(kind: kind, height: layout.rowHeight, showsSeparator: kind != .settings) {
                     open(kind)
                 }

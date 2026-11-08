@@ -1,4 +1,5 @@
-# Native build and tests for the Octopus C core (provider, protocol, service).
+# Native build and tests for the Octopus C core (provider, protocol, service), the update helper and the spawn
+# bridge that starts it, and the repository's checks.
 # Works with GCC or Clang on Linux and macOS. The iOS app is built by Xcode.
 
 CC        ?= cc
@@ -15,6 +16,10 @@ TESTS     := $(wildcard Octopus/Tests/CoreTests/test_*.c)
 FUZZER    := Octopus/Tests/CoreTests/fuzz_responder.c
 FIXTURES  := Octopus/Tests/CoreTests/fixtures
 FUZZ_RUNS ?= 200000
+PYTHON    ?= python3
+# The update path's C code (the root helper and the spawn bridge), and the repository's own checks.
+HELPER_TESTS := Octopus/Tests/HelperTests/test_helper.py
+REPO_TESTS   := Octopus/Tests/RepoTests/test_repository.py
 
 ifeq ($(shell uname -s),Linux)
 SAN_ENV   := ASAN_OPTIONS=detect_leaks=1:abort_on_error=1 UBSAN_OPTIONS=print_stacktrace=1
@@ -48,16 +53,21 @@ build/core-fuzz: $(SANITIZED) $(FUZZER) $(HEADERS)
 
 test: build/core-tests
 	TZ=UTC0 ./build/core-tests $(FIXTURES)
+	CC="$(CC)" HELPER_CFLAGS="$(STD) $(CFLAGS) $(STRICT)" $(PYTHON) $(HELPER_TESTS)
+	$(PYTHON) $(REPO_TESTS)
 
 sanitize: build/core-tests-san
 	TZ=UTC0 $(SAN_ENV) ./build/core-tests-san $(FIXTURES)
+	CC="$(CC)" HELPER_CFLAGS="$(STD) $(CFLAGS) $(WARN) $(SAN)" $(SAN_ENV) $(PYTHON) $(HELPER_TESTS)
 
 fuzz: build/core-fuzz
 	$(SAN_ENV) ./build/core-fuzz $(FUZZ_RUNS)
 
-# GCC's static analyzer over the core sources (GCC only).
+# GCC's static analyzer over the core, the update helper and the spawn bridge (GCC only).
 analyze:
 	@for f in $(CORE); do $(CC) $(STD) $(WARN) -fanalyzer -c $$f -o /dev/null || exit 1; done
+	@$(CC) $(STD) $(WARN) -fanalyzer -DOCT_HELPER_TEST -c Octopus/RootHelper/main.c -o /dev/null
+	@$(CC) $(STD) $(WARN) -fanalyzer -c Octopus/App/Spawn/oct_spawn.c -o /dev/null
 	@echo "analyzer: no findings"
 
 check: test sanitize fuzz

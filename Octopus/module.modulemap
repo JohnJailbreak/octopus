@@ -5,3 +5,8 @@ module OctopusCore {
     header "Core/oct_service.h"
     export *
 }
+
+module OctopusSpawn {
+    header "App/Spawn/oct_spawn.h"
+    export *
+}

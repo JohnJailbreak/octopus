@@ -56,6 +56,9 @@ struct Layout {
     var gap: CGFloat { max(12, (columnHeight - headerHeight - menuHeight - buttonHeight) / 2) }
     var menuTop: CGFloat { columnTop + headerHeight + gap }
     var buttonTop: CGFloat { menuTop + menuHeight + gap }
+    /// Caz's Update Available: 30 pt tall, 20 pt above the button (10 on home-button phones).
+    var updateLinkHeight: CGFloat { 30 }
+    var updateLinkTop: CGFloat { buttonTop - (hasHomeButton ? 10 : 20) - updateLinkHeight }
     var sheetTop: CGFloat { size.height * 0.26 + 35 }
     var sheetHeight: CGFloat { size.height - sheetTop + 100 }
     var logBottomInset: CGFloat { hasHomeButton ? 10 : 40 }
@@ -75,9 +78,30 @@ enum Preferences {
     static let haptics = "haptics"
     static let selfTestOnEnable = "selfTestOnEnable"
     static let scratchFolder = "scratchFolder"
+    /// Settings > Update notifications.
+    static let updateNotifications = "updateNotifications"
+    private static let notifiedVersionKey = "notifiedVersion"
+    private static let lastUpdateCheckKey = "lastUpdateCheck"
 
     static func bool(_ key: String, default fallback: Bool) -> Bool {
         UserDefaults.standard.object(forKey: key) as? Bool ?? fallback
+    }
+
+    static var updateNotificationsEnabled: Bool {
+        get { bool(updateNotifications, default: false) }
+        set { UserDefaults.standard.set(newValue, forKey: updateNotifications) }
+    }
+
+    /// The last release a notification announced, so each is announced once.
+    static var notifiedVersion: String? {
+        get { UserDefaults.standard.string(forKey: notifiedVersionKey) }
+        set { UserDefaults.standard.set(newValue, forKey: notifiedVersionKey) }
+    }
+
+    /// When Octopus last got an answer from GitHub about its releases.
+    static var lastUpdateCheck: Date? {
+        get { UserDefaults.standard.object(forKey: lastUpdateCheckKey) as? Date }
+        set { UserDefaults.standard.set(newValue, forKey: lastUpdateCheckKey) }
     }
 }
 
@@ -102,6 +126,11 @@ enum Haptics {
 }
 
 enum AppInfo {
+    /// The release's version, "0.2.42", which the updater compares with GitHub's releases.
+    static var shortVersion: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0"
+    }
+
     static var version: String {
         let info = Bundle.main.infoDictionary ?? [:]
         let short = info["CFBundleShortVersionString"] as? String ?? "0.1"

@@ -7,7 +7,9 @@ options:
   createIntermediateGroups: true
 settings:
   base:
-    MARKETING_VERSION: "0.1"
+    # The release series. CI publishes MARKETING_VERSION plus the run number (0.2.42), the version the app's updater
+    # compares; docs/CHANGELOG.md needs an entry for it (Octopus/Tests/RepoTests).
+    MARKETING_VERSION: "0.2"
     CURRENT_PROJECT_VERSION: "1"
     SWIFT_VERSION: "5.0"
     IPHONEOS_DEPLOYMENT_TARGET: "17.0"
@@ -35,6 +37,11 @@ targets:
     info:
       path: Octopus/Info.plist
       properties:
+        # Settings > Update notifications: Octopus's background check (UpdateNotifications.taskID).
+        BGTaskSchedulerPermittedIdentifiers:
+          - octopus.update-check
+        UIBackgroundModes:
+          - fetch
         CFBundleDisplayName: Octopus
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)

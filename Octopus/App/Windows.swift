@@ -7,6 +7,8 @@ struct WindowView: View {
     let kind: AppWindow
     let layout: Layout
     let close: () -> Void
+    /// Settings > Check for Updates found one: the update window, as Update Available opens it.
+    let showUpdate: () -> Void
     @State private var selection: StorageObject? = nil
 
     private var shape: RoundedRectangle { RoundedRectangle(cornerRadius: 16, style: .continuous) }
@@ -71,7 +73,9 @@ struct WindowView: View {
         case .activity:
             ActivityWindow(close: close)
         case .settings:
-            SettingsWindow()
+            SettingsWindow(showUpdate: showUpdate)
+        case .update:
+            EmptyView()   // the main screen shows the update flow itself, without a window card
         }
     }
 }
@@ -398,9 +402,16 @@ struct ActivityWindow: View {
 // MARK: - Settings
 
 struct SettingsWindow: View {
+    let showUpdate: () -> Void
+    @EnvironmentObject private var updater: Updater
     @AppStorage(Preferences.haptics) private var haptics = true
     @AppStorage(Preferences.selfTestOnEnable) private var selfTest = true
     @AppStorage(Preferences.scratchFolder) private var scratch = false
+    @AppStorage(Preferences.updateNotifications) private var updateNotifications = false
+    @State private var notificationsOn = Preferences.updateNotificationsEnabled
+    @State private var notificationsRefused = false
+
+    private var checking: Bool { updater.manual == .checking }
 
     var body: some View {
         WindowList {
@@ -424,6 +435,35 @@ struct SettingsWindow: View {
                 SectionFooter("Applies the next time USB access is enabled. Scratch is an empty in-memory folder and the only place a host may create, rename or delete objects.")
             }
             Section {
+                Toggle(isOn: $notificationsOn) { Text("Update notifications") }
+                    .font(.system(size: 15))
+                    .windowRow()
+                Button(action: checkForUpdates) {
+                    HStack {
+                        Text(checking ? "Checking for Updates..." : "Check for Updates")
+                            .foregroundStyle(.white)
+                        Spacer()
+                        if checking {
+                            ProgressView()
+                                .tint(Theme.chevron)
+                        } else {
+                            Image(systemName: "arrow.down.circle")
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundStyle(Theme.chevron)
+                        }
+                    }
+                    .font(.system(size: 15))
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(PressDimStyle())
+                .disabled(checking || updater.isBusy)
+                .windowRow()
+            } header: {
+                SectionHeader("Updates")
+            } footer: {
+                updatesFooter
+            }
+            Section {
                 InfoRow(title: "Version", value: AppInfo.version)
                 InfoRow(title: "Core", value: CoreService.version)
                 InfoRow(title: "System", value: "iOS \(UIDevice.current.systemVersion)")
@@ -439,9 +479,77 @@ struct SettingsWindow: View {
                     .font(.system(size: 15))
                 }
                 .windowRow()
+                DisclosureGroup {
+                    Text(Self.dopamineLicense)
+                        .font(.system(size: 12))
+                        .foregroundStyle(Color.white.opacity(0.6))
+                        .windowRow()
+                } label: {
+                    Text("Dopamine's license")
+                        .font(.system(size: 15))
+                        .foregroundStyle(.white)
+                }
+                .windowRow()
             } header: {
                 SectionHeader("About")
+            } footer: {
+                SectionFooter("The update screens follow Dopamine's, by Lars Fröder (opa334) and its contributors, under the MIT License.")
             }
         }
+        .onAppear { updater.refreshLastChecked() }
+        .onChange(of: notificationsOn) { _, on in
+            guard on != updateNotifications else { return }
+            // Turning it on asks iOS for permission first; refused, it stays off.
+            UpdateNotifications.setEnabled(on) { enabled in
+                notificationsRefused = on && !enabled
+                if notificationsOn != enabled { notificationsOn = enabled }
+            }
+        }
+        .onChange(of: updateNotifications) { _, on in
+            if notificationsOn != on { notificationsOn = on }   // turned off in iOS Settings meanwhile
+        }
     }
+
+    private func checkForUpdates() {
+        Haptics.light()
+        updater.checkNow { result in
+            if case .available = result { showUpdate() }
+        }
+    }
+
+    /// Under the Updates section: why notifications are off, what the last check found, or when Octopus last checked.
+    @ViewBuilder private var updatesFooter: some View {
+        if notificationsRefused {
+            Text("Allow notifications for Octopus in Settings > Notifications, then try again.")
+                .font(.system(size: 12))
+                .foregroundStyle(Theme.failure)
+        } else if let line = checkLine {
+            Text(line.text)
+                .font(.system(size: 12))
+                .foregroundStyle(line.failed ? Theme.failure : Color.white.opacity(0.5))
+        }
+    }
+
+    private var checkLine: (text: String, failed: Bool)? {
+        switch updater.manual {
+        case .upToDate(let version):
+            return ("Octopus \(version) is up to date.", false)
+        case .failed(let reason):
+            return ("Couldn't check for updates: \(reason).", true)
+        case .idle, .checking:
+            guard let when = updater.lastChecked else { return nil }
+            let today = Calendar.current.isDateInToday(when)
+            let time = DateFormatter.localizedString(from: when, dateStyle: today ? .none : .short, timeStyle: .short)
+            return (today ? "Last checked at \(time)." : "Last checked \(time).", false)
+        }
+    }
+
+    /// Dopamine's MIT License, shipped in the app (Octopus/Resources/LICENSE-Dopamine.txt).
+    static let dopamineLicense: String = {
+        if let path = Bundle.main.path(forResource: "LICENSE-Dopamine", ofType: "txt"),
+           let text = try? String(contentsOfFile: path, encoding: .utf8) {
+            return text.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        return "MIT License\n\nCopyright (c) 2023-2024 Lars Fröder (opa334)"
+    }()
 }

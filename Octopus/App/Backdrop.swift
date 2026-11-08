@@ -1,15 +1,16 @@
 import SwiftUI
 
-/// Native stand-in for Caz's "Sunshine Sweep" backdrop image, which is not part
-/// of the reference material.
+/// Slate: a muted blue-grey version of Caz's sweep.
 ///
-/// The clean backdrop was reconstructed from the specification's screenshots by
-/// inverting the documented compositing (panels are #3F3F3F at 114/255 with no
-/// blur; the dimmed screen is the backdrop at 40 percent over black), then fitted
-/// with one multi-stop linear gradient and four elliptical glows. Fit error
-/// against the reconstruction: 3.3 of 255 levels RMS, 6.9 at the 99th
-/// percentile. The fit lives in a 390 x 844 pt reference frame (iPhone 13) and
-/// is aspect-filled on other screens, as the original image was.
+/// Caz's "Sunshine Sweep" image is not part of the reference material, so it was
+/// reconstructed from the specification's screenshots by inverting the documented
+/// compositing (panels are #3F3F3F at 114/255 with no blur; the dimmed screen is
+/// the backdrop at 40 percent over black) and fitted with one multi-stop linear
+/// gradient and four elliptical glows. Slate keeps that geometry and recolours it
+/// to a blue-grey: hue 250 degrees, 28 percent of the original chroma, slightly
+/// darker. It is design 48 of the backdrop gallery. The gradient lives in a
+/// 390 x 844 pt reference frame (iPhone 13) and is aspect-filled on other
+/// screens, as the original image was.
 struct Backdrop: View {
     private static let reference = CGSize(width: 390, height: 844)
 
@@ -32,27 +33,27 @@ struct Backdrop: View {
     }
 
     private static let baseStops: [Gradient.Stop] = [
-        .init(color: Color(.sRGB, red: 0.9011, green: 0.6355, blue: 0.0163), location: 0.0000),
-        .init(color: Color(.sRGB, red: 0.9166, green: 0.6781, blue: 0.0828), location: 0.1250),
-        .init(color: Color(.sRGB, red: 0.9477, green: 0.7893, blue: 0.2968), location: 0.2500),
-        .init(color: Color(.sRGB, red: 0.9593, green: 0.8143, blue: 0.3775), location: 0.3750),
-        .init(color: Color(.sRGB, red: 0.9455, green: 0.7324, blue: 0.2486), location: 0.5000),
-        .init(color: Color(.sRGB, red: 0.9289, green: 0.7038, blue: 0.1902), location: 0.6250),
-        .init(color: Color(.sRGB, red: 0.9217, green: 0.6642, blue: 0.1351), location: 0.7500),
-        .init(color: Color(.sRGB, red: 0.9243, green: 0.6233, blue: 0.0780), location: 0.8750),
-        .init(color: Color(.sRGB, red: 0.9086, green: 0.6309, blue: 0.1199), location: 1.0000),
+        .init(color: Color(.sRGB, red: 0.5583, green: 0.6560, blue: 0.7475), location: 0.0000),
+        .init(color: Color(.sRGB, red: 0.5947, green: 0.6845, blue: 0.7822), location: 0.1250),
+        .init(color: Color(.sRGB, red: 0.6953, green: 0.7609, blue: 0.8626), location: 0.2500),
+        .init(color: Color(.sRGB, red: 0.7215, green: 0.7824, blue: 0.8772), location: 0.3750),
+        .init(color: Color(.sRGB, red: 0.6466, green: 0.7281, blue: 0.8223), location: 0.5000),
+        .init(color: Color(.sRGB, red: 0.6196, green: 0.7049, blue: 0.7997), location: 0.6250),
+        .init(color: Color(.sRGB, red: 0.5853, green: 0.6804, blue: 0.7714), location: 0.7500),
+        .init(color: Color(.sRGB, red: 0.5520, green: 0.6606, blue: 0.7458), location: 0.8750),
+        .init(color: Color(.sRGB, red: 0.5572, green: 0.6582, blue: 0.7434), location: 1.0000),
     ]
     private static let baseStart = UnitPoint(x: 0.11697, y: 0.03507)
     private static let baseEnd = UnitPoint(x: 1.84850, y: 0.55419)
     private static let glows: [Glow] = [
         Glow(center: CGPoint(x: 223.68, y: 508.52), radiusX: 228.61, radiusY: 178.48, rotation: 1.4879,
-             color: Color(.sRGB, red: 0.8451, green: 0.5571, blue: 0.1293), alpha: 1.0000),
+             color: Color(.sRGB, red: 0.4926, green: 0.5953, blue: 0.6668), alpha: 1.0000),
         Glow(center: CGPoint(x: -233.24, y: 503.23), radiusX: 249.02, radiusY: 742.48, rotation: 1.1054,
-             color: Color(.sRGB, red: 1.0000, green: 0.9817, blue: 0.7832), alpha: 0.8136),
+             color: Color(.sRGB, red: 0.9004, green: 0.9173, blue: 0.9686), alpha: 0.8136),
         Glow(center: CGPoint(x: 489.32, y: -9.17), radiusX: 795.14, radiusY: 169.52, rotation: -1.0048,
-             color: Color(.sRGB, red: 0.9158, green: 0.6695, blue: 0.0411), alpha: 1.0000),
+             color: Color(.sRGB, red: 0.5872, green: 0.6794, blue: 0.7768), alpha: 1.0000),
         Glow(center: CGPoint(x: 216.77, y: 771.52), radiusX: 285.26, radiusY: 119.96, rotation: 1.3348,
-             color: Color(.sRGB, red: 0.9072, green: 0.5651, blue: 0.0000), alpha: 0.6875),
+             color: Color(.sRGB, red: 0.5039, green: 0.6250, blue: 0.7015), alpha: 0.6875),
     ]
 
     var body: some View {

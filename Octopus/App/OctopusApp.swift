@@ -1,14 +1,26 @@
 import SwiftUI
+import UserNotifications
 
 @main
 struct OctopusApp: App {
     @StateObject private var service = ServiceController()
+    @StateObject private var updater = Updater()
+
+    init() {
+        // Banners while Octopus is open, and a tap on an update notification opens the update window.
+        UNUserNotificationCenter.current().delegate = OctopusNotificationDelegate.shared
+    }
 
     var body: some Scene {
         WindowGroup {
             RootView()
                 .environmentObject(service)
+                .environmentObject(updater)
                 .preferredColorScheme(.dark)
+        }
+        // Settings > Update notifications: iOS wakes Octopus in the background when it chooses (UpdateNotifications).
+        .backgroundTask(.appRefresh(UpdateNotifications.taskID)) {
+            await UpdateNotifications.backgroundCheck()
         }
     }
 }
