@@ -57,17 +57,17 @@ static void set_error_locked(const char *what, int error)
     snprintf(g_stats.last_error, sizeof g_stats.last_error, "%s: %s", what, strerror(error));
 }
 
-/* The current file for index 0, otherwise octopus-debug.<index>.log beside it. */
-static bool rotated_path(char *out, size_t capacity, const char *path, unsigned index)
+/* The current file for number 0, otherwise octopus-debug.<number>.log beside it. */
+static bool rotated_path(char *out, size_t capacity, const char *path, unsigned number)
 {
     int n;
     size_t length = strlen(path);
-    if (index == 0) {
+    if (number == 0) {
         n = snprintf(out, capacity, "%s", path);
     } else if (length > 4 && strcmp(path + length - 4, ".log") == 0) {
-        n = snprintf(out, capacity, "%.*s.%u.log", (int)(length - 4), path, index);
+        n = snprintf(out, capacity, "%.*s.%u.log", (int)(length - 4), path, number);
     } else {
-        n = snprintf(out, capacity, "%s.%u", path, index);
+        n = snprintf(out, capacity, "%s.%u", path, number);
     }
     return n > 0 && (size_t)n < capacity;
 }
@@ -103,8 +103,8 @@ static void rotate_locked(void)
     g_fd = -1;
     if (g_keep > 0 && rotated_path(to, sizeof to, g_path, g_keep)) {
         unlink(to);
-        for (unsigned index = g_keep; index > 1; index--) {
-            if (rotated_path(from, sizeof from, g_path, index - 1) && rotated_path(to, sizeof to, g_path, index) &&
+        for (unsigned number = g_keep; number > 1; number--) {
+            if (rotated_path(from, sizeof from, g_path, number - 1) && rotated_path(to, sizeof to, g_path, number) &&
                 rename(from, to) != 0 && errno != ENOENT) {
                 set_error_locked("Rotating the log", errno);
             }
@@ -155,7 +155,7 @@ static void copy_name(char *out, size_t capacity, const char *name)
             char c = name[n];
             bool keep = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '.' ||
                         c == '_' || c == '-';
-            out[n] = keep ? c : '_';
+            out[n] = keep ? c : (char)'_';
         }
     }
     if (n == 0) out[n++] = '-';
@@ -190,7 +190,9 @@ static size_t format_line(char *line, oct_log_level level, const char *component
     }
     for (size_t i = 0; i < take && length < LINE_BUFFER - 1; i++) {
         unsigned char c = (unsigned char)text[i];
-        line[length++] = (c < 0x20u || c == 0x7Fu) ? ' ' : (char)c;
+        char shown = (char)c;
+        if (c < 0x20u || c == 0x7Fu) shown = ' ';
+        line[length++] = shown;
     }
     if (cut && length + 3 <= LINE_BUFFER - 1) {
         memcpy(line + length, "...", 3);
@@ -222,7 +224,11 @@ void oct_logf(oct_log_level level, const char *component, const char *event, con
     char message[LINE_BUFFER];
     va_list args;
     va_start(args, format);
-    vsnprintf(message, sizeof message, format ? format : "", args);
+    if (format) {
+        vsnprintf(message, sizeof message, format, args);
+    } else {
+        message[0] = '\0'; /* no empty format string: Clang rejects one (-Wformat-zero-length) */
+    }
     va_end(args);
     log_line(level, component, event, message);
 }
@@ -292,8 +298,8 @@ oct_status oct_log_clear(void)
     pthread_mutex_lock(&g_lock);
     if (g_path[0]) {
         char rotated[OCT_LOG_PATH_MAX + 16];
-        for (unsigned index = 1; index <= ROTATED_MAX; index++) {
-            if (rotated_path(rotated, sizeof rotated, g_path, index)) unlink(rotated);
+        for (unsigned number = 1; number <= ROTATED_MAX; number++) {
+            if (rotated_path(rotated, sizeof rotated, g_path, number)) unlink(rotated);
         }
     }
     if (g_fd >= 0 && ftruncate(g_fd, 0) != 0) {
@@ -343,11 +349,11 @@ void oct_log_get_stats(oct_log_stats *out)
     out->filtered = atomic_load(&g_filtered);
 }
 
-bool oct_log_file_path(unsigned index, char *out, size_t capacity)
+bool oct_log_file_path(unsigned number, char *out, size_t capacity)
 {
     if (!out || capacity == 0) return false;
     pthread_mutex_lock(&g_lock);
-    bool ok = g_path[0] && index <= g_keep && rotated_path(out, capacity, g_path, index);
+    bool ok = g_path[0] && number <= g_keep && rotated_path(out, capacity, g_path, number);
     pthread_mutex_unlock(&g_lock);
     if (!ok) out[0] = '\0';
     return ok;

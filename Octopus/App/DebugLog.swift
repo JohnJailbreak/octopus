@@ -87,7 +87,8 @@ enum DebugLog {
 
     /// Opens the log in the first folder that takes it; with none, the log keeps its recent lines in memory.
     @discardableResult
-    static func start(in folders: [URL] = candidateFolders, detailed: Bool = Preferences.detailedLoggingEnabled) -> String? {
+    static func start(in folders: [URL] = DebugLog.candidateFolders,
+                      detailed: Bool = Preferences.detailedLoggingEnabled) -> String? {
         let level = detailed ? OCT_LOG_DEBUG : OCT_LOG_INFO
         var opened: String? = nil
         var refusals: [String] = []

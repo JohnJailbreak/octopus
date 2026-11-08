@@ -603,8 +603,8 @@ static void test_concurrency(void)
     /* Stopping the service while the host is busy: later input is refused, and nothing hangs. */
     race busy = { &r, 50000000, 0, true, false }; /* far more than can finish before the stop */
     CHECK(pthread_create(&transactions, NULL, race_transactions, &busy) == 0);
-    struct timespec pause = { 0, 2000000 };
-    nanosleep(&pause, NULL);
+    struct timespec delay = { 0, 2000000 };
+    nanosleep(&delay, NULL);
     CHECK_OK(oct_service_stop(r.service));
     pthread_join(transactions, NULL);
     CHECK(busy.refused);

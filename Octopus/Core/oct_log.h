@@ -79,9 +79,9 @@ oct_status oct_log_clear(void);
  * Returns the length written. */
 size_t     oct_log_recent(char *buffer, size_t capacity);
 void       oct_log_get_stats(oct_log_stats *out);
-/* The path of the current file (index 0) or of rotated file `index`; false when there is no
- * file or the index is beyond `keep`. */
-bool       oct_log_file_path(unsigned index, char *out, size_t capacity);
+/* The path of the current file (number 0) or of rotated file `number`; false when there is no
+ * file or the number is beyond `keep`. */
+bool       oct_log_file_path(unsigned number, char *out, size_t capacity);
 const char *oct_log_level_name(oct_log_level level);
 
 #ifdef __cplusplus
