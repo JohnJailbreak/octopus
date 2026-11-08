@@ -53,6 +53,7 @@ function Format-Id {
 function Describe-Interface {
     param([string[]]$CompatibleIds)
     foreach ($id in $CompatibleIds) {
+        if ($id -match '^USB\\COMPOSITE$|DevClass_00') { return 'Composite device: the iPhone itself; its interfaces are listed separately' }
         if ($id -match 'Class_06&SubClass_01&Prot_01') { return 'Still Image (PTP): the interface Windows Portable Devices uses, and the one Octopus targets' }
         if ($id -match 'Class_06') { return 'Still Image class' }
         if ($id -match 'Class_FF') { return 'Vendor-specific (Apple): usbmux, used by Apple Devices / iTunes' }
@@ -67,12 +68,14 @@ Add-Line ('Windows {0}; PowerShell {1}' -f [Environment]::OSVersion.Version, $PS
 Add-Line 'Read-only: nothing on this PC or the iPhone is changed.'
 
 # ---- Devices
-Add-Section 'Apple and portable devices'
+# Only what the iPhone presents on the USB bus: Apple's vendor ID in a USB instance ID. Matching names instead
+# pulled in Bluetooth accessories ("Apple Wireless Mouse") and network miniports ("WAN Miniport (PPTP)" has "PTP").
+Add-Section 'iPhone USB devices'
 $devices = @(Get-PnpDevice -PresentOnly -ErrorAction SilentlyContinue | Where-Object {
-        $_.InstanceId -match 'VID_05AC' -or $_.Class -eq 'WPD' -or $_.FriendlyName -match 'Apple|iPhone|MTP|PTP|Portable'
+        [string]$_.InstanceId -match '^USB\\VID_05AC&'
     } | Sort-Object InstanceId)
 if ($devices.Count -eq 0) {
-    Add-Line 'No Apple or portable devices are present. Plug the iPhone in, unlock it, and tap Trust if asked.'
+    Add-Line 'No iPhone is present on USB. Plug the iPhone in, unlock it, and tap Trust if asked.'
 }
 $keys = @('DEVPKEY_Device_HardwareIds', 'DEVPKEY_Device_CompatibleIds', 'DEVPKEY_Device_Service',
     'DEVPKEY_Device_DriverProvider', 'DEVPKEY_Device_DriverVersion', 'DEVPKEY_Device_DriverDate',
@@ -85,16 +88,30 @@ foreach ($device in $devices) {
     $compatible = @()
     $properties = @(Get-PnpDeviceProperty -InstanceId $device.InstanceId -KeyName $keys -ErrorAction SilentlyContinue)
     foreach ($property in $properties) {
-        $value = $property.Data
+        # A property the device doesn't have comes back without Data. Under StrictMode reading it throws, and the
+        # failed assignment left the previous property's value in place, so each one starts afresh and is checked.
+        $value = $null
+        $dataMember = $property.PSObject.Properties['Data']
+        $keyMember = $property.PSObject.Properties['KeyName']
+        if ($null -eq $dataMember -or $null -eq $keyMember) { continue }
+        $value = $dataMember.Value
+        $keyName = [string]$keyMember.Value
         if ($null -eq $value) { continue }
-        if ($property.KeyName -eq 'DEVPKEY_Device_CompatibleIds') { $compatible = @($value) }
+        if ($keyName -eq 'DEVPKEY_Device_CompatibleIds') { $compatible = @($value) }
         if ($value -is [array]) { $value = ($value | ForEach-Object { Format-Id ([string]$_) }) -join '; ' }
-        elseif ($property.KeyName -eq 'DEVPKEY_Device_Parent') { $value = Format-Id ([string]$value) }
+        elseif ($keyName -eq 'DEVPKEY_Device_Parent') { $value = Format-Id ([string]$value) }
         if ([string]$value -eq '') { continue }
-        Add-Line ('  {0}: {1}' -f ($property.KeyName -replace '^DEVPKEY_Device_', ''), $value)
+        Add-Line ('  {0}: {1}' -f ($keyName -replace '^DEVPKEY_Device_', ''), $value)
     }
     $meaning = Describe-Interface $compatible
     if ($meaning) { Add-Line ('  Interface: {0}' -f $meaning) }
+}
+$otherPortable = @(Get-PnpDevice -PresentOnly -Class WPD -ErrorAction SilentlyContinue | Where-Object {
+        [string]$_.InstanceId -notmatch '^USB\\VID_05AC&'
+    })
+if ($otherPortable.Count -gt 0) {
+    Add-Line ''
+    Add-Line ('Other portable devices, not the iPhone: {0}' -f (($otherPortable | ForEach-Object { [string]$_.FriendlyName }) -join '; '))
 }
 
 # ---- Drivers
@@ -122,7 +139,7 @@ try {
     $thisPC = $shell.NameSpace(17)
     $shown = 0
     foreach ($item in @($thisPC.Items())) {
-        if ($item.Path -notmatch 'usb#vid_') { continue }
+        if ([string]$item.Path -notmatch 'usb#vid_05ac') { continue } # the iPhone only
         $shown++
         Add-Line ('{0}  ({1})' -f $item.Name, $item.Type)
         try {
@@ -134,7 +151,7 @@ try {
             Add-Line ('  Storages could not be listed: {0}' -f $_.Exception.Message)
         }
     }
-    if ($shown -eq 0) { Add-Line 'No portable device is listed under This PC. Unlock the iPhone and check Trust.' }
+    if ($shown -eq 0) { Add-Line 'The iPhone is not listed under This PC. Unlock it and check Trust.' }
 } catch {
     Add-Line ('File Explorer could not be queried: {0}' -f $_.Exception.Message)
 }

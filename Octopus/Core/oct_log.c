@@ -121,6 +121,30 @@ static void rotate_locked(void)
     g_stats.rotations++;
 }
 
+/* Opens the file again at its path, after the handle went bad or the file vanished. */
+static bool reopen_locked(void)
+{
+    if (!g_path[0]) return false;
+    if (g_fd >= 0) close(g_fd);
+    g_fd = open(g_path, O_WRONLY | O_CREAT | O_APPEND | O_CLOEXEC, 0644);
+    g_stats.reopens++;
+    if (g_fd < 0) {
+        set_error_locked("Reopening the log", errno);
+        g_stats.file_open = false;
+        return false;
+    }
+    struct stat info;
+    g_size = fstat(g_fd, &info) == 0 && S_ISREG(info.st_mode) ? (uint64_t)info.st_size : 0;
+    g_stats.file_open = true;
+    return true;
+}
+
+/* Errors that a fresh handle can cure; a full disk isn't one of them. */
+static bool handle_error(int error)
+{
+    return error == EBADF || error == EIO || error == ENOENT || error == ESTALE || error == EPIPE;
+}
+
 static void write_locked(const char *line, size_t length)
 {
     size_t slot = g_ring_count < OCT_LOG_RECENT_LINES ? (g_ring_head + g_ring_count) % OCT_LOG_RECENT_LINES
@@ -139,8 +163,13 @@ static void write_locked(const char *line, size_t length)
     memcpy(buffer, line, length);
     buffer[length] = '\n';
     if (!write_all(g_fd, buffer, length + 1)) {
+        int error = errno;
+        if (handle_error(error) && reopen_locked() && write_all(g_fd, buffer, length + 1)) {
+            g_size += length + 1;
+            return;
+        }
         g_stats.write_errors++;
-        set_error_locked("Writing the log", errno);
+        set_error_locked("Writing the log", error);
         return;
     }
     g_size += length + 1;
@@ -290,6 +319,24 @@ void oct_log_close(void)
     pthread_mutex_lock(&g_lock);
     close_locked();
     pthread_mutex_unlock(&g_lock);
+}
+
+oct_status oct_log_flush(void)
+{
+    oct_status status = OCT_OK;
+    pthread_mutex_lock(&g_lock);
+    if (g_path[0]) {
+        struct stat on_disk, opened;
+        bool vanished = g_fd < 0 || stat(g_path, &on_disk) != 0 || fstat(g_fd, &opened) != 0 ||
+                        on_disk.st_ino != opened.st_ino || on_disk.st_dev != opened.st_dev;
+        if (vanished && !reopen_locked()) status = OCT_E_IO;
+        if (g_fd >= 0 && fsync(g_fd) != 0 && errno != EINVAL && errno != ENOTSUP) {
+            set_error_locked("Flushing the log", errno);
+            status = OCT_E_IO;
+        }
+    }
+    pthread_mutex_unlock(&g_lock);
+    return status;
 }
 
 oct_status oct_log_clear(void)

@@ -2,12 +2,14 @@
 it starts nothing and puts every device path under a temporary root, and the spawn bridge the app uses to start it
 (Octopus/App/Spawn/oct_spawn.c), built as is. Run by `make test` and `make sanitize`; CC and HELPER_CFLAGS choose the
 compiler and flags."""
+import json
 import os
 import shlex
 import subprocess
 import sys
 import tempfile
 import unittest
+import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -185,6 +187,32 @@ class SpawnTests(unittest.TestCase):
         self.assertEqual(code, -1)
         self.assertNotIn('ran', text)
         self.assertIn("can't start the update helper as root", text)
+
+
+class ZipTests(unittest.TestCase):
+    """The diagnostics export's ZIP writer (Octopus/Core/oct_zip.c), read back by an independent reader."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.driver = build('zip', ['Octopus/Tests/HelperTests/zip_driver.c', 'Octopus/Core/oct_zip.c',
+                                   'Octopus/Protocol/oct_ptp.c', 'Octopus/Core/oct_store.c',
+                                   'Octopus/Core/oct_backend_memory.c', 'Octopus/Core/oct_backend_directory.c'])
+
+    def test_python_reads_every_entry(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / 'octopus-diagnostics.zip'
+            self.assertEqual(subprocess.run([str(self.driver), str(path)]).returncode, 0)
+            with zipfile.ZipFile(path) as archive:
+                self.assertIsNone(archive.testzip())  # every CRC matches
+                self.assertEqual(archive.namelist(), ['results.json', 'logs/octopus-debug.log', 'binary.bin',
+                                                      'empty.txt', 'caf\u00e9.txt'])
+                self.assertEqual(json.loads(archive.read('results.json')), {'ok': True})
+                self.assertEqual(archive.read('binary.bin'), bytes((i * 31 + 7) & 0xFF for i in range(70000)))
+                self.assertEqual(archive.read('empty.txt'), b'')
+                self.assertTrue(archive.getinfo('caf\u00e9.txt').flag_bits & 0x800)  # UTF-8 name
+                self.assertEqual(archive.getinfo('empty.txt').date_time, (1980, 1, 1, 0, 0, 0))
+                self.assertEqual(archive.getinfo('results.json').date_time[:3], (2025, 11, 8))
+            self.assertEqual(sorted(p.name for p in Path(folder).iterdir()), ['octopus-diagnostics.zip'])
 
 
 if __name__ == '__main__':

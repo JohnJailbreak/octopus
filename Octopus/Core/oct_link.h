@@ -68,6 +68,7 @@ typedef struct oct_link_config {
     uint32_t    timeout_ms;     /* 0 selects OCT_LINK_DEFAULT_TIMEOUT */
     const char *log_component;  /* NULL selects "link" */
     bool        rehearsal;      /* the self-test provokes faults on purpose: log everything as DEBUG */
+    uint32_t    event_packet;   /* interrupt IN packet size; 0 selects 64 */
 } oct_link_config;
 
 typedef struct oct_link_status {
@@ -93,6 +94,9 @@ typedef struct oct_link_status {
     uint64_t last_duration_us;  /* the last transaction, command to response */
     char     driver[32];
     char     last_failure[OCT_EVENT_TEXT_MAX];
+    bool     suspended;
+    uint64_t events;            /* event containers sent */
+    uint64_t bus_resets;
 } oct_link_status;
 
 oct_status  oct_link_create(const oct_link_driver *driver, const oct_link_config *config, oct_link **out);
@@ -111,6 +115,27 @@ oct_status  oct_link_cancel(oct_link *link, uint32_t transaction_id); /* class r
 oct_status  oct_link_device_reset(oct_link *link);                    /* class request 0x66 */
 uint16_t    oct_link_device_status(oct_link *link);                   /* class request 0x67 */
 void        oct_link_fail(oct_link *link, const char *reason);
+
+/* USB Still Image Capture Device Definition 1.0, 5.2: the class requests a host sends on the control pipe. */
+#define OCT_USB_CANCEL_REQUEST          0x64u
+#define OCT_USB_GET_EXTENDED_EVENT_DATA 0x65u
+#define OCT_USB_DEVICE_RESET_REQUEST    0x66u
+#define OCT_USB_GET_DEVICE_STATUS       0x67u
+#define OCT_USB_CANCELLATION_CODE       0x4001u
+
+/* One class request. `data` is its host-to-device data stage (Cancel: the cancellation code and the transaction
+ * ID, 6 bytes); a device-to-host reply (Get Device Status: wLength 4 and the response code) goes into `reply`.
+ * OCT_E_UNSUPPORTED means the driver should stall the request (Get Extended Event Data, or an unknown request);
+ * OCT_E_MALFORMED means its data stage is wrong. */
+oct_status  oct_link_class_request(oct_link *link, uint8_t request, const uint8_t *data, size_t length,
+                                   uint8_t *reply, size_t capacity, size_t *reply_length);
+/* An event container on the interrupt pipe, with up to three parameters. Needs an attached, awake host. */
+oct_status  oct_link_send_event(oct_link *link, uint16_t code, uint32_t transaction_id, const uint32_t *params,
+                                uint32_t count);
+/* USB bus reset: the session ends and partial input is dropped, as a disconnect and a new attach do. */
+oct_status  oct_link_bus_reset(oct_link *link);
+/* USB suspend and resume: while suspended the link refuses input and keeps its session. */
+oct_status  oct_link_set_suspended(oct_link *link, bool suspended);
 
 /* A loopback driver: transfers the device sends are queued in memory for a test host. */
 typedef struct oct_loopback oct_loopback;

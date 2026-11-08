@@ -22,6 +22,7 @@ struct oct_link {
     oct_transport_ops transport_ops;
     uint32_t          max_packet;
     uint32_t          timeout_ms;
+    uint32_t          event_packet;
     bool              rehearsal;
     char              component[OCT_LOG_NAME_MAX + 1];
     oct_service      *service;
@@ -177,6 +178,7 @@ static oct_status link_start(void *context, oct_service *service)
     pthread_mutex_lock(&l->lock);
     l->service = service;
     reset_input_locked(l);
+    l->status.suspended = false;
     l->status.host_attached = false;
     l->status.session_open = false;
     set_state_locked(l, OCT_TRANSPORT_INITIALIZING);
@@ -203,6 +205,7 @@ static void link_stop(void *context)
     l->running = false;
     l->status.host_attached = false;
     l->status.session_open = false;
+    l->status.suspended = false;
     reset_input_locked(l);
     set_state_locked(l, OCT_TRANSPORT_UNAVAILABLE);
     pthread_mutex_unlock(&l->lock);
@@ -233,6 +236,7 @@ oct_status oct_link_create(const oct_link_driver *driver, const oct_link_config 
     l->max_packet = config && config->max_packet ? config->max_packet : OCT_LINK_DEFAULT_PACKET;
     l->timeout_ms = config && config->timeout_ms ? config->timeout_ms : OCT_LINK_DEFAULT_TIMEOUT;
     l->rehearsal = config && config->rehearsal;
+    l->event_packet = config && config->event_packet ? config->event_packet : 64u;
     oct_copy_utf8(l->component, sizeof l->component, config && config->log_component ? config->log_component : "link");
     oct_copy_utf8(l->status.driver, sizeof l->status.driver, driver->ops->name ? driver->ops->name : "driver");
     oct_buf_init(&l->pending, (size_t)MAX_CONTAINER);
@@ -408,6 +412,114 @@ oct_status oct_link_tick(oct_link *l, int64_t now_ms)
     return OCT_OK;
 }
 
+/* ---- Class requests, events and the USB lifecycle ------------------------------------- */
+
+oct_status oct_link_class_request(oct_link *l, uint8_t request, const uint8_t *data, size_t length, uint8_t *reply,
+                                  size_t capacity, size_t *reply_length)
+{
+    if (!l || (!data && length)) return OCT_E_INVALID_ARGUMENT;
+    if (reply_length) *reply_length = 0;
+    switch (request) {
+    case OCT_USB_CANCEL_REQUEST:
+        if (length != 6 || le16(data) != OCT_USB_CANCELLATION_CODE) {
+            pthread_mutex_lock(&l->lock);
+            failure_locked(l, OCT_LOG_WARN, "class_request", "A Cancel request had a malformed %zu-byte data stage",
+                           length);
+            pthread_mutex_unlock(&l->lock);
+            return OCT_E_MALFORMED;
+        }
+        return oct_link_cancel(l, le32(data + 2));
+    case OCT_USB_DEVICE_RESET_REQUEST:
+        return oct_link_device_reset(l);
+    case OCT_USB_GET_DEVICE_STATUS: {
+        if (!reply || capacity < 4) return OCT_E_INVALID_ARGUMENT;
+        uint16_t code = oct_link_device_status(l);
+        reply[0] = 4;
+        reply[1] = 0;
+        reply[2] = (uint8_t)(code & 0xFFu);
+        reply[3] = (uint8_t)(code >> 8);
+        if (reply_length) *reply_length = 4;
+        return OCT_OK;
+    }
+    default:
+        oct_logf(level_for(l, OCT_LOG_INFO), l->component, "class_request",
+                 "Class request 0x%02X isn't supported; the driver stalls it", request);
+        return OCT_E_UNSUPPORTED;
+    }
+}
+
+oct_status oct_link_send_event(oct_link *l, uint16_t code, uint32_t transaction_id, const uint32_t *params,
+                               uint32_t count)
+{
+    if (!l || count > 3 || (!params && count)) return OCT_E_INVALID_ARGUMENT;
+    pthread_mutex_lock(&l->lock);
+    bool ready = l->running && l->status.host_attached && !l->status.suspended;
+    pthread_mutex_unlock(&l->lock);
+    if (!ready) return OCT_E_STATE;
+    oct_buf event;
+    oct_buf_init(&event, 0);
+    oct_buf_u32(&event, 12u + 4u * count);
+    oct_buf_u16(&event, OCT_CONTAINER_EVENT);
+    oct_buf_u16(&event, code);
+    oct_buf_u32(&event, transaction_id);
+    for (uint32_t i = 0; i < count; i++) oct_buf_u32(&event, params[i]);
+    oct_status status = event.failed ? OCT_E_NO_MEMORY
+                                     : l->driver.ops->send(l->driver.context, OCT_LINK_INTERRUPT_IN, event.data,
+                                                           event.length, event.length % l->event_packet == 0);
+    pthread_mutex_lock(&l->lock);
+    if (status == OCT_OK) {
+        l->status.events++;
+        l->status.bytes_out += event.length;
+    } else {
+        l->status.send_failures++;
+        failure_locked(l, OCT_LOG_ERROR, "event_failed", "Sending event 0x%04X failed: %s", code,
+                       oct_status_name(status));
+    }
+    pthread_mutex_unlock(&l->lock);
+    oct_logf(level_for(l, OCT_LOG_DEBUG), l->component, "event", "code=0x%04X tid=%u params=%u", code, transaction_id,
+             count);
+    oct_buf_free(&event);
+    return status;
+}
+
+oct_status oct_link_bus_reset(oct_link *l)
+{
+    if (!l) return OCT_E_INVALID_ARGUMENT;
+    pthread_mutex_lock(&l->lock);
+    bool running = l->running, attached = l->status.host_attached;
+    if (running) l->status.bus_resets++;
+    pthread_mutex_unlock(&l->lock);
+    if (!running) return OCT_E_STATE;
+    oct_logf(level_for(l, OCT_LOG_INFO), l->component, "bus_reset", "USB bus reset%s",
+             attached ? ": the session ends" : "");
+    if (!attached) return OCT_OK;
+    oct_status status = oct_link_host_detached(l, "USB bus reset");
+    return status == OCT_OK ? oct_link_host_attached(l) : status;
+}
+
+oct_status oct_link_set_suspended(oct_link *l, bool suspended)
+{
+    if (!l) return OCT_E_INVALID_ARGUMENT;
+    pthread_mutex_lock(&l->lock);
+    if (!l->running) {
+        pthread_mutex_unlock(&l->lock);
+        return OCT_E_STATE;
+    }
+    if (l->status.suspended != suspended) {
+        size_t dropped = l->pending.length;
+        l->status.suspended = suspended;
+        if (suspended) {
+            oct_buf_clear(&l->pending);
+            l->discard = 0;
+        }
+        oct_logf(level_for(l, OCT_LOG_INFO), l->component, suspended ? "suspend" : "resume", "%s%s",
+                 suspended ? "USB bus suspended" : "USB bus resumed",
+                 suspended && dropped ? "; a partial container was dropped" : "");
+    }
+    pthread_mutex_unlock(&l->lock);
+    return OCT_OK;
+}
+
 /* ---- Containers in and out -------------------------------------------------------- */
 
 /* Hands each container the responder produced to the driver as its own transfer. */
@@ -532,8 +644,9 @@ oct_status oct_link_input(oct_link *l, const uint8_t *bytes, size_t length, int6
     oct_buf ready; /* complete containers, back to back, in arrival order */
     oct_buf_init(&ready, 0);
     pthread_mutex_lock(&l->lock);
-    if (!l->running || !l->status.host_attached) {
-        failure_locked(l, OCT_LOG_WARN, "input_ignored", "%zu bytes arrived with no host attached", length);
+    if (!l->running || !l->status.host_attached || l->status.suspended) {
+        failure_locked(l, OCT_LOG_WARN, "input_ignored", "%zu bytes arrived %s", length,
+                       l->status.suspended ? "while the bus is suspended" : "with no host attached");
         pthread_mutex_unlock(&l->lock);
         oct_buf_free(&ready);
         return OCT_E_STATE;
@@ -958,7 +1071,7 @@ oct_status oct_link_self_test(uint32_t *checks, char *failure, size_t capacity)
     t.now = 1000;
     oct_service *service = NULL;
     oct_link_driver driver;
-    oct_link_config config = { 64, OCT_LINK_DEFAULT_TIMEOUT, "selftest", true };
+    oct_link_config config = { 64, OCT_LINK_DEFAULT_TIMEOUT, "selftest", true, 0 };
     oct_status status = oct_service_create(&service);
     if (status == OCT_OK) status = oct_loopback_create(&t.loopback);
     if (status == OCT_OK) {

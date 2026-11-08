@@ -631,6 +631,27 @@ static bool phase_transport(self_test *t)
     return true;
 }
 
+/* The phases in order. Each depends on the ones before it: the session, the handles found. */
+typedef struct self_test_phase {
+    const char *id;
+    const char *title;
+    bool (*run)(self_test *t);
+} self_test_phase;
+
+static const self_test_phase k_phases[] = {
+    { "device_info", "Device information", phase_device_info },
+    { "session", "Session rules", phase_session },
+    { "enumerate", "Enumerating the storage", phase_enumerate },
+    { "object_info", "Object information", phase_object_info },
+    { "read", "Reading files", phase_read },
+    { "properties", "Object properties", phase_properties },
+    { "invalid", "Rejecting invalid requests", phase_invalid },
+    { "policy", "Read-only and write policy, Scratch writes", phase_writes },
+    { "close", "Closing the session", phase_close },
+    { "transport", "Transport adapter (loopback)", phase_transport },
+};
+#define PHASE_COUNT (sizeof k_phases / sizeof k_phases[0])
+
 static oct_status run_self_test(oct_service *s, oct_store *store, bool verbose, uint32_t *checks, char *failure,
                                 size_t capacity)
 {
@@ -642,9 +663,8 @@ static oct_status run_self_test(oct_service *s, oct_store *store, bool verbose, 
     oct_buf_init(&t->scratch, 0);
     oct_responder_identity identity = { "Octopus", "Octopus Self-Test", OCT_CORE_VERSION, "self-test", NULL };
     oct_status status = oct_responder_create(store, &identity, &t->responder);
-    bool passed = status == OCT_OK && phase_device_info(t) && phase_session(t) && phase_enumerate(t) &&
-                  phase_object_info(t) && phase_read(t) && phase_properties(t) && phase_invalid(t) &&
-                  phase_writes(t) && phase_close(t) && phase_transport(t);
+    bool passed = status == OCT_OK;
+    for (size_t i = 0; passed && i < PHASE_COUNT; i++) passed = k_phases[i].run(t);
     if (!passed && verbose && t->step) step_end(s, t->step, true, "%s", t->failure);
     if (status == OCT_OK && !passed) status = OCT_E_IO;
     *checks = t->checks;
@@ -653,6 +673,63 @@ static oct_status run_self_test(oct_service *s, oct_store *store, bool verbose, 
     oct_buf_free(&t->scratch);
     free(t);
     return status;
+}
+
+/* ---- The self-test one phase at a time (Run Full Diagnostics) ------------------------ */
+
+struct oct_self_test_run {
+    self_test  test;
+    oct_store *store;
+};
+
+uint32_t oct_self_test_phase_count(void) { return (uint32_t)PHASE_COUNT; }
+const char *oct_self_test_phase_id(uint32_t index) { return index < PHASE_COUNT ? k_phases[index].id : NULL; }
+const char *oct_self_test_phase_title(uint32_t index) { return index < PHASE_COUNT ? k_phases[index].title : NULL; }
+
+oct_status oct_self_test_open(bool scratch, oct_self_test_run **out)
+{
+    if (!out) return OCT_E_INVALID_ARGUMENT;
+    *out = NULL;
+    oct_self_test_run *run = calloc(1, sizeof *run);
+    if (!run) return OCT_E_NO_MEMORY;
+    oct_buf_init(&run->test.scratch, 0);
+    oct_synthetic_options synthetic = { 0, scratch };
+    oct_backend backend;
+    oct_status status = oct_synthetic_backend_create(&synthetic, &backend);
+    if (status == OCT_OK) status = oct_store_open(NULL, backend, &run->store);
+    if (status == OCT_OK) status = oct_store_index_all(run->store);
+    run->test.store = run->store;
+    oct_responder_identity identity = { "Octopus", "Octopus Diagnostics", OCT_CORE_VERSION, "diagnostics", NULL };
+    if (status == OCT_OK) status = oct_responder_create(run->store, &identity, &run->test.responder);
+    if (status != OCT_OK) {
+        oct_self_test_close(run);
+        return status;
+    }
+    *out = run;
+    return OCT_OK;
+}
+
+oct_status oct_self_test_run_phase(oct_self_test_run *run, uint32_t index, uint32_t *checks, char *failure,
+                                   size_t capacity)
+{
+    if (!run || index >= PHASE_COUNT) return OCT_E_INVALID_ARGUMENT;
+    uint32_t before = run->test.checks;
+    run->test.failure[0] = '\0';
+    bool passed = k_phases[index].run(&run->test);
+    if (checks) *checks = run->test.checks - before;
+    if (failure && capacity) {
+        oct_copy_utf8(failure, capacity, passed ? "" : run->test.failure[0] ? run->test.failure : "failed");
+    }
+    return passed ? OCT_OK : OCT_E_IO;
+}
+
+void oct_self_test_close(oct_self_test_run *run)
+{
+    if (!run) return;
+    oct_responder_destroy(run->test.responder);
+    oct_buf_free(&run->test.scratch);
+    oct_store_close(run->store);
+    free(run);
 }
 
 /* ---- Lifecycle ------------------------------------------------------------------- */

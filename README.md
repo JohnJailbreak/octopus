@@ -120,6 +120,27 @@ so an unchanged release list doesn't count against its limit of 60 checks an hou
 Each release's notes are its push's commit messages, so they read as the changelog; see
 [Building and testing](#building-and-testing).
 
+### Run Full Diagnostics
+
+**Settings > Diagnostics > Run Full Diagnostics** runs every check that changes nothing, one after another, with a
+progress bar, and marks each **PASS**, **FAIL**, **SKIPPED** (not applicable here, or it needs a check that failed) or
+**BLOCKED** (something it needs is missing, with the reason). It covers the app (its build, and that the debug log
+really reaches its file), the update path (the helper is in the app and starts as root, and GitHub's release list
+answers), the storage provider, each phase of the responder's self-test, the transport adapter, the iPhone's own USB
+and PTP description (read-only, including whether Apple's `ptpd` is running), and the external connection.
+
+Each check says what kind it is. **Simulated** checks talk to a simulated host through the real transport adapter and
+responder at USB 2.0 packet sizes, including an MTP enumeration that finds `Documents/example.txt` in the read-only
+synthetic storage and downloads it, checked against its SHA-256. **External** checks need a real connection: today
+they report BLOCKED, because no computer can reach Octopus without a USB driver, and the Windows check needs manual
+steps on a PC.
+
+**Export Diagnostics** shares one ZIP: `results.json` and `results.txt` (every check), `failures.txt` (what didn't
+pass, and the log's recent warnings and errors), `build.json` (version, build, commit), `settings.json`,
+`connectivity.txt` (the transport's state and the iPhone's USB description) and the debug log files. App container
+IDs are replaced with `<app-container>`, and nothing in it holds file contents. After installing a release, run it
+once and send that ZIP.
+
 ### The debug log
 
 **Settings > Diagnostics > Debug Log** shows `octopus-debug.log`, which the app and its C core share. Each line has a
@@ -162,6 +183,7 @@ and never follows links out of it.
 | Symptom | Likely cause | What to do |
 | --- | --- | --- |
 | Windows doesn't show Octopus's files | This build has no USB driver | Nothing yet: the header says so, and it's the next milestone. To report what Windows sees, run the [Windows diagnostics](#logs). |
+| You're reporting a problem with a release | One archive has it all | **Settings > Diagnostics > Run Full Diagnostics**, then **Export Diagnostics**, and send the ZIP. |
 | You need the reason for a failure | The debug log keeps it | **Settings > Diagnostics > Debug Log** shows the last failure at the top. **Export** it and attach it to an issue. |
 | The Debug Log says it keeps lines in memory only | No folder accepted the log file | Its first lines say which folders refused and why; include them in an issue. |
 | Enable USB Access ends in *Error* | A step failed; the header keeps the reason | Open **Activity** for the failing step, then Disable and Enable again. |
@@ -283,17 +305,19 @@ root helper.
 │   │   ├── UpdateNotifications.swift    Update notifications and the background check
 │   │   ├── DebugLog.swift, DebugLogView.swift    the debug log's bridge to the core, and Settings > Debug Log
 │   │   ├── DeviceReport.swift     Debug Log > Report: how the iPhone presents itself over USB, read-only
+│   │   ├── Diagnostics.swift, DiagnosticsView.swift    Run Full Diagnostics, its checks and its archive
 │   │   ├── Backdrop.swift, Theme.swift    the Slate backdrop; colours, geometry and motion
 │   │   └── Spawn/                 starting the helper as root (C, imported by Swift as OctopusSpawn)
-│   ├── Core/                  the file-object provider, its backends, the service, the transport adapter, the log (C11)
+│   ├── Core/                  the file-object provider, its backends, the service, the transport adapter, the log,
+│   │                          the diagnostics and compatibility checks, SHA-256 and the ZIP writer (C11)
 │   ├── Protocol/              PTP/MTP containers, datasets, properties and the responder (C11)
 │   ├── RootHelper/            octopushelper, which installs updates with TrollStore (C)
 │   ├── Resources/             Fonarto and its license, the asset catalog, Dopamine's license
 │   ├── Tests/
-│   │   ├── CoreTests/             C tests, the log and the transport adapter included; the transcript; the fuzzer
+│   │   ├── CoreTests/             C tests, the log, the adapter and the diagnostics included; the transcript; the fuzzer
 │   │   ├── HelperTests/           the helper and the spawn bridge, compiled on the host
 │   │   ├── RepoTests/             this README, the changelog and the update path's shared values
-│   │   └── AppTests/              XCTest: the bridge, the controller, the layout, the updater and the debug log
+│   │   └── AppTests/              XCTest: the bridge, the controller, the layout, the updater, the log and the diagnostics
 │   ├── Octopus.entitlements   what TrollStore grants the app
 │   └── module.modulemap       exposes the core (OctopusCore) and the spawn bridge (OctopusSpawn) to Swift
 ├── docs/                      CHANGELOG.md (every release), images/
@@ -354,7 +378,7 @@ xcodebuild build -project Octopus.xcodeproj -scheme Octopus -configuration Relea
 bash tools/package.sh   # build/Octopus.tipa and build/Octopus.ipa
 ```
 
-- **The core:** 2,232 checks pass, also under the sanitizers and ThreadSanitizer; 300,000 fuzzing iterations run
+- **The core:** 2,460 checks pass, also under the sanitizers and ThreadSanitizer; 300,000 fuzzing iterations run
   without faults; the analyzer reports nothing. A 22-exchange enumeration session replays byte for byte against an encoder written
   separately from the PIMA 15740 and MTP 1.0 layouts. The session follows the documented MTP flow; it isn't a capture
   from Windows.

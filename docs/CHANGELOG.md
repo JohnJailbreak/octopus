@@ -5,6 +5,36 @@ run number (0.2.42 is a push of 0.2), so the versions below are the ones where s
 notes, its commit messages, are on its [release page](https://github.com/m9z2w4d8vw-blip/octopus/releases) and in
 the app's changelog.
 
+## v0.4
+
+One button runs every safe check and makes one archive to send; the adapter learns the rest of the USB class's rules.
+
+- **Run Full Diagnostics**, in Settings > Diagnostics: 29 checks in one run, each PASS, FAIL, SKIPPED or BLOCKED with
+  its reason, kind, checks and time. The responder's checks are the self-test's own phases, run one at a time, so one
+  failure no longer hides the rest; the phases after it say what they needed. Simulated checks are labelled as
+  simulated, and the external ones say why they can't run: no USB transport, no request from a computer, and Windows
+  needs manual steps.
+- **Export Diagnostics** makes one ZIP: the results as JSON and text, the failures with the log's recent warnings,
+  build information with the commit CI built, the settings, the transport's state and the iPhone's full USB and PTP
+  description (all 403 values, where Debug Log > Report stops at 150), and the debug log files. Container IDs are
+  redacted. The ZIP writer is C (`oct_zip`), checked by Python's `zipfile`.
+- **Compatibility checks** (`oct_compat`): an MTP host's enumeration of the read-only synthetic storage at USB 2.0
+  packet sizes, from DeviceInfo to `Documents/example.txt` downloaded whole and in part and matched to its SHA-256; the
+  Cancel, Get Device Status and Device Reset class requests; events; and the USB lifecycle.
+- **The adapter** decodes the class requests' control-pipe bytes (`oct_link_class_request`), sends event containers on
+  the interrupt pipe (`oct_link_send_event`), and handles a USB bus reset and suspend and resume.
+- **The debug log** remembers the folder that took it and tries it first, records why a folder was refused (on iOS
+  17 the app's own Library/Logs can't be created; `/var/mobile/Library/Caches/Octopus` is used), logs that as
+  information rather than a warning, reaches storage when Octopus goes to the background, and reopens its file if
+  something removes it or its handle goes bad.
+- **Windows diagnostics** no longer stops on properties a device lacks, which also left earlier values in later lines,
+  and lists only what the iPhone presents on USB, not a Bluetooth mouse or the PPTP network miniport.
+- **Tests.** 2,460 C checks (228 new): SHA-256 and CRC-32 vectors, the ZIP writer, the compatibility checks, the
+  diagnostics with a failure injected, the process lookup and the log's recovery. XCTest covers a full run, the
+  archive and redaction.
+
+Windows still can't see Octopus: there is no USB driver yet.
+
 ## v0.3
 
 A debug log, the transport adapter, and connection states taken from what Octopus observes.

@@ -97,5 +97,21 @@ class UpdatePathTests(unittest.TestCase):
         self.assertIn('cp build/octopushelper "$APP/octopushelper"', read('tools/package.sh'))
 
 
+class WindowsScriptTests(unittest.TestCase):
+    """The two defects the v0.3.6 report showed (tools/windows/octopus-usb-diagnostics.ps1)."""
+
+    script = (ROOT / 'tools' / 'windows' / 'octopus-usb-diagnostics.ps1').read_text(encoding='utf-8')
+
+    def test_absent_properties_are_checked_before_use(self):
+        self.assertNotIn('$property.Data', self.script)  # threw under StrictMode when a device lacked the property
+        self.assertIn("$property.PSObject.Properties['Data']", self.script)
+        self.assertIn('$value = $null', self.script)
+
+    def test_only_the_iphone_on_usb_is_selected(self):
+        self.assertIn("-match '^USB\\\\VID_05AC&'", self.script)
+        self.assertNotIn("FriendlyName -match 'Apple", self.script)  # matched a Bluetooth mouse and the PPTP miniport
+        self.assertNotRegex(self.script, r"-match '[^']*\bPTP\b[^']*'")
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)

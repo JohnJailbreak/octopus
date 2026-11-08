@@ -2,7 +2,7 @@ import SwiftUI
 import UIKit
 
 enum AppWindow: String, CaseIterable, Identifiable {
-    case usb, filesystem, activity, settings, update, debugLog
+    case usb, filesystem, activity, settings, update, debugLog, diagnostics
 
     /// The menu's rows. The update window opens from Update Available and from Settings > Check for Updates.
     static let menu: [AppWindow] = [.usb, .filesystem, .activity, .settings]
@@ -17,6 +17,7 @@ enum AppWindow: String, CaseIterable, Identifiable {
         case .settings: return "Settings"
         case .update: return "Update"
         case .debugLog: return "Debug Log"
+        case .diagnostics: return "Diagnostics"
         }
     }
 
@@ -28,6 +29,7 @@ enum AppWindow: String, CaseIterable, Identifiable {
         case .settings: return "gearshape"
         case .update: return "arrow.down.circle"
         case .debugLog: return "doc.text.magnifyingglass"
+        case .diagnostics: return "stethoscope"
         }
     }
 }
@@ -66,7 +68,8 @@ struct MainScreen: View {
                             .frame(width: layout.windowSize.width, height: layout.windowSize.height)
                     } else {
                         WindowView(kind: window, layout: layout, close: closeWindow, showUpdate: { openWindow(.update) },
-                                   showDebugLog: { openWindow(.debugLog) })
+                                   showDebugLog: { openWindow(.debugLog) },
+                                   showDiagnostics: { openWindow(.diagnostics) })
                     }
                 }
                 .position(x: layout.size.width / 2, y: layout.size.height / 2)
@@ -90,6 +93,7 @@ struct MainScreen: View {
             // Update notifications: every 2 minutes while open; in the background, when iOS chooses.
             updater.watch(updateNotifications && phase == .active)
             if phase == .background && updateNotifications { UpdateNotifications.schedule() }
+            if phase == .background { DebugLog.flush() } // the log reaches storage before iOS may end the app
         }
         .onChange(of: updateNotifications) { _, on in
             updater.watch(on && scenePhase == .active)

@@ -65,6 +65,7 @@ enum DebugLog {
         var rotations: UInt64 = 0
         var writeErrors: UInt64 = 0
         var lastError = ""
+        var reopens: UInt64 = 0
     }
 
     static let fileName = "octopus-debug.log"
@@ -73,27 +74,38 @@ enum DebugLog {
     /// The most lines the Debug Log window shows; the export always has everything.
     static let displayLimit = 3000
 
-    /// Where the log may live, tried in order: the app's own Library/Logs, then the folders the updater uses,
-    /// which an unsandboxed TrollStore app can write even when its own data folder refuses (Speaka's lesson).
+    /// Where the log may live, tried in order: the folder that worked last time, the app's own Library/Logs, then
+    /// the folders the updater uses, which an unsandboxed TrollStore app can write even when its own data folder
+    /// refuses (on iOS 17, /var/mobile/Library/Caches/Octopus takes it while Library/Logs can't be created).
     static var candidateFolders: [URL] {
         var folders: [URL] = []
+        if let remembered = UserDefaults.standard.string(forKey: Preferences.debugLogFolder), !remembered.isEmpty {
+            folders.append(URL(fileURLWithPath: remembered, isDirectory: true))
+        }
         if let library = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask).first {
             folders.append(library.appendingPathComponent("Logs", isDirectory: true))
         }
         folders += Updater.downloadFolders.map { URL(fileURLWithPath: $0, isDirectory: true) }
         folders.append(URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true))
-        return folders
+        var seen = Set<String>()
+        return folders.filter { seen.insert($0.standardizedFileURL.path).inserted }
     }
 
     /// Opens the log in the first folder that takes it; with none, the log keeps its recent lines in memory.
+    /// Without `folders`, the candidates are tried and the folder that takes the log is remembered for next time.
     @discardableResult
-    static func start(in folders: [URL] = DebugLog.candidateFolders,
-                      detailed: Bool = Preferences.detailedLoggingEnabled) -> String? {
+    static func start(in folders: [URL]? = nil, detailed: Bool = Preferences.detailedLoggingEnabled) -> String? {
         let level = detailed ? OCT_LOG_DEBUG : OCT_LOG_INFO
+        let remember = folders == nil
         var opened: String? = nil
         var refusals: [String] = []
-        for folder in folders {
-            try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        for folder in folders ?? candidateFolders {
+            var creation = ""
+            do {
+                try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            } catch {
+                creation = " (creating the folder: \((error as NSError).localizedDescription))"
+            }
             let file = folder.appendingPathComponent(fileName).path
             let status = file.withCString { path -> oct_status in
                 var config = oct_log_config()
@@ -105,9 +117,10 @@ enum DebugLog {
             }
             if status == OCT_OK {
                 opened = file
+                if remember { UserDefaults.standard.set(folder.path, forKey: Preferences.debugLogFolder) }
                 break
             }
-            refusals.append("\(folder.path): \(stats().lastError)")
+            refusals.append("\(folder.path): \(stats().lastError)\(creation)")
         }
         if opened == nil {
             var config = oct_log_config()
@@ -115,8 +128,12 @@ enum DebugLog {
             oct_log_open(&config)
         }
         log(.info, "app", "launch", "Octopus \(AppInfo.version) on \(systemDescription), log level \(detailed ? "debug" : "info")")
+        // A refused folder is expected when a later one takes the log: worth a line, not a warning.
         for refusal in refusals {
-            log(.warning, "log", "folder_refused", refusal)
+            log(opened == nil ? .warning : .info, "log", opened == nil ? "folder_refused" : "folder_unavailable", refusal)
+        }
+        if let opened, !refusals.isEmpty {
+            log(.info, "log", "folder", "The log is at \(opened)")
         }
         if opened == nil {
             log(.error, "log", "memory_only", "No folder took the log file; only recent lines are kept, in memory")
@@ -133,6 +150,11 @@ enum DebugLog {
         log(.info, "log", "level", on ? "Detailed logging on: every transaction is logged" : "Detailed logging off")
     }
 
+    /// Writes the log to storage; recreates the file if something removed it.
+    static func flush() {
+        oct_log_flush()
+    }
+
     static func clear() {
         oct_log_clear()
         log(.info, "log", "cleared", "The debug log was cleared")
@@ -142,7 +164,8 @@ enum DebugLog {
         var raw = oct_log_stats()
         oct_log_get_stats(&raw)
         return Stats(fileOpen: raw.file_open, path: text(raw.path), fileBytes: raw.file_bytes, lines: raw.lines,
-                     rotations: raw.rotations, writeErrors: raw.write_errors, lastError: text(raw.last_error))
+                     rotations: raw.rotations, writeErrors: raw.write_errors, lastError: text(raw.last_error),
+                     reopens: raw.reopens)
     }
 
     /// The log's files, oldest first: octopus-debug.3.log ... octopus-debug.log, those that exist.

@@ -145,6 +145,18 @@ oct_status oct_service_read(oct_service *service, uint32_t handle, uint64_t offs
 /* Transport side. */
 oct_status oct_service_host_attached(oct_service *service);
 oct_status oct_service_host_detached(oct_service *service);
+/* The self-test one phase at a time, for Run Full Diagnostics: the same phases, on a temporary synthetic storage
+ * (with Scratch when asked) and a responder of their own, sharing nothing with a running service. Phases depend
+ * on the ones before them, so run them in order and stop at the first failure. */
+typedef struct oct_self_test_run oct_self_test_run;
+uint32_t    oct_self_test_phase_count(void);
+const char *oct_self_test_phase_id(uint32_t index);
+const char *oct_self_test_phase_title(uint32_t index);
+oct_status  oct_self_test_open(bool scratch, oct_self_test_run **out);
+oct_status  oct_self_test_run_phase(oct_self_test_run *run, uint32_t index, uint32_t *checks, char *failure,
+                                    size_t capacity);
+void        oct_self_test_close(oct_self_test_run *run);
+
 /* Ends the session but keeps the host attached, as a USB Device Reset request does. */
 oct_status oct_service_reset_session(oct_service *service);
 oct_status oct_service_receive(oct_service *service, const uint8_t *bytes, size_t length, oct_buf *out);

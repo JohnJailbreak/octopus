@@ -73,7 +73,8 @@ jobs:
           xcodebuild build -project Octopus.xcodeproj -scheme Octopus -configuration Release \
             -destination 'generic/platform=iOS' -derivedDataPath build/DerivedData \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
-            MARKETING_VERSION="${{ steps.version.outputs.version }}" CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER"
+            MARKETING_VERSION="${{ steps.version.outputs.version }}" CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER" \
+            OCTOPUS_COMMIT="$GITHUB_SHA"
       - name: Package Octopus.tipa and Octopus.ipa (with the update helper)
         run: bash tools/package.sh
       - uses: actions/upload-artifact@v4

@@ -52,6 +52,7 @@ typedef struct oct_log_stats {
     uint64_t      file_bytes;     /* size of the current file */
     char          path[OCT_LOG_PATH_MAX];
     char          last_error[160];
+    uint64_t      reopens;        /* times the file was reopened after it went bad or vanished */
 } oct_log_stats;
 
 /* Opens (or switches to) a log file, appending to what is there. On failure it returns OCT_E_IO,
@@ -73,6 +74,9 @@ void oct_logf(oct_log_level level, const char *component, const char *event, con
 /* The same, with a finished message: what Swift calls, as it can't call variadic C functions. */
 void oct_log_message(oct_log_level level, const char *component, const char *event, const char *message);
 
+/* Writes the file to storage. If the file was deleted or replaced since it was opened, or closed itself after
+ * errors, it is opened again, so later lines aren't lost. */
+oct_status oct_log_flush(void);
 /* Empties the current file and removes the rotated ones. */
 oct_status oct_log_clear(void);
 /* The most recent lines kept in memory that fit, oldest first, one per line, NUL-terminated.

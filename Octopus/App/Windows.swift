@@ -11,6 +11,8 @@ struct WindowView: View {
     let showUpdate: () -> Void
     /// Settings > Debug Log.
     let showDebugLog: () -> Void
+    /// Settings > Run Full Diagnostics.
+    let showDiagnostics: () -> Void
     @State private var selection: StorageObject? = nil
 
     private var shape: RoundedRectangle { RoundedRectangle(cornerRadius: 16, style: .continuous) }
@@ -75,9 +77,11 @@ struct WindowView: View {
         case .activity:
             ActivityWindow(close: close)
         case .settings:
-            SettingsWindow(showUpdate: showUpdate, showDebugLog: showDebugLog)
+            SettingsWindow(showUpdate: showUpdate, showDebugLog: showDebugLog, showDiagnostics: showDiagnostics)
         case .debugLog:
             DebugLogWindow()
+        case .diagnostics:
+            DiagnosticsWindow()
         case .update:
             EmptyView()   // the main screen shows the update flow itself, without a window card
         }
@@ -438,6 +442,7 @@ struct ActivityWindow: View {
 struct SettingsWindow: View {
     let showUpdate: () -> Void
     let showDebugLog: () -> Void
+    let showDiagnostics: () -> Void
     @AppStorage(Preferences.detailedLogging) private var detailedLogging = false
     @EnvironmentObject private var updater: Updater
     @AppStorage(Preferences.haptics) private var haptics = true
@@ -500,6 +505,23 @@ struct SettingsWindow: View {
                 updatesFooter
             }
             Section {
+                Button {
+                    Haptics.light()
+                    showDiagnostics()
+                } label: {
+                    HStack {
+                        Text("Run Full Diagnostics")
+                            .foregroundStyle(.white)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(Theme.chevron)
+                    }
+                    .font(.system(size: 15))
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(PressDimStyle())
+                .windowRow()
                 Toggle(isOn: $detailedLogging) { Text("Detailed logging") }
                     .font(.system(size: 15))
                     .windowRow()

@@ -25,7 +25,7 @@ static void rig_create(rig *r, uint32_t max_packet, bool scratch, bool start)
     CHECK_OK(oct_loopback_create(&r->loopback));
     oct_link_driver driver;
     oct_loopback_driver(r->loopback, &driver);
-    oct_link_config config = { max_packet, 1000, "linktest", false };
+    oct_link_config config = { max_packet, 1000, "linktest", false, 0 };
     CHECK_OK(oct_link_create(&driver, &config, &r->link));
     oct_transport transport;
     oct_link_transport(r->link, &transport);

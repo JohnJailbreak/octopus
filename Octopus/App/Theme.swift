@@ -82,6 +82,8 @@ enum Preferences {
     static let updateNotifications = "updateNotifications"
     /// Settings > Diagnostics > Detailed logging: DEBUG lines, one per transaction.
     static let detailedLogging = "detailedLogging"
+    /// The folder the debug log opened in last time, tried first at the next launch.
+    static let debugLogFolder = "debugLogFolder"
     private static let notifiedVersionKey = "notifiedVersion"
     private static let lastUpdateCheckKey = "lastUpdateCheck"
 
@@ -140,6 +142,16 @@ enum AppInfo {
         let short = info["CFBundleShortVersionString"] as? String ?? "0.1"
         let build = info["CFBundleVersion"] as? String ?? "1"
         return "\(short) (\(build))"
+    }
+
+    static var buildNumber: String {
+        Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
+    }
+
+    /// The commit CI built from (Info.plist OctopusCommit); empty for local builds.
+    static var commit: String {
+        let value = Bundle.main.infoDictionary?["OctopusCommit"] as? String ?? ""
+        return value.hasPrefix("$(") ? "" : value
     }
 
     static let repository = URL(string: "https://github.com/m9z2w4d8vw-blip/octopus")!

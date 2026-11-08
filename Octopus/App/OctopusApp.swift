@@ -5,6 +5,7 @@ import UserNotifications
 struct OctopusApp: App {
     @StateObject private var service = ServiceController()
     @StateObject private var updater = Updater()
+    @StateObject private var diagnostics = DiagnosticsRunner()
 
     init() {
         // The debug log first, so everything after it is recorded (DebugLog, Octopus/Core/oct_log.c).
@@ -18,6 +19,7 @@ struct OctopusApp: App {
             RootView()
                 .environmentObject(service)
                 .environmentObject(updater)
+                .environmentObject(diagnostics)
                 .preferredColorScheme(.dark)
         }
         // Settings > Update notifications: iOS wakes Octopus in the background when it chooses (UpdateNotifications).
