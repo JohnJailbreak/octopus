@@ -80,3 +80,9 @@ check: test sanitize fuzz
 
 clean:
 	rm -rf build
+
+# Focused portable boundary suite; does not replace the full POSIX/Apple CI checks.
+.PHONY: test-usb
+test-usb: $(PLAIN) $(HEADERS) Octopus/Tests/CoreTests/test_usb.c Octopus/Tests/CoreTests/usb_main.c
+	$(CC) $(STD) $(CFLAGS) $(WARN) $(PLAIN) Octopus/Tests/CoreTests/test_usb.c Octopus/Tests/CoreTests/usb_main.c $(LDLIBS) -o build/usb-tests
+	TZ=UTC0 ./build/usb-tests

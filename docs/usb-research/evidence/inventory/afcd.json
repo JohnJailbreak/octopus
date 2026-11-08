@@ -1,0 +1,866 @@
+{
+  "name": "afcd",
+  "size": 75104,
+  "sha256": "3791245c22b66ac6d1e63b4cadf6871bae80c3b961b0a307597e48ede4e00c4d",
+  "cpu": "0x100000c",
+  "cpu_subtype": "0x80000002",
+  "architecture": "arm64e",
+  "filetype": 2,
+  "flags": "0x200085",
+  "commands": [
+    {
+      "name": "LC_SEGMENT_64",
+      "offset": 32,
+      "size": 72
+    },
+    {
+      "name": "LC_SEGMENT_64",
+      "offset": 104,
+      "size": 552
+    },
+    {
+      "name": "LC_SEGMENT_64",
+      "offset": 656,
+      "size": 312
+    },
+    {
+      "name": "LC_SEGMENT_64",
+      "offset": 968,
+      "size": 232
+    },
+    {
+      "name": "LC_SEGMENT_64",
+      "offset": 1200,
+      "size": 152
+    },
+    {
+      "name": "LC_SEGMENT_64",
+      "offset": 1352,
+      "size": 72
+    },
+    {
+      "name": "LC_DYLD_CHAINED_FIXUPS",
+      "offset": 1424,
+      "size": 16
+    },
+    {
+      "name": "LC_DYLD_EXPORTS_TRIE",
+      "offset": 1440,
+      "size": 16
+    },
+    {
+      "name": "LC_SYMTAB",
+      "offset": 1456,
+      "size": 24
+    },
+    {
+      "name": "LC_DYSYMTAB",
+      "offset": 1480,
+      "size": 80
+    },
+    {
+      "name": "LC_LOAD_DYLINKER",
+      "offset": 1560,
+      "size": 32
+    },
+    {
+      "name": "LC_UUID",
+      "offset": 1592,
+      "size": 24
+    },
+    {
+      "name": "LC_BUILD_VERSION",
+      "offset": 1616,
+      "size": 32
+    },
+    {
+      "name": "LC_SOURCE_VERSION",
+      "offset": 1648,
+      "size": 16
+    },
+    {
+      "name": "LC_MAIN",
+      "offset": 1664,
+      "size": 24
+    },
+    {
+      "name": "LC_LOAD_DYLIB",
+      "offset": 1688,
+      "size": 96
+    },
+    {
+      "name": "LC_LOAD_DYLIB",
+      "offset": 1784,
+      "size": 56
+    },
+    {
+      "name": "LC_LOAD_DYLIB",
+      "offset": 1840,
+      "size": 48
+    },
+    {
+      "name": "LC_LOAD_DYLIB",
+      "offset": 1888,
+      "size": 96
+    },
+    {
+      "name": "LC_LOAD_DYLIB",
+      "offset": 1984,
+      "size": 88
+    },
+    {
+      "name": "LC_LOAD_DYLIB",
+      "offset": 2072,
+      "size": 56
+    },
+    {
+      "name": "LC_FUNCTION_STARTS",
+      "offset": 2128,
+      "size": 16
+    },
+    {
+      "name": "LC_DATA_IN_CODE",
+      "offset": 2144,
+      "size": 16
+    },
+    {
+      "name": "LC_CODE_SIGNATURE",
+      "offset": 2160,
+      "size": 16
+    }
+  ],
+  "segments": [
+    {
+      "name": "__PAGEZERO",
+      "vmaddr": "0x0",
+      "vmsize": 4294967296,
+      "fileoff": 0,
+      "filesize": 0
+    },
+    {
+      "name": "__TEXT",
+      "vmaddr": "0x100000000",
+      "vmsize": 16384,
+      "fileoff": 0,
+      "filesize": 16384
+    },
+    {
+      "name": "__DATA_CONST",
+      "vmaddr": "0x100004000",
+      "vmsize": 16384,
+      "fileoff": 16384,
+      "filesize": 16384
+    },
+    {
+      "name": "__DATA",
+      "vmaddr": "0x100008000",
+      "vmsize": 16384,
+      "fileoff": 32768,
+      "filesize": 16384
+    },
+    {
+      "name": "__RESTRICT",
+      "vmaddr": "0x10000c000",
+      "vmsize": 0,
+      "fileoff": 49152,
+      "filesize": 0
+    },
+    {
+      "name": "__LINKEDIT",
+      "vmaddr": "0x10000c000",
+      "vmsize": 32768,
+      "fileoff": 49152,
+      "filesize": 25952
+    }
+  ],
+  "dylibs": [
+    "/System/Library/PrivateFrameworks/MobileKeyBag.framework/MobileKeyBag",
+    "/usr/lib/liblockdown.dylib",
+    "/usr/lib/libafc.dylib",
+    "/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation",
+    "/System/Library/Frameworks/IOKit.framework/Versions/A/IOKit",
+    "/usr/lib/libSystem.B.dylib"
+  ],
+  "sections": [
+    {
+      "name": "__text",
+      "segment": "__TEXT",
+      "address": "0x100002510",
+      "size": 3224,
+      "offset": 9488
+    },
+    {
+      "name": "__auth_stubs",
+      "segment": "__TEXT",
+      "address": "0x1000031a8",
+      "size": 1152,
+      "offset": 12712
+    },
+    {
+      "name": "__const",
+      "segment": "__TEXT",
+      "address": "0x100003628",
+      "size": 56,
+      "offset": 13864
+    },
+    {
+      "name": "__cstring",
+      "segment": "__TEXT",
+      "address": "0x100003660",
+      "size": 1659,
+      "offset": 13920
+    },
+    {
+      "name": "__info_plist",
+      "segment": "__TEXT",
+      "address": "0x100003cdb",
+      "size": 701,
+      "offset": 15579
+    },
+    {
+      "name": "__unwind_info",
+      "segment": "__TEXT",
+      "address": "0x100003f98",
+      "size": 100,
+      "offset": 16280
+    },
+    {
+      "name": "__auth_got",
+      "segment": "__DATA_CONST",
+      "address": "0x100004000",
+      "size": 576,
+      "offset": 16384
+    },
+    {
+      "name": "__got",
+      "segment": "__DATA_CONST",
+      "address": "0x100004240",
+      "size": 128,
+      "offset": 16960
+    },
+    {
+      "name": "__const",
+      "segment": "__DATA_CONST",
+      "address": "0x1000042c0",
+      "size": 96,
+      "offset": 17088
+    },
+    {
+      "name": "__data",
+      "segment": "__DATA",
+      "address": "0x100008000",
+      "size": 64,
+      "offset": 32768
+    },
+    {
+      "name": "__bss",
+      "segment": "__DATA",
+      "address": "0x100008040",
+      "size": 40,
+      "offset": 0
+    },
+    {
+      "name": "__restrict",
+      "segment": "__RESTRICT",
+      "address": "0x10000c000",
+      "size": 0,
+      "offset": 49152
+    }
+  ],
+  "symbols": [
+    {
+      "name": "radr://5614542",
+      "type": 60,
+      "section": 0,
+      "value": "0x5614542"
+    },
+    {
+      "name": "__mh_execute_header",
+      "type": 15,
+      "section": 1,
+      "value": "0x100000000"
+    },
+    {
+      "name": "_AFCConnectionCreate",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_AFCConnectionGetContext",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_AFCConnectionInvalidate",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_AFCConnectionSetContext",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_AFCConnectionSetDisposeSecureContextOnInvalidate",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_AFCConnectionSetIOTimeout",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_AFCConnectionSetSecureContext",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_AFCCreateServerContext",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_AFCFreeServerContext",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_AFCInitServerConnection",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_AFCLog",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_AFCPlatformInitialize",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_AFCServeWithRoot",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_AFCServerConnectionSetFileCoordinationEnabled",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_AFCServerContextGetLockdownConnection",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_AFCServerContextGetRootPath",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_AFCServerContextSetLockdownConnection",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_AFCServerContextSetRootPath",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_CFDictionaryAddValue",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_CFDictionaryCreateMutable",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_CFDictionaryGetTypeID",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_CFDictionaryGetValue",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_CFGetTypeID",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_CFRelease",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_CFStringCompare",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_CFStringCreateWithCString",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_CFStringGetCString",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_CFStringGetTypeID",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_MKBUserTypeDeviceMode",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "__NSConcreteStackBlock",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "___error",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "___stack_chk_fail",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "___stack_chk_guard",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "___stderrp",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "___strcat_chk",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "___strcpy_chk",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "__xpc_error_connection_invalid",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "__xpc_error_key_description",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "__xpc_error_termination_imminent",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "__xpc_type_connection",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "__xpc_type_dictionary",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "__xpc_type_error",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_bzero",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_container_system_group_path_for_identifier",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_dispatch_get_global_queue",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_dispatch_group_async_f",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_dispatch_group_create",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_dispatch_group_notify",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_dispatch_main",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_dispatch_queue_create",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_dispatch_set_target_queue",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_exit",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_free",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_fwrite",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_getopt_long",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_kCFAllocatorDefault",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_kCFTypeDictionaryKeyCallBacks",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_kCFTypeDictionaryValueCallBacks",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_kLockdownCheckinConnectionInfoKey",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_kLockdownCheckinPath",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_kMKBDeviceModeKey",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_kMKBDeviceModeMultiUser",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_kqueue",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_lockdown_copy_checkin_info",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_lockdown_disconnect",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_lockdown_get_securecontext",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_lockdown_get_socket",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_lstat",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_mkdir",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_realpath$DARWIN_EXTSN",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_sandbox_extension_consume",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_sandbox_extension_issue_file",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_sandbox_free_error",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_sandbox_init",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_secure_lockdown_checkin",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_setsockopt",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_signal",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_strcmp",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_strdup",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_strerror",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_xpc_connection_cancel",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_xpc_connection_create_mach_service",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_xpc_connection_resume",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_xpc_connection_set_event_handler",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_xpc_dictionary_get_string",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_xpc_get_type",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_xpc_transaction_begin",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_xpc_transaction_end",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    }
+  ],
+  "symtab": {
+    "nsyms": 90,
+    "offset": 51600,
+    "string_size": 1976
+  },
+  "uuid": "E91A0D5B-F781-38E1-A464-720E3348B7E3",
+  "build": {
+    "platform": 2,
+    "minos": "17.0.0",
+    "sdk": "17.0.0"
+  },
+  "entryoff": 9488,
+  "signature": {
+    "offset": 55664,
+    "size": 19440,
+    "blobs": [
+      {
+        "slot": 0,
+        "magic": "0xfade0c02",
+        "length": 775,
+        "version": "0x20400",
+        "flags": "0x2",
+        "identifier": "com.apple.afcd",
+        "code_limit": 55664,
+        "hash_type": 2,
+        "hash_size": 32,
+        "page_log2": 12,
+        "code_slots": 14,
+        "special_slots": 7,
+        "code_page_hashes_match": true
+      },
+      {
+        "slot": 2,
+        "magic": "0xfade0c01",
+        "length": 12
+      },
+      {
+        "slot": 5,
+        "magic": "0xfade7171",
+        "length": 423,
+        "xml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n\t<key>com.apple.security.network.client</key>\n\t<true/>\n\t<key>com.apple.security.network.server</key>\n\t<true/>\n\t<key>com.apple.security.system-groups</key>\n\t<array>\n\t\t<string>systemgroup.com.apple.osanalytics</string>\n\t</array>\n</dict>\n</plist>\n"
+      },
+      {
+        "slot": 7,
+        "magic": "0xfade7172",
+        "length": 170
+      },
+      {
+        "slot": 65536,
+        "magic": "0xfade0b01",
+        "length": 8
+      }
+    ]
+  }
+}

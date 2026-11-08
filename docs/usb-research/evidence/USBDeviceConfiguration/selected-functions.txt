@@ -1,0 +1,2541 @@
+
+===== 00002dc4 _lockdownArrivalCallback =====
+XREF Entry Point EXTERNAL null
+XREF 0000c800 DATA null
+XREF 00003298 PARAM _start
+00002dc4 pacibsp
+00002dc8 stp x20,x19,[sp, #-0x20]!
+00002dcc stp x29,x30,[sp, #0x10]
+00002dd0 add x29,sp,#0x10
+00002dd4 adr x2,0x4250
+00002dd8 nop
+00002ddc mov w0,#0x1
+00002de0 mov w1,#0x6
+00002de4 bl 0x00003c14
+00002de8 bl 0x000034e8
+00002dec adrp x19,0x8000
+00002df0 ldr x0,[x19, #0x70]
+00002df4 bl 0x00003aa4
+00002df8 ldr x0,[x19, #0x70]
+00002dfc bl 0x00003a64
+00002e00 str xzr,[x19, #0x70]
+00002e04 nop
+00002e08 ldr x0,[x19, #0x78]
+00002e0c bl 0x00003a54
+00002e10 ldr x0,[x19, #0x78]
+00002e14 bl 0x00003a64
+00002e18 str xzr,[x19, #0x78]
+00002e1c nop
+00002e20 ldr w0,0x8080
+00002e24 ldp x29,x30,[sp, #0x10]
+00002e28 ldp x20,x19,[sp], #0x20
+00002e2c autibsp
+00002e30 eor x16,x30,x30, LSL #0x1
+00002e34 tbz x16,#0x3e,0x00002e3c
+00002e38 brk #0xc471
+00002e3c b 0x00003c74
+
+void _lockdownArrivalCallback(void)
+
+{
+  code *pcVar1;
+  ulong unaff_x30;
+
+  _SCLog(1,6,&cf_DevUSB_lockdowndisavailable);
+  FUN_000034e8();
+  _CFRunLoopSourceInvalidate(DAT_00008070);
+  _CFRelease(DAT_00008070);
+  DAT_00008070 = 0;
+  _CFMachPortInvalidate(DAT_00008078);
+  _CFRelease(DAT_00008078);
+  DAT_00008078 = 0;
+  if (((unaff_x30 ^ unaff_x30 << 1) >> 0x3e & 1) != 0) {
+                    /* WARNING: Does not return */
+    pcVar1 = (code *)SoftwareBreakpoint(0xc471,0x2e3c);
+    (*pcVar1)();
+  }
+  _notify_cancel(DAT_00008080);
+  return;
+}
+
+
+
+===== 00002e40 __usb_device_configuration_add_interface =====
+XREF Entry Point EXTERNAL null
+XREF 0000c802 DATA null
+XREF 00003858 UNCONDITIONAL_CALL FUN_000037b0
+00002e40 pacibsp
+00002e44 stp x24,x23,[sp, #-0x40]!
+00002e48 stp x22,x21,[sp, #0x10]
+00002e4c stp x20,x19,[sp, #0x20]
+00002e50 stp x29,x30,[sp, #0x30]
+00002e54 add x29,sp,#0x30
+00002e58 mov x20,x2
+00002e5c nop
+00002e60 ldr x8,0x41b8
+00002e64 ldr x21,[x8]
+00002e68 nop
+00002e6c ldr x8,0x41c0
+00002e70 ldr x3,[x8]
+00002e74 mov x0,x21
+00002e78 mov w2,#0x100
+00002e7c movk w2,#0x800, LSL #16
+00002e80 bl 0x00003ae4
+00002e84 str wzr,[x20]
+00002e88 cbz x0,0x00002f24
+00002e8c mov x19,x0
+00002e90 adr x0,0x8000
+00002e94 nop
+00002e98 bl 0x00003d04
+00002e9c adrp x23,0x8000
+00002ea0 ldr x22,[x23, #0x88]
+00002ea4 mov x0,x22
+00002ea8 bl 0x00003a14
+00002eac mov x2,x0
+00002eb0 mov x0,x22
+00002eb4 mov x1,#0x0
+00002eb8 mov x3,x19
+00002ebc bl 0x00003a24
+00002ec0 cmn x0,#0x1
+00002ec4 b.ne 0x00002f10
+00002ec8 ldr x0,[x23, #0x88]
+00002ecc mov x1,x19
+00002ed0 bl 0x000039e4
+00002ed4 ldr x1,[x23, #0x88]
+00002ed8 mov x0,x21
+00002edc bl 0x000039f4
+00002ee0 mov x21,x0
+00002ee4 adr x22,0x8000
+00002ee8 nop
+00002eec mov x0,x22
+00002ef0 bl 0x00003d14
+00002ef4 mov x0,x21
+00002ef8 bl 0x00002f3c
+00002efc str w0,[x20]
+00002f00 mov x0,x21
+00002f04 bl 0x00003a64
+00002f08 mov x0,x22
+00002f0c bl 0x00003d04
+00002f10 adr x0,0x8000
+00002f14 nop
+00002f18 bl 0x00003d14
+00002f1c mov x0,x19
+00002f20 bl 0x00003a64
+00002f24 mov w0,#0x0
+00002f28 ldp x29,x30,[sp, #0x30]
+00002f2c ldp x20,x19,[sp, #0x20]
+00002f30 ldp x22,x21,[sp, #0x10]
+00002f34 ldp x24,x23,[sp], #0x40
+00002f38 retab
+
+undefined8
+__usb_device_configuration_add_interface(undefined8 param_1,undefined8 param_2,undefined4 *param_3)
+
+{
+  undefined8 uVar1;
+  undefined4 uVar2;
+  long lVar3;
+  undefined8 uVar4;
+  long lVar5;
+  undefined8 uVar6;
+
+  uVar6 = *(undefined8 *)PTR__kCFAllocatorDefault_000041b8;
+  lVar3 = _CFStringCreateWithCStringNoCopy
+                    (uVar6,param_2,0x8000100,*(undefined8 *)PTR__kCFAllocatorNull_000041c0);
+  *param_3 = 0;
+  if (lVar3 != 0) {
+    _pthread_mutex_lock((pthread_mutex_t *)&DAT_00008000);
+    uVar1 = DAT_00008088;
+    uVar4 = _CFArrayGetCount(DAT_00008088);
+    lVar5 = _CFArrayGetFirstIndexOfValue(uVar1,0,uVar4,lVar3);
+    if (lVar5 == -1) {
+      _CFArrayAppendValue(DAT_00008088,lVar3);
+      uVar6 = _CFArrayCreateCopy(uVar6,DAT_00008088);
+      _pthread_mutex_unlock((pthread_mutex_t *)&DAT_00008000);
+      uVar2 = FUN_00002f3c(uVar6);
+      *param_3 = uVar2;
+      _CFRelease(uVar6);
+      _pthread_mutex_lock((pthread_mutex_t *)&DAT_00008000);
+    }
+    _pthread_mutex_unlock((pthread_mutex_t *)&DAT_00008000);
+    _CFRelease(lVar3);
+  }
+  return 0;
+}
+
+
+
+===== 00002f3c FUN_00002f3c =====
+XREF 0000c803 DATA null
+XREF 00002ef8 UNCONDITIONAL_CALL __usb_device_configuration_add_interface
+XREF 000030a4 UNCONDITIONAL_CALL __usb_device_configuration_remove_interface
+XREF 00003708 UNCONDITIONAL_CALL FUN_00003548
+00002f3c pacibsp
+00002f40 sub sp,sp,#0x40
+00002f44 stp x22,x21,[sp, #0x10]
+00002f48 stp x20,x19,[sp, #0x20]
+00002f4c stp x29,x30,[sp, #0x30]
+00002f50 add x29,sp,#0x30
+00002f54 mov x19,x0
+00002f58 orr x8,xzr,#-0x5555555555555556
+00002f5c str x8,[sp, #0x8]
+00002f60 nop
+00002f64 ldr x8,0x41b8
+00002f68 ldr x20,[x8]
+00002f6c add x1,sp,#0x8
+00002f70 mov x0,x20
+00002f74 bl 0x00003b74
+00002f78 mov x21,x0
+00002f7c cbnz w0,0x00002fd0
+00002f80 ldr x1,[sp, #0x8]
+00002f84 mov x0,x20
+00002f88 bl 0x00003bb4
+00002f8c cbz x0,0x00002fb4
+00002f90 mov x20,x0
+00002f94 mov x1,x19
+00002f98 bl 0x00003bd4
+00002f9c cbz w0,0x00002fbc
+00002fa0 mov x1,x0
+00002fa4 ldr x0,[sp, #0x8]
+00002fa8 bl 0x00003ba4
+00002fac mov x21,x0
+00002fb0 b 0x00002fc0
+00002fb4 mov w21,#0x0
+00002fb8 b 0x00002fc8
+00002fbc mov w21,#0x0
+00002fc0 mov x0,x20
+00002fc4 bl 0x00003a64
+00002fc8 ldr x0,[sp, #0x8]
+00002fcc bl 0x00003a64
+00002fd0 cmp w21,#0x0
+00002fd4 cset w0,eq
+00002fd8 ldp x29,x30,[sp, #0x30]
+00002fdc ldp x20,x19,[sp, #0x20]
+00002fe0 ldp x22,x21,[sp, #0x10]
+00002fe4 add sp,sp,#0x40
+00002fe8 retab
+
+bool FUN_00002f3c(undefined8 param_1)
+
+{
+  int iVar1;
+  long lVar2;
+  undefined8 uVar3;
+  undefined8 local_38;
+
+  local_38 = 0xaaaaaaaaaaaaaaaa;
+  uVar3 = *(undefined8 *)PTR__kCFAllocatorDefault_000041b8;
+  iVar1 = _IOUSBDeviceControllerCreate(uVar3,&local_38);
+  if (iVar1 == 0) {
+    lVar2 = _IOUSBDeviceDescriptionCreateFromController(uVar3,local_38);
+    if (lVar2 == 0) {
+      iVar1 = 0;
+    }
+    else {
+      uVar3 = _IOUSBDeviceDescriptionGetMatchingConfiguration(lVar2,param_1);
+      if ((int)uVar3 == 0) {
+        iVar1 = 0;
+      }
+      else {
+        iVar1 = _IOUSBDeviceControllerSetPreferredConfiguration(local_38,uVar3);
+      }
+      _CFRelease(lVar2);
+    }
+    _CFRelease(local_38);
+  }
+  return iVar1 == 0;
+}
+
+
+
+===== 00002fec __usb_device_configuration_remove_interface =====
+XREF Entry Point EXTERNAL null
+XREF 0000c805 DATA null
+XREF 00003928 UNCONDITIONAL_CALL FUN_00003880
+00002fec pacibsp
+00002ff0 stp x24,x23,[sp, #-0x40]!
+00002ff4 stp x22,x21,[sp, #0x10]
+00002ff8 stp x20,x19,[sp, #0x20]
+00002ffc stp x29,x30,[sp, #0x30]
+00003000 add x29,sp,#0x30
+00003004 mov x20,x2
+00003008 nop
+0000300c ldr x8,0x41b8
+00003010 ldr x21,[x8]
+00003014 nop
+00003018 ldr x8,0x41c0
+0000301c ldr x3,[x8]
+00003020 mov x0,x21
+00003024 mov w2,#0x100
+00003028 movk w2,#0x800, LSL #16
+0000302c bl 0x00003ae4
+00003030 str wzr,[x20]
+00003034 cbz x0,0x000030d0
+00003038 mov x19,x0
+0000303c adr x0,0x8000
+00003040 nop
+00003044 bl 0x00003d04
+00003048 adrp x23,0x8000
+0000304c ldr x22,[x23, #0x88]
+00003050 mov x0,x22
+00003054 bl 0x00003a14
+00003058 mov x2,x0
+0000305c mov x0,x22
+00003060 mov x1,#0x0
+00003064 mov x3,x19
+00003068 bl 0x00003a24
+0000306c cmn x0,#0x1
+00003070 b.eq 0x000030bc
+00003074 mov x1,x0
+00003078 ldr x0,[x23, #0x88]
+0000307c bl 0x00003a34
+00003080 ldr x1,[x23, #0x88]
+00003084 mov x0,x21
+00003088 bl 0x000039f4
+0000308c mov x21,x0
+00003090 adr x22,0x8000
+00003094 nop
+00003098 mov x0,x22
+0000309c bl 0x00003d14
+000030a0 mov x0,x21
+000030a4 bl 0x00002f3c
+000030a8 str w0,[x20]
+000030ac mov x0,x21
+000030b0 bl 0x00003a64
+000030b4 mov x0,x22
+000030b8 bl 0x00003d04
+000030bc adr x0,0x8000
+000030c0 nop
+000030c4 bl 0x00003d14
+000030c8 mov x0,x19
+000030cc bl 0x00003a64
+000030d0 mov w0,#0x0
+000030d4 ldp x29,x30,[sp, #0x30]
+000030d8 ldp x20,x19,[sp, #0x20]
+000030dc ldp x22,x21,[sp, #0x10]
+000030e0 ldp x24,x23,[sp], #0x40
+000030e4 retab
+
+undefined8
+__usb_device_configuration_remove_interface
+          (undefined8 param_1,undefined8 param_2,undefined4 *param_3)
+
+{
+  undefined8 uVar1;
+  undefined4 uVar2;
+  long lVar3;
+  undefined8 uVar4;
+  long lVar5;
+  undefined8 uVar6;
+
+  uVar6 = *(undefined8 *)PTR__kCFAllocatorDefault_000041b8;
+  lVar3 = _CFStringCreateWithCStringNoCopy
+                    (uVar6,param_2,0x8000100,*(undefined8 *)PTR__kCFAllocatorNull_000041c0);
+  *param_3 = 0;
+  if (lVar3 != 0) {
+    _pthread_mutex_lock((pthread_mutex_t *)&DAT_00008000);
+    uVar1 = DAT_00008088;
+    uVar4 = _CFArrayGetCount(DAT_00008088);
+    lVar5 = _CFArrayGetFirstIndexOfValue(uVar1,0,uVar4,lVar3);
+    if (lVar5 != -1) {
+      _CFArrayRemoveValueAtIndex(DAT_00008088,lVar5);
+      uVar6 = _CFArrayCreateCopy(uVar6,DAT_00008088);
+      _pthread_mutex_unlock((pthread_mutex_t *)&DAT_00008000);
+      uVar2 = FUN_00002f3c(uVar6);
+      *param_3 = uVar2;
+      _CFRelease(uVar6);
+      _pthread_mutex_lock((pthread_mutex_t *)&DAT_00008000);
+    }
+    _pthread_mutex_unlock((pthread_mutex_t *)&DAT_00008000);
+    _CFRelease(lVar3);
+  }
+  return 0;
+}
+
+
+
+===== 000030e8 _start =====
+XREF Entry Point EXTERNAL null
+XREF 0000c807 DATA null
+000030e8 pacibsp
+000030ec sub sp,sp,#0xa0
+000030f0 stp x22,x21,[sp, #0x70]
+000030f4 stp x20,x19,[sp, #0x80]
+000030f8 stp x29,x30,[sp, #0x90]
+000030fc add x29,sp,#0x90
+00003100 nop
+00003104 ldr x8,0x41a8
+00003108 ldr x8,[x8]
+0000310c stur x8,[x29, #-0x28]
+00003110 str xzr,[sp, #0x18]
+00003114 adr x0,0x3d43
+00003118 nop
+0000311c adr x1,0x8090
+00003120 nop
+00003124 adr x3,0x8080
+00003128 nop
+0000312c mov w2,#0x0
+00003130 bl 0x00003c94
+00003134 cbz w0,0x00003148
+00003138 str x0,[sp]
+0000313c adr x2,0x4270
+00003140 nop
+00003144 b 0x00003168
+00003148 nop
+0000314c ldr w0,0x8080
+00003150 add x1,sp,#0x18
+00003154 bl 0x00003c84
+00003158 cbz w0,0x00003260
+0000315c str x0,[sp]
+00003160 adr x2,0x4290
+00003164 nop
+00003168 mov w19,#0x1
+0000316c mov w0,#0x1
+00003170 mov w1,#0x3
+00003174 bl 0x00003c14
+00003178 str x19,[sp, #0x18]
+0000317c adr x2,0x4250
+00003180 nop
+00003184 mov w0,#0x1
+00003188 mov w1,#0x6
+0000318c bl 0x00003c14
+00003190 bl 0x000034e8
+00003194 adr x0,0x8000
+00003198 nop
+0000319c bl 0x00003d04
+000031a0 adrp x21,0x8000
+000031a4 ldr x8,[x21, #0x98]
+000031a8 cbnz x8,0x00003228
+000031ac orr x8,xzr,#-0x5555555555555556
+000031b0 str x8,[sp, #0x10]
+000031b4 movi v0.16B,#0xaa
+000031b8 stp q0,q0,[sp, #0x40]
+000031bc stp q0,q0,[sp, #0x20]
+000031c0 add x0,sp,#0x20
+000031c4 bl 0x00003cb4
+000031c8 add x0,sp,#0x20
+000031cc mov w1,#0x2
+000031d0 bl 0x00003cc4
+000031d4 adr x16,0x32ec
+000031d8 nop
+000031dc paciza x16
+000031e0 mov x2,x16
+000031e4 add x0,sp,#0x10
+000031e8 add x1,sp,#0x20
+000031ec mov x3,#0x0
+000031f0 bl 0x00003cf4
+000031f4 add x0,sp,#0x20
+000031f8 bl 0x00003ca4
+000031fc ldr x8,[x21, #0x98]
+00003200 cbz x8,0x00003228
+00003204 adr x19,0x8040
+00003208 nop
+0000320c adr x20,0x8000
+00003210 nop
+00003214 mov x0,x19
+00003218 mov x1,x20
+0000321c bl 0x00003ce4
+00003220 ldr x8,[x21, #0x98]
+00003224 cbnz x8,0x00003214
+00003228 adr x0,0x8000
+0000322c nop
+00003230 bl 0x00003d14
+00003234 ldur x8,[x29, #-0x28]
+00003238 nop
+0000323c ldr x9,0x41a8
+00003240 ldr x9,[x9]
+00003244 cmp x9,x8
+00003248 b.ne 0x000032e8
+0000324c ldp x29,x30,[sp, #0x90]
+00003250 ldp x20,x19,[sp, #0x80]
+00003254 ldp x22,x21,[sp, #0x70]
+00003258 add sp,sp,#0xa0
+0000325c retab
+00003260 ldr x8,[sp, #0x18]
+00003264 cbnz x8,0x0000317c
+00003268 adr x2,0x42b0
+0000326c nop
+00003270 mov w0,#0x1
+00003274 mov w1,#0x6
+00003278 bl 0x00003c14
+0000327c nop
+00003280 ldr w1,0x8090
+00003284 adr x0,0x3dd4
+00003288 nop
+0000328c adr x16,0x2dc4
+00003290 nop
+00003294 paciza x16
+00003298 mov x2,x16
+0000329c mov x3,#0x0
+000032a0 bl 0x00003c24
+000032a4 mov x1,x0
+000032a8 adrp x8,0x8000
+000032ac str x0,[x8, #0x78]
+000032b0 nop
+000032b4 ldr x8,0x41b8
+000032b8 ldr x0,[x8]
+000032bc mov x2,#0x0
+000032c0 bl 0x00003a44
+000032c4 adrp x19,0x8000
+000032c8 str x0,[x19, #0x70]
+000032cc bl 0x00003a84
+000032d0 ldr x1,[x19, #0x70]
+000032d4 nop
+000032d8 ldr x8,0x41c8
+000032dc ldr x2,[x8]
+000032e0 bl 0x00003a74
+000032e4 b 0x00003194
+000032e8 bl 0x00003c34
+
+void _start(void)
+
+{
+  int iVar1;
+  undefined8 uVar2;
+  cfstringStruct *pcVar3;
+  pthread_t local_90;
+  long local_88;
+  pthread_attr_t local_80;
+  long local_38;
+
+  local_38 = *(long *)PTR____stack_chk_guard_000041a8;
+  local_88 = 0;
+  iVar1 = _notify_register_mach_port("com.apple.mobile.lockdown",&DAT_00008090,0,&DAT_00008080);
+  if (iVar1 == 0) {
+    iVar1 = _notify_get_state(DAT_00008080,&local_88);
+    if (iVar1 != 0) {
+      pcVar3 = &cf_DevUSB_notify_get_state__error__d;
+      goto LAB_00003168;
+    }
+    if (local_88 == 0) {
+      _SCLog(1,6,&cf_DevUSB_Waitingforlockdownd);
+      DAT_00008078 = __SC_CFMachPortCreateWithPort
+                               ("USBDeviceConfiguration",DAT_00008090,_lockdownArrivalCallback,0);
+      DAT_00008070 = _CFMachPortCreateRunLoopSource
+                               (*(undefined8 *)PTR__kCFAllocatorDefault_000041b8,DAT_00008078,0);
+      uVar2 = _CFRunLoopGetCurrent();
+      _CFRunLoopAddSource(uVar2,DAT_00008070,*(undefined8 *)PTR__kCFRunLoopDefaultMode_000041c8);
+      goto LAB_00003194;
+    }
+  }
+  else {
+    pcVar3 = &cf_DevUSB_notify_register_mach_port_lockdown_error__d;
+LAB_00003168:
+    _SCLog(1,3,pcVar3);
+    local_88 = 1;
+  }
+  _SCLog(1,6,&cf_DevUSB_lockdowndisavailable);
+  FUN_000034e8();
+LAB_00003194:
+  _pthread_mutex_lock((pthread_mutex_t *)&DAT_00008000);
+  if (DAT_00008098 == 0) {
+    local_90 = (pthread_t)0xaaaaaaaaaaaaaaaa;
+    local_80.__opaque[0x20] = -0x56;
+    local_80.__opaque[0x21] = -0x56;
+    local_80.__opaque[0x22] = -0x56;
+    local_80.__opaque[0x23] = -0x56;
+    local_80.__opaque[0x24] = -0x56;
+    local_80.__opaque[0x25] = -0x56;
+    local_80.__opaque[0x26] = -0x56;
+    local_80.__opaque[0x27] = -0x56;
+    local_80.__opaque[0x18] = -0x56;
+    local_80.__opaque[0x19] = -0x56;
+    local_80.__opaque[0x1a] = -0x56;
+    local_80.__opaque[0x1b] = -0x56;
+    local_80.__opaque[0x1c] = -0x56;
+    local_80.__opaque[0x1d] = -0x56;
+    local_80.__opaque[0x1e] = -0x56;
+    local_80.__opaque[0x1f] = -0x56;
+    local_80.__opaque[0x30] = -0x56;
+    local_80.__opaque[0x31] = -0x56;
+    local_80.__opaque[0x32] = -0x56;
+    local_80.__opaque[0x33] = -0x56;
+    local_80.__opaque[0x34] = -0x56;
+    local_80.__opaque[0x35] = -0x56;
+    local_80.__opaque[0x36] = -0x56;
+    local_80.__opaque[0x37] = -0x56;
+    local_80.__opaque[0x28] = -0x56;
+    local_80.__opaque[0x29] = -0x56;
+    local_80.__opaque[0x2a] = -0x56;
+    local_80.__opaque[0x2b] = -0x56;
+    local_80.__opaque[0x2c] = -0x56;
+    local_80.__opaque[0x2d] = -0x56;
+    local_80.__opaque[0x2e] = -0x56;
+    local_80.__opaque[0x2f] = -0x56;
+    local_80.__opaque[0] = -0x56;
+    local_80.__opaque[1] = -0x56;
+    local_80.__opaque[2] = -0x56;
+    local_80.__opaque[3] = -0x56;
+    local_80.__opaque[4] = -0x56;
+    local_80.__opaque[5] = -0x56;
+    local_80.__opaque[6] = -0x56;
+    local_80.__opaque[7] = -0x56;
+    local_80.__sig = -0x5555555555555556;
+    local_80.__opaque[0x10] = -0x56;
+    local_80.__opaque[0x11] = -0x56;
+    local_80.__opaque[0x12] = -0x56;
+    local_80.__opaque[0x13] = -0x56;
+    local_80.__opaque[0x14] = -0x56;
+    local_80.__opaque[0x15] = -0x56;
+    local_80.__opaque[0x16] = -0x56;
+    local_80.__opaque[0x17] = -0x56;
+    local_80.__opaque[8] = -0x56;
+    local_80.__opaque[9] = -0x56;
+    local_80.__opaque[10] = -0x56;
+    local_80.__opaque[0xb] = -0x56;
+    local_80.__opaque[0xc] = -0x56;
+    local_80.__opaque[0xd] = -0x56;
+    local_80.__opaque[0xe] = -0x56;
+    local_80.__opaque[0xf] = -0x56;
+    _pthread_attr_init(&local_80);
+    _pthread_attr_setdetachstate(&local_80,2);
+    _pthread_create(&local_90,&local_80,(void **)FUN_000032ec,(void *)0x0);
+    _pthread_attr_destroy(&local_80);
+    while (DAT_00008098 != 0) {
+      _pthread_cond_wait((pthread_cond_t *)&DAT_00008040,(pthread_mutex_t *)&DAT_00008000);
+    }
+  }
+  iVar1 = _pthread_mutex_unlock((pthread_mutex_t *)&DAT_00008000);
+  if (*(long *)PTR____stack_chk_guard_000041a8 == local_38) {
+    return;
+  }
+                    /* WARNING: Subroutine does not return */
+  ___stack_chk_fail(iVar1);
+}
+
+
+
+===== 000032ec FUN_000032ec =====
+XREF 0000c809 DATA null
+XREF 000031e0 PARAM _start
+000032ec pacibsp
+000032f0 sub sp,sp,#0x40
+000032f4 stp x22,x21,[sp, #0x10]
+000032f8 stp x20,x19,[sp, #0x20]
+000032fc stp x29,x30,[sp, #0x30]
+00003300 add x29,sp,#0x30
+00003304 orr w8,wzr,#0xaaaaaaaa
+00003308 str w8,[sp, #0xc]
+0000330c adr x0,0x4410
+00003310 nop
+00003314 mov w1,#0x0
+00003318 bl 0x00003b04
+0000331c mov x1,x0
+00003320 nop
+00003324 ldr x8,0x41b0
+00003328 ldr w0,[x8]
+0000332c add x2,sp,#0xc
+00003330 bl 0x00003c44
+00003334 nop
+00003338 ldr x8,0x41b8
+0000333c ldr x19,[x8]
+00003340 adrp x21,0x8000
+00003344 cbnz w0,0x000033a0
+00003348 nop
+0000334c nop
+00003350 ldr w1,0x41f0
+00003354 ldr w2,[sp, #0xc]
+00003358 mov x0,x19
+0000335c bl 0x00003b24
+00003360 str x0,[x21, #0xa0]
+00003364 cbz x0,0x000033a0
+00003368 adr x16,0x372c
+0000336c nop
+00003370 paciza x16
+00003374 mov x1,x16
+00003378 mov x2,#0x0
+0000337c bl 0x00003b44
+00003380 ldr x20,[x21, #0xa0]
+00003384 bl 0x00003a84
+00003388 mov x1,x0
+0000338c nop
+00003390 ldr x8,0x41c8
+00003394 ldr x2,[x8]
+00003398 mov x0,x20
+0000339c bl 0x00003b54
+000033a0 adr x20,0x8000
+000033a4 nop
+000033a8 mov x0,x20
+000033ac bl 0x00003d04
+000033b0 nop
+000033b4 ldr x2,0x41d0
+000033b8 mov x0,x19
+000033bc mov x1,#0x0
+000033c0 bl 0x00003a04
+000033c4 adrp x22,0x8000
+000033c8 str x0,[x22, #0x88]
+000033cc bl 0x00003a84
+000033d0 adrp x8,0x8000
+000033d4 str x0,[x8, #0x98]
+000033d8 mov x0,x20
+000033dc bl 0x00003d14
+000033e0 adr x0,0x8040
+000033e4 nop
+000033e8 bl 0x00003cd4
+000033ec bl 0x00003a94
+000033f0 ldr x19,[x21, #0xa0]
+000033f4 cbz x19,0x0000344c
+000033f8 bl 0x00003a84
+000033fc mov x1,x0
+00003400 nop
+00003404 ldr x8,0x41c8
+00003408 ldr x2,[x8]
+0000340c mov x0,x19
+00003410 bl 0x00003b64
+00003414 ldr x0,[x21, #0xa0]
+00003418 bl 0x00003b34
+0000341c mov x19,x0
+00003420 ldr x0,[x21, #0xa0]
+00003424 bl 0x00003a64
+00003428 cbz w19,0x00003448
+0000342c nop
+00003430 ldr x8,0x41d8
+00003434 ldr w0,[x8]
+00003438 mov x1,x19
+0000343c mov w2,#0x1
+00003440 mov w3,#0xffffffff
+00003444 bl 0x00003c54
+00003448 str xzr,[x21, #0xa0]
+0000344c adr x0,0x8000
+00003450 nop
+00003454 bl 0x00003d04
+00003458 ldr x0,[x22, #0x88]
+0000345c cbz x0,0x00003468
+00003460 bl 0x00003a64
+00003464 str xzr,[x22, #0x88]
+00003468 adr x0,0x8000
+0000346c nop
+00003470 bl 0x00003d14
+00003474 mov x0,#0x0
+00003478 ldp x29,x30,[sp, #0x30]
+0000347c ldp x20,x19,[sp, #0x20]
+00003480 ldp x22,x21,[sp, #0x10]
+00003484 add sp,sp,#0x40
+00003488 retab
+
+undefined8 FUN_000032ec(void)
+
+{
+  long lVar1;
+  kern_return_t kVar2;
+  int iVar3;
+  mach_port_name_t name;
+  char *service_name;
+  undefined8 uVar4;
+  undefined8 uVar5;
+  mach_port_t local_34;
+
+  local_34 = 0xaaaaaaaa;
+  service_name = (char *)_CFStringGetCStringPtr(&cf_com_apple_SystemConfiguration_USBDeviceConfig,0)
+  ;
+  kVar2 = _bootstrap_check_in(*(mach_port_t *)PTR__bootstrap_port_000041b0,service_name,&local_34);
+  uVar5 = *(undefined8 *)PTR__kCFAllocatorDefault_000041b8;
+  if (kVar2 == 0) {
+    DAT_000080a0 = _IOMIGMachPortCreate(uVar5,DAT_000041f0,local_34);
+    if (DAT_000080a0 != 0) {
+      _IOMIGMachPortRegisterDemuxCallback(DAT_000080a0,FUN_0000372c,0);
+      lVar1 = DAT_000080a0;
+      uVar4 = _CFRunLoopGetCurrent();
+      _IOMIGMachPortScheduleWithRunLoop
+                (lVar1,uVar4,*(undefined8 *)PTR__kCFRunLoopDefaultMode_000041c8);
+    }
+  }
+  _pthread_mutex_lock((pthread_mutex_t *)&DAT_00008000);
+  DAT_00008088 = _CFArrayCreateMutable(uVar5,0,PTR__kCFTypeArrayCallBacks_000041d0);
+  DAT_00008098 = _CFRunLoopGetCurrent();
+  _pthread_mutex_unlock((pthread_mutex_t *)&DAT_00008000);
+  iVar3 = _pthread_cond_signal((pthread_cond_t *)&DAT_00008040);
+  _CFRunLoopRun(iVar3);
+  lVar1 = DAT_000080a0;
+  if (DAT_000080a0 != 0) {
+    uVar5 = _CFRunLoopGetCurrent();
+    _IOMIGMachPortUnscheduleFromRunLoop
+              (lVar1,uVar5,*(undefined8 *)PTR__kCFRunLoopDefaultMode_000041c8);
+    name = _IOMIGMachPortGetPort(DAT_000080a0);
+    _CFRelease(DAT_000080a0);
+    if (name != 0) {
+      _mach_port_mod_refs(*(ipc_space_t *)PTR__mach_task_self__000041d8,name,1,-1);
+    }
+    DAT_000080a0 = 0;
+  }
+  _pthread_mutex_lock((pthread_mutex_t *)&DAT_00008000);
+  if (DAT_00008088 != 0) {
+    _CFRelease();
+    DAT_00008088 = 0;
+  }
+  _pthread_mutex_unlock((pthread_mutex_t *)&DAT_00008000);
+  return 0;
+}
+
+
+
+===== 0000348c _stop =====
+XREF Entry Point EXTERNAL null
+XREF 0000c80b DATA null
+0000348c pacibsp
+00003490 stp x20,x19,[sp, #-0x20]!
+00003494 stp x29,x30,[sp, #0x10]
+00003498 add x29,sp,#0x10
+0000349c mov x19,x0
+000034a0 adr x0,0x8000
+000034a4 nop
+000034a8 bl 0x00003d04
+000034ac nop
+000034b0 ldr x0,0x8098
+000034b4 cbz x0,0x000034bc
+000034b8 bl 0x00003ac4
+000034bc adr x0,0x8000
+000034c0 nop
+000034c4 bl 0x00003d14
+000034c8 mov x0,x19
+000034cc ldp x29,x30,[sp, #0x10]
+000034d0 ldp x20,x19,[sp], #0x20
+000034d4 autibsp
+000034d8 eor x16,x30,x30, LSL #0x1
+000034dc tbz x16,#0x3e,0x000034e4
+000034e0 brk #0xc471
+000034e4 b 0x00003ab4
+
+void _stop(undefined8 param_1)
+
+{
+  code *pcVar1;
+  ulong unaff_x30;
+
+  _pthread_mutex_lock((pthread_mutex_t *)&DAT_00008000);
+  if (DAT_00008098 != 0) {
+    _CFRunLoopStop();
+  }
+  _pthread_mutex_unlock((pthread_mutex_t *)&DAT_00008000);
+  if (((unaff_x30 ^ unaff_x30 << 1) >> 0x3e & 1) != 0) {
+                    /* WARNING: Does not return */
+    pcVar1 = (code *)SoftwareBreakpoint(0xc471,0x34e4);
+    (*pcVar1)();
+  }
+  _CFRunLoopSourceSignal(param_1);
+  return;
+}
+
+
+
+===== 000034e8 FUN_000034e8 =====
+XREF 0000c80d DATA null
+XREF 00002de8 UNCONDITIONAL_CALL _lockdownArrivalCallback
+XREF 00003190 UNCONDITIONAL_CALL _start
+000034e8 pacibsp
+000034ec stp x29,x30,[sp, #-0x10]!
+000034f0 mov x29,sp
+000034f4 adr x2,0x42d0
+000034f8 nop
+000034fc mov w0,#0x1
+00003500 mov w1,#0x6
+00003504 bl 0x00003c14
+00003508 bl 0x00003a84
+0000350c mov x2,x0
+00003510 nop
+00003514 ldr x8,0x41c8
+00003518 ldr x3,[x8]
+0000351c adr x16,0x3548
+00003520 nop
+00003524 paciza x16
+00003528 mov x0,x16
+0000352c mov x1,#0x0
+00003530 ldp x29,x30,[sp], #0x10
+00003534 autibsp
+00003538 eor x16,x30,x30, LSL #0x1
+0000353c tbz x16,#0x3e,0x00003544
+00003540 brk #0xc471
+00003544 b 0x00003b84
+
+void FUN_000034e8(void)
+
+{
+  code *pcVar1;
+  undefined8 uVar2;
+  ulong unaff_x30;
+
+  _SCLog(1,6,&cf_DevUSB_waitingforIOUSBDeviceController);
+  uVar2 = _CFRunLoopGetCurrent();
+  if (((unaff_x30 ^ unaff_x30 << 1) >> 0x3e & 1) != 0) {
+                    /* WARNING: Does not return */
+    pcVar1 = (code *)SoftwareBreakpoint(0xc471,0x3544);
+    (*pcVar1)();
+  }
+  _IOUSBDeviceControllerRegisterArrivalCallback
+            (FUN_00003548,0,uVar2,*(undefined8 *)PTR__kCFRunLoopDefaultMode_000041c8);
+  return;
+}
+
+
+
+===== 00003548 FUN_00003548 =====
+XREF 0000c80e DATA null
+XREF 00003528 PARAM FUN_000034e8
+00003548 pacibsp
+0000354c sub sp,sp,#0x40
+00003550 stp x22,x21,[sp, #0x10]
+00003554 stp x20,x19,[sp, #0x20]
+00003558 stp x29,x30,[sp, #0x30]
+0000355c add x29,sp,#0x30
+00003560 adr x2,0x42f0
+00003564 nop
+00003568 mov w0,#0x1
+0000356c mov w1,#0x6
+00003570 bl 0x00003c14
+00003574 str xzr,[sp, #0x8]
+00003578 adr x2,0x4330
+0000357c nop
+00003580 mov w0,#0x1
+00003584 mov w1,#0x6
+00003588 bl 0x00003c14
+0000358c nop
+00003590 ldr x8,0x41b8
+00003594 ldr x19,[x8]
+00003598 add x1,sp,#0x8
+0000359c mov x0,x19
+000035a0 bl 0x00003b74
+000035a4 cbz w0,0x000035d8
+000035a8 str x0,[sp]
+000035ac adr x2,0x4350
+000035b0 nop
+000035b4 mov w0,#0x1
+000035b8 mov w1,#0x3
+000035bc bl 0x00003c14
+000035c0 adr x2,0x4310
+000035c4 nop
+000035c8 mov w0,#0x1
+000035cc mov w1,#0x3
+000035d0 bl 0x00003c14
+000035d4 b 0x000036cc
+000035d8 ldr x1,[sp, #0x8]
+000035dc mov x0,x19
+000035e0 bl 0x00003bc4
+000035e4 cbz x0,0x000036c4
+000035e8 mov x20,x0
+000035ec adr x0,0x4370
+000035f0 nop
+000035f4 mov x1,#0x0
+000035f8 bl 0x00003c04
+000035fc cbz x0,0x000036a8
+00003600 mov x21,x0
+00003604 mov x0,x19
+00003608 mov x1,#0x0
+0000360c mov x2,x21
+00003610 bl 0x00003ad4
+00003614 mov x22,x0
+00003618 mov x0,x21
+0000361c bl 0x00003b14
+00003620 mov x4,x0
+00003624 adr x1,0x4390
+00003628 nop
+0000362c adr x2,0x43b0
+00003630 nop
+00003634 mov x0,x22
+00003638 mov x3,#0x0
+0000363c mov x5,#0x0
+00003640 bl 0x00003af4
+00003644 mov x0,x20
+00003648 mov x1,x22
+0000364c bl 0x00003be4
+00003650 mov x0,x22
+00003654 bl 0x00003a64
+00003658 mov x0,x20
+0000365c mov x1,x21
+00003660 bl 0x00003bf4
+00003664 mov x0,x21
+00003668 bl 0x00003a64
+0000366c ldr x0,[sp, #0x8]
+00003670 mov x1,x20
+00003674 bl 0x00003b94
+00003678 cbz w0,0x000036bc
+0000367c str x0,[sp]
+00003680 adr x2,0x43d0
+00003684 nop
+00003688 mov w0,#0x1
+0000368c mov w1,#0x3
+00003690 bl 0x00003c14
+00003694 mov x0,x20
+00003698 bl 0x00003a64
+0000369c ldr x0,[sp, #0x8]
+000036a0 bl 0x00003a64
+000036a4 b 0x000035c0
+000036a8 adr x2,0x43f0
+000036ac nop
+000036b0 mov w0,#0x1
+000036b4 mov w1,#0x3
+000036b8 bl 0x00003c14
+000036bc mov x0,x20
+000036c0 bl 0x00003a64
+000036c4 ldr x0,[sp, #0x8]
+000036c8 bl 0x00003a64
+000036cc adr x0,0x8000
+000036d0 nop
+000036d4 bl 0x00003d04
+000036d8 nop
+000036dc ldr x1,0x8088
+000036e0 cbz x1,0x000036f4
+000036e4 mov x0,x19
+000036e8 bl 0x000039f4
+000036ec mov x19,x0
+000036f0 b 0x000036f8
+000036f4 mov x19,#0x0
+000036f8 adr x0,0x8000
+000036fc nop
+00003700 bl 0x00003d14
+00003704 mov x0,x19
+00003708 bl 0x00002f3c
+0000370c cbz x19,0x00003718
+00003710 mov x0,x19
+00003714 bl 0x00003a64
+00003718 ldp x29,x30,[sp, #0x30]
+0000371c ldp x20,x19,[sp, #0x20]
+00003720 ldp x22,x21,[sp, #0x10]
+00003724 add sp,sp,#0x40
+00003728 retab
+
+void FUN_00003548(void)
+
+{
+  int iVar1;
+  long lVar2;
+  undefined8 uVar3;
+  undefined8 uVar4;
+  long lVar5;
+  undefined8 uVar6;
+  undefined8 local_38;
+
+  _SCLog(1,6,&cf_DevUSB_IOUSBDeviceControllerisavailable);
+  local_38 = 0;
+  _SCLog(1,6,&cf_DevUSB_setDefaultUSBDescriptionentered);
+  uVar6 = *(undefined8 *)PTR__kCFAllocatorDefault_000041b8;
+  iVar1 = _IOUSBDeviceControllerCreate(uVar6,&local_38);
+  if (iVar1 == 0) {
+    lVar5 = _IOUSBDeviceDescriptionCreateFromDefaultsAndController(uVar6,local_38);
+    if (lVar5 != 0) {
+      lVar2 = _MGCopyAnswer(&cf_UniqueDeviceID,0);
+      if (lVar2 == 0) {
+        _SCLog(1,3,&cf_DevUSB_Can_tgetUDIDforuseasserialnumber);
+      }
+      else {
+        uVar3 = _CFStringCreateMutableCopy(uVar6,0,lVar2);
+        uVar4 = _CFStringGetLength(lVar2);
+        _CFStringFindAndReplace(uVar3,&cf__,&cf___,0,uVar4,0);
+        _IOUSBDeviceDescriptionSetSerialString(lVar5,uVar3);
+        _CFRelease(uVar3);
+        _IOUSBDeviceDescriptionSetUDIDString(lVar5,lVar2);
+        _CFRelease(lVar2);
+        iVar1 = _IOUSBDeviceControllerSetDescription(local_38,lVar5);
+        if (iVar1 != 0) {
+          _SCLog(1,3,&cf_DevUSB_FailedtosetUSBDeviceDescription_0x_08x);
+          _CFRelease(lVar5);
+          _CFRelease(local_38);
+          goto LAB_000035c0;
+        }
+      }
+      _CFRelease(lVar5);
+    }
+    _CFRelease(local_38);
+  }
+  else {
+    _SCLog(1,3,&cf_DevUSB_IOUSBDeviceControllerCreatefailedwitherror_0x_08x);
+LAB_000035c0:
+    _SCLog(1,3,&cf_DevUSB_FailedtosetUSBDeviceDescription);
+  }
+  _pthread_mutex_lock((pthread_mutex_t *)&DAT_00008000);
+  if (DAT_00008088 == 0) {
+    lVar5 = 0;
+  }
+  else {
+    lVar5 = _CFArrayCreateCopy(uVar6);
+  }
+  _pthread_mutex_unlock((pthread_mutex_t *)&DAT_00008000);
+  FUN_00002f3c(lVar5);
+  if (lVar5 != 0) {
+    _CFRelease(lVar5);
+  }
+  return;
+}
+
+
+
+===== 0000372c FUN_0000372c =====
+XREF 0000c80f DATA null
+XREF 00003374 PARAM FUN_000032ec
+0000372c pacibsp
+
+undefined1 FUN_0000372c(undefined8 param_1,long param_2,undefined8 param_3)
+
+{
+  undefined1 uVar1;
+
+  if (*(int *)(param_2 + 0x14) < DAT_000041e8 || DAT_000041ec <= *(int *)(param_2 + 0x14)) {
+    uVar1 = 0;
+  }
+  else {
+    uVar1 = _usb_device_configuration_server(param_2,param_3);
+  }
+  return uVar1;
+}
+
+
+
+===== 00003730 FUN_00003730 =====
+00003730 stp x29,x30,[sp, #-0x10]!
+00003734 mov x29,sp
+00003738 ldr w8,[x1, #0x14]
+0000373c adr x9,0x41e0
+00003740 nop
+00003744 ldp w10,w9,[x9, #0x8]
+00003748 cmp w8,w10
+0000374c ccmp w8,w9,#0x0,ge
+00003750 b.lt 0x0000375c
+00003754 mov w0,#0x0
+00003758 b 0x00003768
+0000375c mov x0,x1
+00003760 mov x1,x2
+00003764 bl 0x00003950
+00003768 and w0,w0,#0xff
+0000376c ldp x29,x30,[sp], #0x10
+00003770 retab
+
+undefined1 FUN_00003730(undefined8 param_1,long param_2,undefined8 param_3)
+
+{
+  undefined1 uVar1;
+
+  if (*(int *)(param_2 + 0x14) < DAT_000041e8 || DAT_000041ec <= *(int *)(param_2 + 0x14)) {
+    uVar1 = 0;
+  }
+  else {
+    uVar1 = _usb_device_configuration_server(param_2,param_3);
+  }
+  return uVar1;
+}
+
+
+
+===== 00003774 _usb_device_configuration_server_routine =====
+XREF Entry Point EXTERNAL null
+XREF 0000c811 DATA null
+XREF 000041e0 DATA null
+00003774 ldr w8,[x0, #0x14]
+00003778 mov w9,#0xffff8a9c
+0000377c add w9,w8,w9
+00003780 cmn w9,#0x2
+00003784 b.cs 0x00003790
+00003788 mov x0,#0x0
+0000378c ret
+00003790 mov w9,#0xffff8a9e
+00003794 add w8,w8,w9
+00003798 adr x9,0x41e0
+0000379c nop
+000037a0 mov w10,#0x28
+000037a4 umaddl x8,w8,w10,x9
+000037a8 ldr x0,[x8, #0x28]
+000037ac ret
+
+undefined * _usb_device_configuration_server_routine(long param_1)
+
+{
+  if (*(int *)(param_1 + 0x14) - 0x7564U < 0xfffffffe) {
+    return (undefined *)0x0;
+  }
+  return (&PTR_FUN_00004208)[(ulong)(*(int *)(param_1 + 0x14) - 0x7562) * 5];
+}
+
+
+
+===== 000037b0 FUN_000037b0 =====
+XREF 0000c812 DATA null
+XREF 00004208 DATA null
+000037b0 pacibsp
+000037b4 stp x22,x21,[sp, #-0x30]!
+000037b8 stp x20,x19,[sp, #0x10]
+000037bc stp x29,x30,[sp, #0x20]
+000037c0 add x29,sp,#0x20
+000037c4 mov x19,x1
+000037c8 ldr w8,[x0]
+000037cc tbnz w8,#0x1f,0x0000380c
+000037d0 mov x20,x0
+000037d4 ldr w8,[x0, #0x4]
+000037d8 cmp w8,#0x28
+000037dc b.cc 0x0000380c
+000037e0 cmp w8,#0x128
+000037e4 b.hi 0x0000380c
+000037e8 ldr w9,[x20, #0x24]
+000037ec sub w10,w8,#0x28
+000037f0 cmp w9,#0x100
+000037f4 ccmp w10,w9,#0x0,ls
+000037f8 add w9,w9,#0x3
+000037fc and w9,w9,#0xfffffffc
+00003800 add w9,w9,#0x28
+00003804 ccmp w8,w9,#0x0,cs
+00003808 b.eq 0x00003834
+0000380c mov w8,#0xfffffed0
+00003810 str w8,[x19, #0x20]
+00003814 nop
+00003818 ldr x8,0x41a0
+0000381c ldr x8,[x8]
+00003820 str x8,[x19, #0x18]
+00003824 ldp x29,x30,[sp, #0x20]
+00003828 ldp x20,x19,[sp, #0x10]
+0000382c ldp x22,x21,[sp], #0x30
+00003830 retab
+00003834 add x21,x20,#0x28
+00003838 sub x2,x8,#0x28
+0000383c mov x0,x21
+00003840 mov w1,#0x0
+00003844 bl 0x00003c64
+00003848 cbz x0,0x0000380c
+0000384c ldr w0,[x20, #0xc]
+00003850 add x2,x19,#0x24
+00003854 mov x1,x21
+00003858 bl 0x00002e40
+0000385c str w0,[x19, #0x20]
+00003860 nop
+00003864 ldr x8,0x41a0
+00003868 ldr x8,[x8]
+0000386c cbnz w0,0x00003820
+00003870 str x8,[x19, #0x18]
+00003874 mov w8,#0x28
+00003878 str w8,[x19, #0x4]
+0000387c b 0x00003824
+
+void FUN_000037b0(int *param_1,long param_2)
+
+{
+  uint uVar1;
+  uint uVar2;
+  int iVar3;
+  void *pvVar4;
+  undefined8 uVar5;
+
+  if (-1 < *param_1) {
+    uVar1 = param_1[1];
+    if (((0x27 < uVar1) && (uVar1 < 0x129)) &&
+       (uVar2 = param_1[9],
+       (uVar2 < 0x101 && uVar2 <= uVar1 - 0x28) && uVar1 == (uVar2 + 3 & 0xfffffffc) + 0x28)) {
+      pvVar4 = _memchr(param_1 + 10,0,(ulong)uVar1 - 0x28);
+      if (pvVar4 != (void *)0x0) {
+        iVar3 = __usb_device_configuration_add_interface(param_1[3],param_1 + 10,param_2 + 0x24);
+        *(int *)(param_2 + 0x20) = iVar3;
+        uVar5 = *(undefined8 *)PTR__NDR_record_000041a0;
+        if (iVar3 == 0) {
+          *(undefined8 *)(param_2 + 0x18) = uVar5;
+          *(undefined4 *)(param_2 + 4) = 0x28;
+          return;
+        }
+        goto LAB_00003820;
+      }
+    }
+  }
+  *(undefined4 *)(param_2 + 0x20) = 0xfffffed0;
+  uVar5 = *(undefined8 *)PTR__NDR_record_000041a0;
+LAB_00003820:
+  *(undefined8 *)(param_2 + 0x18) = uVar5;
+  return;
+}
+
+
+
+===== 00003880 FUN_00003880 =====
+XREF 0000c813 DATA null
+XREF 00004230 DATA null
+00003880 pacibsp
+00003884 stp x22,x21,[sp, #-0x30]!
+00003888 stp x20,x19,[sp, #0x10]
+0000388c stp x29,x30,[sp, #0x20]
+00003890 add x29,sp,#0x20
+00003894 mov x19,x1
+00003898 ldr w8,[x0]
+0000389c tbnz w8,#0x1f,0x000038dc
+000038a0 mov x20,x0
+000038a4 ldr w8,[x0, #0x4]
+000038a8 cmp w8,#0x28
+000038ac b.cc 0x000038dc
+000038b0 cmp w8,#0x128
+000038b4 b.hi 0x000038dc
+000038b8 ldr w9,[x20, #0x24]
+000038bc sub w10,w8,#0x28
+000038c0 cmp w9,#0x100
+000038c4 ccmp w10,w9,#0x0,ls
+000038c8 add w9,w9,#0x3
+000038cc and w9,w9,#0xfffffffc
+000038d0 add w9,w9,#0x28
+000038d4 ccmp w8,w9,#0x0,cs
+000038d8 b.eq 0x00003904
+000038dc mov w8,#0xfffffed0
+000038e0 str w8,[x19, #0x20]
+000038e4 nop
+000038e8 ldr x8,0x41a0
+000038ec ldr x8,[x8]
+000038f0 str x8,[x19, #0x18]
+000038f4 ldp x29,x30,[sp, #0x20]
+000038f8 ldp x20,x19,[sp, #0x10]
+000038fc ldp x22,x21,[sp], #0x30
+00003900 retab
+00003904 add x21,x20,#0x28
+00003908 sub x2,x8,#0x28
+0000390c mov x0,x21
+00003910 mov w1,#0x0
+00003914 bl 0x00003c64
+00003918 cbz x0,0x000038dc
+0000391c ldr w0,[x20, #0xc]
+00003920 add x2,x19,#0x24
+00003924 mov x1,x21
+00003928 bl 0x00002fec
+0000392c str w0,[x19, #0x20]
+00003930 nop
+00003934 ldr x8,0x41a0
+00003938 ldr x8,[x8]
+0000393c cbnz w0,0x000038f0
+00003940 str x8,[x19, #0x18]
+00003944 mov w8,#0x28
+00003948 str w8,[x19, #0x4]
+0000394c b 0x000038f4
+
+void FUN_00003880(int *param_1,long param_2)
+
+{
+  uint uVar1;
+  uint uVar2;
+  int iVar3;
+  void *pvVar4;
+  undefined8 uVar5;
+
+  if (-1 < *param_1) {
+    uVar1 = param_1[1];
+    if (((0x27 < uVar1) && (uVar1 < 0x129)) &&
+       (uVar2 = param_1[9],
+       (uVar2 < 0x101 && uVar2 <= uVar1 - 0x28) && uVar1 == (uVar2 + 3 & 0xfffffffc) + 0x28)) {
+      pvVar4 = _memchr(param_1 + 10,0,(ulong)uVar1 - 0x28);
+      if (pvVar4 != (void *)0x0) {
+        iVar3 = __usb_device_configuration_remove_interface(param_1[3],param_1 + 10,param_2 + 0x24);
+        *(int *)(param_2 + 0x20) = iVar3;
+        uVar5 = *(undefined8 *)PTR__NDR_record_000041a0;
+        if (iVar3 == 0) {
+          *(undefined8 *)(param_2 + 0x18) = uVar5;
+          *(undefined4 *)(param_2 + 4) = 0x28;
+          return;
+        }
+        goto LAB_000038f0;
+      }
+    }
+  }
+  *(undefined4 *)(param_2 + 0x20) = 0xfffffed0;
+  uVar5 = *(undefined8 *)PTR__NDR_record_000041a0;
+LAB_000038f0:
+  *(undefined8 *)(param_2 + 0x18) = uVar5;
+  return;
+}
+
+
+
+===== 00003950 _usb_device_configuration_server =====
+XREF Entry Point EXTERNAL null
+XREF 0000c815 DATA null
+XREF 00003764 UNCONDITIONAL_CALL FUN_00003730
+00003950 pacibsp
+00003954 stp x29,x30,[sp, #-0x10]!
+00003958 mov x29,sp
+0000395c ldr w8,[x0]
+00003960 and w8,w8,#0x1f
+00003964 ldr w9,[x0, #0x8]
+00003968 mov w10,#0x24
+0000396c stp w8,w10,[x1]
+00003970 ldr w8,[x0, #0x14]
+00003974 add w8,w8,#0x64
+00003978 stp w9,wzr,[x1, #0x8]
+0000397c stp wzr,w8,[x1, #0x10]
+00003980 ldr w8,[x0, #0x14]
+00003984 mov w9,#0xffff8a9c
+00003988 add w9,w8,w9
+0000398c cmn w9,#0x2
+00003990 b.cc 0x000039c0
+00003994 mov w9,#0xffff8a9e
+00003998 add w8,w8,w9
+0000399c adr x9,0x41e0
+000039a0 nop
+000039a4 mov w10,#0x28
+000039a8 umaddl x8,w8,w10,x9
+000039ac ldr x8,[x8, #0x28]
+000039b0 cbz x8,0x000039c0
+000039b4 blraaz x8
+000039b8 mov w0,#0x1
+000039bc b 0x000039dc
+000039c0 mov w0,#0x0
+000039c4 nop
+000039c8 ldr x8,0x41a0
+000039cc ldr x8,[x8]
+000039d0 str x8,[x1, #0x18]
+000039d4 mov w8,#0xfffffed1
+000039d8 str w8,[x1, #0x20]
+000039dc ldp x29,x30,[sp], #0x10
+000039e0 retab
+
+undefined8 _usb_device_configuration_server(uint *param_1,uint *param_2)
+
+{
+  uint uVar1;
+  uint uVar2;
+  undefined8 uVar3;
+
+  uVar1 = param_1[2];
+  *param_2 = *param_1 & 0x1f;
+  param_2[1] = 0x24;
+  uVar2 = param_1[5];
+  param_2[2] = uVar1;
+  param_2[3] = 0;
+  param_2[4] = 0;
+  param_2[5] = uVar2 + 100;
+  if ((param_1[5] - 0x7564 < 0xfffffffe) ||
+     ((code *)(&PTR_FUN_00004208)[(ulong)(param_1[5] - 0x7562) * 5] == (code *)0x0)) {
+    uVar3 = 0;
+    *(undefined8 *)(param_2 + 6) = *(undefined8 *)PTR__NDR_record_000041a0;
+    param_2[8] = 0xfffffed1;
+  }
+  else {
+    (*(code *)(&PTR_FUN_00004208)[(ulong)(param_1[5] - 0x7562) * 5])();
+    uVar3 = 1;
+  }
+  return uVar3;
+}
+
+
+
+===== 000039e4 _CFArrayAppendValue =====
+XREF 00004000 DATA null
+XREF 00002ed0 UNCONDITIONAL_CALL __usb_device_configuration_add_interface
+XREF 000039f0 COMPUTED_JUMP _CFArrayAppendValue
+000039e4 adrp x17,0x4000
+000039e8 add x17,x17,#0x0
+000039ec ldr x16,[x17]
+000039f0 braa x16,x17
+
+void _CFArrayAppendValue(void)
+
+{
+                    /* WARNING: Could not recover jumptable at 0x000039f0. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  (*(code *)PTR__CFArrayAppendValue_00004000)();
+  return;
+}
+
+
+
+===== 000039f4 _CFArrayCreateCopy =====
+XREF 00004008 DATA null
+XREF 00002edc UNCONDITIONAL_CALL __usb_device_configuration_add_interface
+XREF 00003088 UNCONDITIONAL_CALL __usb_device_configuration_remove_interface
+XREF 000036e8 UNCONDITIONAL_CALL FUN_00003548
+XREF 00003a00 COMPUTED_JUMP _CFArrayCreateCopy
+000039f4 adrp x17,0x4000
+000039f8 add x17,x17,#0x8
+000039fc ldr x16,[x17]
+00003a00 braa x16,x17
+
+void _CFArrayCreateCopy(void)
+
+{
+                    /* WARNING: Could not recover jumptable at 0x00003a00. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  (*(code *)PTR__CFArrayCreateCopy_00004008)();
+  return;
+}
+
+
+
+===== 00003a04 _CFArrayCreateMutable =====
+XREF 00004010 DATA null
+XREF 000033c0 UNCONDITIONAL_CALL FUN_000032ec
+XREF 00003a10 COMPUTED_JUMP _CFArrayCreateMutable
+00003a04 adrp x17,0x4000
+00003a08 add x17,x17,#0x10
+00003a0c ldr x16,[x17]
+00003a10 braa x16,x17
+
+void _CFArrayCreateMutable(void)
+
+{
+                    /* WARNING: Could not recover jumptable at 0x00003a10. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  (*(code *)PTR__CFArrayCreateMutable_00004010)();
+  return;
+}
+
+
+
+===== 00003a14 _CFArrayGetCount =====
+XREF 00004018 DATA null
+XREF 00002ea8 UNCONDITIONAL_CALL __usb_device_configuration_add_interface
+XREF 00003054 UNCONDITIONAL_CALL __usb_device_configuration_remove_interface
+XREF 00003a20 COMPUTED_JUMP _CFArrayGetCount
+00003a14 adrp x17,0x4000
+00003a18 add x17,x17,#0x18
+00003a1c ldr x16,[x17]
+00003a20 braa x16,x17
+
+void _CFArrayGetCount(void)
+
+{
+                    /* WARNING: Could not recover jumptable at 0x00003a20. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  (*(code *)PTR__CFArrayGetCount_00004018)();
+  return;
+}
+
+
+
+===== 00003a24 _CFArrayGetFirstIndexOfValue =====
+XREF 00004020 DATA null
+XREF 00002ebc UNCONDITIONAL_CALL __usb_device_configuration_add_interface
+XREF 00003068 UNCONDITIONAL_CALL __usb_device_configuration_remove_interface
+XREF 00003a30 COMPUTED_JUMP _CFArrayGetFirstIndexOfValue
+00003a24 adrp x17,0x4000
+00003a28 add x17,x17,#0x20
+00003a2c ldr x16,[x17]
+00003a30 braa x16,x17
+
+void _CFArrayGetFirstIndexOfValue(void)
+
+{
+                    /* WARNING: Could not recover jumptable at 0x00003a30. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  (*(code *)PTR__CFArrayGetFirstIndexOfValue_00004020)();
+  return;
+}
+
+
+
+===== 00003a34 _CFArrayRemoveValueAtIndex =====
+XREF 00004028 DATA null
+XREF 0000307c UNCONDITIONAL_CALL __usb_device_configuration_remove_interface
+XREF 00003a40 COMPUTED_JUMP _CFArrayRemoveValueAtIndex
+00003a34 adrp x17,0x4000
+00003a38 add x17,x17,#0x28
+00003a3c ldr x16,[x17]
+00003a40 braa x16,x17
+
+void _CFArrayRemoveValueAtIndex(void)
+
+{
+                    /* WARNING: Could not recover jumptable at 0x00003a40. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  (*(code *)PTR__CFArrayRemoveValueAtIndex_00004028)();
+  return;
+}
+
+
+
+===== 00003a44 _CFMachPortCreateRunLoopSource =====
+XREF 00004030 DATA null
+XREF 000032c0 UNCONDITIONAL_CALL _start
+XREF 00003a50 COMPUTED_JUMP _CFMachPortCreateRunLoopSource
+00003a44 adrp x17,0x4000
+00003a48 add x17,x17,#0x30
+00003a4c ldr x16,[x17]
+00003a50 braa x16,x17
+
+void _CFMachPortCreateRunLoopSource(void)
+
+{
+                    /* WARNING: Could not recover jumptable at 0x00003a50. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  (*(code *)PTR__CFMachPortCreateRunLoopSource_00004030)();
+  return;
+}
+
+
+
+===== 00003a54 _CFMachPortInvalidate =====
+XREF 00004038 DATA null
+XREF 00002e0c UNCONDITIONAL_CALL _lockdownArrivalCallback
+XREF 00003a60 COMPUTED_JUMP _CFMachPortInvalidate
+00003a54 adrp x17,0x4000
+00003a58 add x17,x17,#0x38
+00003a5c ldr x16,[x17]
+00003a60 braa x16,x17
+
+void _CFMachPortInvalidate(void)
+
+{
+                    /* WARNING: Could not recover jumptable at 0x00003a60. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  (*(code *)PTR__CFMachPortInvalidate_00004038)();
+  return;
+}
+
+
+
+===== 00003a64 _CFRelease =====
+XREF 00004040 DATA null
+XREF 00002dfc UNCONDITIONAL_CALL _lockdownArrivalCallback
+XREF 00002e14 UNCONDITIONAL_CALL _lockdownArrivalCallback
+XREF 00002f04 UNCONDITIONAL_CALL __usb_device_configuration_add_interface
+XREF 00002f20 UNCONDITIONAL_CALL __usb_device_configuration_add_interface
+XREF 00002fc4 UNCONDITIONAL_CALL FUN_00002f3c
+XREF 00002fcc UNCONDITIONAL_CALL FUN_00002f3c
+XREF 000030b0 UNCONDITIONAL_CALL __usb_device_configuration_remove_interface
+XREF 000030cc UNCONDITIONAL_CALL __usb_device_configuration_remove_interface
+XREF 00003424 UNCONDITIONAL_CALL FUN_000032ec
+XREF 00003460 UNCONDITIONAL_CALL FUN_000032ec
+XREF 00003654 UNCONDITIONAL_CALL FUN_00003548
+XREF 00003668 UNCONDITIONAL_CALL FUN_00003548
+XREF 00003698 UNCONDITIONAL_CALL FUN_00003548
+XREF 000036a0 UNCONDITIONAL_CALL FUN_00003548
+XREF 000036c0 UNCONDITIONAL_CALL FUN_00003548
+XREF 000036c8 UNCONDITIONAL_CALL FUN_00003548
+XREF 00003714 UNCONDITIONAL_CALL FUN_00003548
+XREF 00003a70 COMPUTED_JUMP _CFRelease
+00003a64 adrp x17,0x4000
+00003a68 add x17,x17,#0x40
+00003a6c ldr x16,[x17]
+00003a70 braa x16,x17
+
+void _CFRelease(void)
+
+{
+                    /* WARNING: Could not recover jumptable at 0x00003a70. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  (*(code *)PTR__CFRelease_00004040)();
+  return;
+}
+
+
+
+===== 00003a74 _CFRunLoopAddSource =====
+XREF 00004048 DATA null
+XREF 000032e0 UNCONDITIONAL_CALL _start
+XREF 00003a80 COMPUTED_JUMP _CFRunLoopAddSource
+00003a74 adrp x17,0x4000
+00003a78 add x17,x17,#0x48
+00003a7c ldr x16,[x17]
+00003a80 braa x16,x17
+
+void _CFRunLoopAddSource(void)
+
+{
+                    /* WARNING: Could not recover jumptable at 0x00003a80. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  (*(code *)PTR__CFRunLoopAddSource_00004048)();
+  return;
+}
+
+
+
+===== 00003a84 _CFRunLoopGetCurrent =====
+XREF 00004050 DATA null
+XREF 00003508 UNCONDITIONAL_CALL FUN_000034e8
+XREF 000032cc UNCONDITIONAL_CALL _start
+XREF 00003384 UNCONDITIONAL_CALL FUN_000032ec
+XREF 000033cc UNCONDITIONAL_CALL FUN_000032ec
+XREF 000033f8 UNCONDITIONAL_CALL FUN_000032ec
+XREF 00003a90 COMPUTED_JUMP _CFRunLoopGetCurrent
+00003a84 adrp x17,0x4000
+00003a88 add x17,x17,#0x50
+00003a8c ldr x16,[x17]
+00003a90 braa x16,x17
+
+void _CFRunLoopGetCurrent(void)
+
+{
+                    /* WARNING: Could not recover jumptable at 0x00003a90. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  (*(code *)PTR__CFRunLoopGetCurrent_00004050)();
+  return;
+}
+
+
+
+===== 00003a94 _CFRunLoopRun =====
+XREF 00004058 DATA null
+XREF 000033ec UNCONDITIONAL_CALL FUN_000032ec
+XREF 00003aa0 COMPUTED_JUMP _CFRunLoopRun
+00003a94 adrp x17,0x4000
+00003a98 add x17,x17,#0x58
+00003a9c ldr x16,[x17]
+00003aa0 braa x16,x17
+
+void _CFRunLoopRun(void)
+
+{
+                    /* WARNING: Could not recover jumptable at 0x00003aa0. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  (*(code *)PTR__CFRunLoopRun_00004058)();
+  return;
+}
+
+
+
+===== 00003aa4 _CFRunLoopSourceInvalidate =====
+XREF 00004060 DATA null
+XREF 00002df4 UNCONDITIONAL_CALL _lockdownArrivalCallback
+XREF 00003ab0 COMPUTED_JUMP _CFRunLoopSourceInvalidate
+00003aa4 adrp x17,0x4000
+00003aa8 add x17,x17,#0x60
+00003aac ldr x16,[x17]
+00003ab0 braa x16,x17
+
+void _CFRunLoopSourceInvalidate(void)
+
+{
+                    /* WARNING: Could not recover jumptable at 0x00003ab0. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  (*(code *)PTR__CFRunLoopSourceInvalidate_00004060)();
+  return;
+}
+
+
+
+===== 00003ab4 _CFRunLoopSourceSignal =====
+XREF 00004068 DATA null
+XREF 000034e4 UNCONDITIONAL_CALL _stop
+XREF 00003ac0 COMPUTED_JUMP _CFRunLoopSourceSignal
+00003ab4 adrp x17,0x4000
+00003ab8 add x17,x17,#0x68
+00003abc ldr x16,[x17]
+00003ac0 braa x16,x17
+
+void _CFRunLoopSourceSignal(void)
+
+{
+                    /* WARNING: Could not recover jumptable at 0x00003ac0. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  (*(code *)PTR__CFRunLoopSourceSignal_00004068)();
+  return;
+}
+
+
+
+===== 00003ac4 _CFRunLoopStop =====
+XREF 00004070 DATA null
+XREF 000034b8 UNCONDITIONAL_CALL _stop
+XREF 00003ad0 COMPUTED_JUMP _CFRunLoopStop
+00003ac4 adrp x17,0x4000
+00003ac8 add x17,x17,#0x70
+00003acc ldr x16,[x17]
+00003ad0 braa x16,x17
+
+void _CFRunLoopStop(void)
+
+{
+                    /* WARNING: Could not recover jumptable at 0x00003ad0. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  (*(code *)PTR__CFRunLoopStop_00004070)();
+  return;
+}
+
+
+
+===== 00003ad4 _CFStringCreateMutableCopy =====
+XREF 00004078 DATA null
+XREF 00003610 UNCONDITIONAL_CALL FUN_00003548
+XREF 00003ae0 COMPUTED_JUMP _CFStringCreateMutableCopy
+00003ad4 adrp x17,0x4000
+00003ad8 add x17,x17,#0x78
+00003adc ldr x16,[x17]
+00003ae0 braa x16,x17
+
+void _CFStringCreateMutableCopy(void)
+
+{
+                    /* WARNING: Could not recover jumptable at 0x00003ae0. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  (*(code *)PTR__CFStringCreateMutableCopy_00004078)();
+  return;
+}
+
+
+
+===== 00003ae4 _CFStringCreateWithCStringNoCopy =====
+XREF 00004080 DATA null
+XREF 00002e80 UNCONDITIONAL_CALL __usb_device_configuration_add_interface
+XREF 0000302c UNCONDITIONAL_CALL __usb_device_configuration_remove_interface
+XREF 00003af0 COMPUTED_JUMP _CFStringCreateWithCStringNoCopy
+00003ae4 adrp x17,0x4000
+00003ae8 add x17,x17,#0x80
+00003aec ldr x16,[x17]
+00003af0 braa x16,x17
+
+void _CFStringCreateWithCStringNoCopy(void)
+
+{
+                    /* WARNING: Could not recover jumptable at 0x00003af0. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  (*(code *)PTR__CFStringCreateWithCStringNoCopy_00004080)();
+  return;
+}
+
+
+
+===== 00003af4 _CFStringFindAndReplace =====
+XREF 00004088 DATA null
+XREF 00003640 UNCONDITIONAL_CALL FUN_00003548
+XREF 00003b00 COMPUTED_JUMP _CFStringFindAndReplace
+00003af4 adrp x17,0x4000
+00003af8 add x17,x17,#0x88
+00003afc ldr x16,[x17]
+00003b00 braa x16,x17
+
+void _CFStringFindAndReplace(void)
+
+{
+                    /* WARNING: Could not recover jumptable at 0x00003b00. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  (*(code *)PTR__CFStringFindAndReplace_00004088)();
+  return;
+}
+
+
+
+===== 00003b04 _CFStringGetCStringPtr =====
+XREF 00004090 DATA null
+XREF 00003318 UNCONDITIONAL_CALL FUN_000032ec
+XREF 00003b10 COMPUTED_JUMP _CFStringGetCStringPtr
+00003b04 adrp x17,0x4000
+00003b08 add x17,x17,#0x90
+00003b0c ldr x16,[x17]
+00003b10 braa x16,x17
+
+void _CFStringGetCStringPtr(void)
+
+{
+                    /* WARNING: Could not recover jumptable at 0x00003b10. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  (*(code *)PTR__CFStringGetCStringPtr_00004090)();
+  return;
+}
+
+
+
+===== 00003b14 _CFStringGetLength =====
+XREF 00004098 DATA null
+XREF 0000361c UNCONDITIONAL_CALL FUN_00003548
+XREF 00003b20 COMPUTED_JUMP _CFStringGetLength
+00003b14 adrp x17,0x4000
+00003b18 add x17,x17,#0x98
+00003b1c ldr x16,[x17]
+00003b20 braa x16,x17
+
+void _CFStringGetLength(void)
+
+{
+                    /* WARNING: Could not recover jumptable at 0x00003b20. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  (*(code *)PTR__CFStringGetLength_00004098)();
+  return;
+}
+
+
+
+===== 00003b24 _IOMIGMachPortCreate =====
+XREF 000040a0 DATA null
+XREF 0000335c UNCONDITIONAL_CALL FUN_000032ec
+XREF 00003b30 COMPUTED_JUMP _IOMIGMachPortCreate
+00003b24 adrp x17,0x4000
+00003b28 add x17,x17,#0xa0
+00003b2c ldr x16,[x17]
+00003b30 braa x16,x17
+
+void _IOMIGMachPortCreate(void)
+
+{
+                    /* WARNING: Could not recover jumptable at 0x00003b30. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  (*(code *)PTR__IOMIGMachPortCreate_000040a0)();
+  return;
+}
+
+
+
+===== 00003b34 _IOMIGMachPortGetPort =====
+XREF 000040a8 DATA null
+XREF 00003418 UNCONDITIONAL_CALL FUN_000032ec
+XREF 00003b40 COMPUTED_JUMP _IOMIGMachPortGetPort
+00003b34 adrp x17,0x4000
+00003b38 add x17,x17,#0xa8
+00003b3c ldr x16,[x17]
+00003b40 braa x16,x17
+
+void _IOMIGMachPortGetPort(void)
+
+{
+                    /* WARNING: Could not recover jumptable at 0x00003b40. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  (*(code *)PTR__IOMIGMachPortGetPort_000040a8)();
+  return;
+}
+
+
+
+===== 00003b44 _IOMIGMachPortRegisterDemuxCallback =====
+XREF 000040b0 DATA null
+XREF 0000337c UNCONDITIONAL_CALL FUN_000032ec
+XREF 00003b50 COMPUTED_JUMP _IOMIGMachPortRegisterDemuxCallback
+00003b44 adrp x17,0x4000
+00003b48 add x17,x17,#0xb0
+00003b4c ldr x16,[x17]
+00003b50 braa x16,x17
+
+void _IOMIGMachPortRegisterDemuxCallback(void)
+
+{
+                    /* WARNING: Could not recover jumptable at 0x00003b50. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  (*(code *)PTR__IOMIGMachPortRegisterDemuxCallback_000040b0)();
+  return;
+}
+
+
+
+===== 00003b54 _IOMIGMachPortScheduleWithRunLoop =====
+XREF 000040b8 DATA null
+XREF 0000339c UNCONDITIONAL_CALL FUN_000032ec
+XREF 00003b60 COMPUTED_JUMP _IOMIGMachPortScheduleWithRunLoop
+00003b54 adrp x17,0x4000
+00003b58 add x17,x17,#0xb8
+00003b5c ldr x16,[x17]
+00003b60 braa x16,x17
+
+void _IOMIGMachPortScheduleWithRunLoop(void)
+
+{
+                    /* WARNING: Could not recover jumptable at 0x00003b60. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  (*(code *)PTR__IOMIGMachPortScheduleWithRunLoop_000040b8)();
+  return;
+}
+
+
+
+===== 00003b64 _IOMIGMachPortUnscheduleFromRunLoop =====
+XREF 000040c0 DATA null
+XREF 00003410 UNCONDITIONAL_CALL FUN_000032ec
+XREF 00003b70 COMPUTED_JUMP _IOMIGMachPortUnscheduleFromRunLoop
+00003b64 adrp x17,0x4000
+00003b68 add x17,x17,#0xc0
+00003b6c ldr x16,[x17]
+00003b70 braa x16,x17
+
+void _IOMIGMachPortUnscheduleFromRunLoop(void)
+
+{
+                    /* WARNING: Could not recover jumptable at 0x00003b70. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  (*(code *)PTR__IOMIGMachPortUnscheduleFromRunLoop_000040c0)();
+  return;
+}
+
+
+
+===== 00003b74 _IOUSBDeviceControllerCreate =====
+XREF 000040c8 DATA null
+XREF 00002f74 UNCONDITIONAL_CALL FUN_00002f3c
+XREF 000035a0 UNCONDITIONAL_CALL FUN_00003548
+XREF 00003b80 COMPUTED_JUMP _IOUSBDeviceControllerCreate
+00003b74 adrp x17,0x4000
+00003b78 add x17,x17,#0xc8
+00003b7c ldr x16,[x17]
+00003b80 braa x16,x17
+
+void _IOUSBDeviceControllerCreate(void)
+
+{
+                    /* WARNING: Could not recover jumptable at 0x00003b80. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  (*(code *)PTR__IOUSBDeviceControllerCreate_000040c8)();
+  return;
+}
+
+
+
+===== 00003b84 _IOUSBDeviceControllerRegisterArrivalCallback =====
+XREF 000040d0 DATA null
+XREF 00003544 UNCONDITIONAL_CALL FUN_000034e8
+XREF 00003b90 COMPUTED_JUMP _IOUSBDeviceControllerRegisterArrivalCallback
+00003b84 adrp x17,0x4000
+00003b88 add x17,x17,#0xd0
+00003b8c ldr x16,[x17]
+00003b90 braa x16,x17
+
+void _IOUSBDeviceControllerRegisterArrivalCallback(void)
+
+{
+                    /* WARNING: Could not recover jumptable at 0x00003b90. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  (*(code *)PTR__IOUSBDeviceControllerRegisterArrivalCallback_000040d0)();
+  return;
+}
+
+
+
+===== 00003b94 _IOUSBDeviceControllerSetDescription =====
+XREF 000040d8 DATA null
+XREF 00003674 UNCONDITIONAL_CALL FUN_00003548
+XREF 00003ba0 COMPUTED_JUMP _IOUSBDeviceControllerSetDescription
+00003b94 adrp x17,0x4000
+00003b98 add x17,x17,#0xd8
+00003b9c ldr x16,[x17]
+00003ba0 braa x16,x17
+
+void _IOUSBDeviceControllerSetDescription(void)
+
+{
+                    /* WARNING: Could not recover jumptable at 0x00003ba0. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  (*(code *)PTR__IOUSBDeviceControllerSetDescription_000040d8)();
+  return;
+}
+
+
+
+===== 00003ba4 _IOUSBDeviceControllerSetPreferredConfiguration =====
+XREF 000040e0 DATA null
+XREF 00002fa8 UNCONDITIONAL_CALL FUN_00002f3c
+XREF 00003bb0 COMPUTED_JUMP _IOUSBDeviceControllerSetPreferredConfiguration
+00003ba4 adrp x17,0x4000
+00003ba8 add x17,x17,#0xe0
+00003bac ldr x16,[x17]
+00003bb0 braa x16,x17
+
+void _IOUSBDeviceControllerSetPreferredConfiguration(void)
+
+{
+                    /* WARNING: Could not recover jumptable at 0x00003bb0. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  (*(code *)PTR__IOUSBDeviceControllerSetPreferredConfiguration_000040e0)();
+  return;
+}
+
+
+
+===== 00003bb4 _IOUSBDeviceDescriptionCreateFromController =====
+XREF 000040e8 DATA null
+XREF 00002f88 UNCONDITIONAL_CALL FUN_00002f3c
+XREF 00003bc0 COMPUTED_JUMP _IOUSBDeviceDescriptionCreateFromController
+00003bb4 adrp x17,0x4000
+00003bb8 add x17,x17,#0xe8
+00003bbc ldr x16,[x17]
+00003bc0 braa x16,x17
+
+void _IOUSBDeviceDescriptionCreateFromController(void)
+
+{
+                    /* WARNING: Could not recover jumptable at 0x00003bc0. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  (*(code *)PTR__IOUSBDeviceDescriptionCreateFromController_000040e8)();
+  return;
+}
+
+
+
+===== 00003bc4 _IOUSBDeviceDescriptionCreateFromDefaultsAndController =====
+XREF 000040f0 DATA null
+XREF 000035e0 UNCONDITIONAL_CALL FUN_00003548
+XREF 00003bd0 COMPUTED_JUMP _IOUSBDeviceDescriptionCreateFromDefaultsAndController
+00003bc4 adrp x17,0x4000
+00003bc8 add x17,x17,#0xf0
+00003bcc ldr x16,[x17]
+00003bd0 braa x16,x17
+
+void _IOUSBDeviceDescriptionCreateFromDefaultsAndController(void)
+
+{
+                    /* WARNING: Could not recover jumptable at 0x00003bd0. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  (*(code *)PTR__IOUSBDeviceDescriptionCreateFromDefaultsAndController_000040f0)();
+  return;
+}
+
+
+
+===== 00003bd4 _IOUSBDeviceDescriptionGetMatchingConfiguration =====
+XREF 000040f8 DATA null
+XREF 00002f98 UNCONDITIONAL_CALL FUN_00002f3c
+XREF 00003be0 COMPUTED_JUMP _IOUSBDeviceDescriptionGetMatchingConfiguration
+00003bd4 adrp x17,0x4000
+00003bd8 add x17,x17,#0xf8
+00003bdc ldr x16,[x17]
+00003be0 braa x16,x17
+
+void _IOUSBDeviceDescriptionGetMatchingConfiguration(void)
+
+{
+                    /* WARNING: Could not recover jumptable at 0x00003be0. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  (*(code *)PTR__IOUSBDeviceDescriptionGetMatchingConfiguration_000040f8)();
+  return;
+}
+
+
+
+===== 00003be4 _IOUSBDeviceDescriptionSetSerialString =====
+XREF 00004100 DATA null
+XREF 0000364c UNCONDITIONAL_CALL FUN_00003548
+XREF 00003bf0 COMPUTED_JUMP _IOUSBDeviceDescriptionSetSerialString
+00003be4 adrp x17,0x4000
+00003be8 add x17,x17,#0x100
+00003bec ldr x16,[x17]
+00003bf0 braa x16,x17
+
+void _IOUSBDeviceDescriptionSetSerialString(void)
+
+{
+                    /* WARNING: Could not recover jumptable at 0x00003bf0. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  (*(code *)PTR__IOUSBDeviceDescriptionSetSerialString_00004100)();
+  return;
+}
+
+
+
+===== 00003bf4 _IOUSBDeviceDescriptionSetUDIDString =====
+XREF 00004108 DATA null
+XREF 00003660 UNCONDITIONAL_CALL FUN_00003548
+XREF 00003c00 COMPUTED_JUMP _IOUSBDeviceDescriptionSetUDIDString
+00003bf4 adrp x17,0x4000
+00003bf8 add x17,x17,#0x108
+00003bfc ldr x16,[x17]
+00003c00 braa x16,x17
+
+void _IOUSBDeviceDescriptionSetUDIDString(void)
+
+{
+                    /* WARNING: Could not recover jumptable at 0x00003c00. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  (*(code *)PTR__IOUSBDeviceDescriptionSetUDIDString_00004108)();
+  return;
+}
+
+
+
+===== 00003c04 _MGCopyAnswer =====
+XREF 00004110 DATA null
+XREF 000035f8 UNCONDITIONAL_CALL FUN_00003548
+XREF 00003c10 COMPUTED_JUMP _MGCopyAnswer
+00003c04 adrp x17,0x4000
+00003c08 add x17,x17,#0x110
+00003c0c ldr x16,[x17]
+00003c10 braa x16,x17
+
+void _MGCopyAnswer(void)
+
+{
+                    /* WARNING: Could not recover jumptable at 0x00003c10. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  (*(code *)PTR__MGCopyAnswer_00004110)();
+  return;
+}
+
+
+
+===== 00003c14 _SCLog =====
+XREF 00004118 DATA null
+XREF 00002de4 UNCONDITIONAL_CALL _lockdownArrivalCallback
+XREF 00003504 UNCONDITIONAL_CALL FUN_000034e8
+XREF 00003174 UNCONDITIONAL_CALL _start
+XREF 00003278 UNCONDITIONAL_CALL _start
+XREF 0000318c UNCONDITIONAL_CALL _start
+XREF 00003570 UNCONDITIONAL_CALL FUN_00003548
+XREF 00003588 UNCONDITIONAL_CALL FUN_00003548
+XREF 000035bc UNCONDITIONAL_CALL FUN_00003548
+XREF 000035d0 UNCONDITIONAL_CALL FUN_00003548
+XREF 00003690 UNCONDITIONAL_CALL FUN_00003548
+XREF 000036b8 UNCONDITIONAL_CALL FUN_00003548
+XREF 00003c20 COMPUTED_JUMP _SCLog
+00003c14 adrp x17,0x4000
+00003c18 add x17,x17,#0x118
+00003c1c ldr x16,[x17]
+00003c20 braa x16,x17
+
+void _SCLog(void)
+
+{
+                    /* WARNING: Could not recover jumptable at 0x00003c20. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  (*(code *)PTR__SCLog_00004118)();
+  return;
+}
+
+
+
+===== 00003c24 __SC_CFMachPortCreateWithPort =====
+XREF 00004120 DATA null
+XREF 000032a0 UNCONDITIONAL_CALL _start
+XREF 00003c30 COMPUTED_JUMP __SC_CFMachPortCreateWithPort
+00003c24 adrp x17,0x4000
+00003c28 add x17,x17,#0x120
+00003c2c ldr x16,[x17]
+00003c30 braa x16,x17
+
+void __SC_CFMachPortCreateWithPort(void)
+
+{
+                    /* WARNING: Could not recover jumptable at 0x00003c30. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  (*(code *)PTR___SC_CFMachPortCreateWithPort_00004120)();
+  return;
+}
+
+
+
+===== 00003c34 ___stack_chk_fail =====
+XREF 00004128 DATA null
+XREF 000032e8 UNCONDITIONAL_CALL _start
+XREF 00003c40 COMPUTED_JUMP ___stack_chk_fail
+00003c34 adrp x17,0x4000
+00003c38 add x17,x17,#0x128
+00003c3c ldr x16,[x17]
+00003c40 braa x16,x17
+
+void ___stack_chk_fail(void)
+
+{
+                    /* WARNING: Could not recover jumptable at 0x00003c40. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  (*(code *)PTR____stack_chk_fail_00004128)();
+  return;
+}
+
+
+
+===== 00003c44 _bootstrap_check_in =====
+XREF 00004130 DATA null
+XREF 00003330 UNCONDITIONAL_CALL FUN_000032ec
+XREF 00003c50 COMPUTED_JUMP _bootstrap_check_in
+00003c44 adrp x17,0x4000
+00003c48 add x17,x17,#0x130
+00003c4c ldr x16,[x17]
+00003c50 braa x16,x17
+
+/* WARNING: Unknown calling convention -- yet parameter storage is locked */
+
+kern_return_t _bootstrap_check_in(mach_port_t bp,char *service_name,mach_port_t *sp)
+
+{
+  kern_return_t kVar1;
+
+                    /* WARNING: Could not recover jumptable at 0x00003c50. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  kVar1 = (*(code *)PTR__bootstrap_check_in_00004130)(bp);
+  return kVar1;
+}
+
+
+
+===== 00003c54 _mach_port_mod_refs =====
+XREF 00004138 DATA null
+XREF 00003444 UNCONDITIONAL_CALL FUN_000032ec
+XREF 00003c60 COMPUTED_JUMP _mach_port_mod_refs
+00003c54 adrp x17,0x4000
+00003c58 add x17,x17,#0x138
+00003c5c ldr x16,[x17]
+00003c60 braa x16,x17
+
+/* WARNING: Unknown calling convention -- yet parameter storage is locked */
+
+kern_return_t
+_mach_port_mod_refs(ipc_space_t task,mach_port_name_t name,mach_port_right_t right,
+                   mach_port_delta_t delta)
+
+{
+  kern_return_t kVar1;
+
+                    /* WARNING: Could not recover jumptable at 0x00003c60. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  kVar1 = (*(code *)PTR__mach_port_mod_refs_00004138)(task,name,right,delta);
+  return kVar1;
+}
+
+
+
+===== 00003c64 _memchr =====
+XREF 00004140 DATA null
+XREF 00003844 UNCONDITIONAL_CALL FUN_000037b0
+XREF 00003914 UNCONDITIONAL_CALL FUN_00003880
+XREF 00003c70 COMPUTED_JUMP _memchr
+00003c64 adrp x17,0x4000
+00003c68 add x17,x17,#0x140
+00003c6c ldr x16,[x17]
+00003c70 braa x16,x17
+
+/* WARNING: Unknown calling convention -- yet parameter storage is locked */
+
+void * _memchr(void *param_1,int param_2,size_t param_3)
+
+{
+  void *pvVar1;
+
+                    /* WARNING: Could not recover jumptable at 0x00003c70. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  pvVar1 = (void *)(*(code *)PTR__memchr_00004140)(param_1,param_2);
+  return pvVar1;
+}
+
+
+
+===== 00003c74 _notify_cancel =====
+XREF 00004148 DATA null
+XREF 00002e3c UNCONDITIONAL_CALL _lockdownArrivalCallback
+XREF 00003c80 COMPUTED_JUMP _notify_cancel
+00003c74 adrp x17,0x4000
+00003c78 add x17,x17,#0x148
+00003c7c ldr x16,[x17]
+00003c80 braa x16,x17
+
+void _notify_cancel(void)
+
+{
+                    /* WARNING: Could not recover jumptable at 0x00003c80. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  (*(code *)PTR__notify_cancel_00004148)();
+  return;
+}
+
+
+
+===== 00003c84 _notify_get_state =====
+XREF 00004150 DATA null
+XREF 00003154 UNCONDITIONAL_CALL _start
+XREF 00003c90 COMPUTED_JUMP _notify_get_state
+00003c84 adrp x17,0x4000
+00003c88 add x17,x17,#0x150
+00003c8c ldr x16,[x17]
+00003c90 braa x16,x17
+
+void _notify_get_state(void)
+
+{
+                    /* WARNING: Could not recover jumptable at 0x00003c90. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  (*(code *)PTR__notify_get_state_00004150)();
+  return;
+}
+
+
+
+===== 00003c94 _notify_register_mach_port =====
+XREF 00004158 DATA null
+XREF 00003130 UNCONDITIONAL_CALL _start
+XREF 00003ca0 COMPUTED_JUMP _notify_register_mach_port
+00003c94 adrp x17,0x4000
+00003c98 add x17,x17,#0x158
+00003c9c ldr x16,[x17]
+00003ca0 braa x16,x17
+
+void _notify_register_mach_port(void)
+
+{
+                    /* WARNING: Could not recover jumptable at 0x00003ca0. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  (*(code *)PTR__notify_register_mach_port_00004158)();
+  return;
+}
+
+
+
+===== 00003ca4 _pthread_attr_destroy =====
+XREF 00004160 DATA null
+XREF 000031f8 UNCONDITIONAL_CALL _start
+XREF 00003cb0 COMPUTED_JUMP _pthread_attr_destroy
+00003ca4 adrp x17,0x4000
+00003ca8 add x17,x17,#0x160
+00003cac ldr x16,[x17]
+00003cb0 braa x16,x17
+
+/* WARNING: Unknown calling convention -- yet parameter storage is locked */
+
+int _pthread_attr_destroy(pthread_attr_t *param_1)
+
+{
+  int iVar1;
+
+                    /* WARNING: Could not recover jumptable at 0x00003cb0. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  iVar1 = (*(code *)PTR__pthread_attr_destroy_00004160)((int)param_1);
+  return iVar1;
+}
+
+
+
+===== 00003cb4 _pthread_attr_init =====
+XREF 00004168 DATA null
+XREF 000031c4 UNCONDITIONAL_CALL _start
+XREF 00003cc0 COMPUTED_JUMP _pthread_attr_init
+00003cb4 adrp x17,0x4000
+00003cb8 add x17,x17,#0x168
+00003cbc ldr x16,[x17]
+00003cc0 braa x16,x17
+
+/* WARNING: Unknown calling convention -- yet parameter storage is locked */
+
+int _pthread_attr_init(pthread_attr_t *param_1)
+
+{
+  int iVar1;
+
+                    /* WARNING: Could not recover jumptable at 0x00003cc0. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  iVar1 = (*(code *)PTR__pthread_attr_init_00004168)((int)param_1);
+  return iVar1;
+}
+
+
+
+===== 00003cc4 _pthread_attr_setdetachstate =====
+XREF 00004170 DATA null
+XREF 000031d0 UNCONDITIONAL_CALL _start
+XREF 00003cd0 COMPUTED_JUMP _pthread_attr_setdetachstate
+00003cc4 adrp x17,0x4000
+00003cc8 add x17,x17,#0x170
+00003ccc ldr x16,[x17]
+00003cd0 braa x16,x17
+
+/* WARNING: Unknown calling convention -- yet parameter storage is locked */
+
+int _pthread_attr_setdetachstate(pthread_attr_t *param_1,int param_2)
+
+{
+  int iVar1;
+
+                    /* WARNING: Could not recover jumptable at 0x00003cd0. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  iVar1 = (*(code *)PTR__pthread_attr_setdetachstate_00004170)((int)param_1,param_2);
+  return iVar1;
+}
+
+
+
+===== 00003cd4 _pthread_cond_signal =====
+XREF 00004178 DATA null
+XREF 000033e8 UNCONDITIONAL_CALL FUN_000032ec
+XREF 00003ce0 COMPUTED_JUMP _pthread_cond_signal
+00003cd4 adrp x17,0x4000
+00003cd8 add x17,x17,#0x178
+00003cdc ldr x16,[x17]
+00003ce0 braa x16,x17
+
+/* WARNING: Unknown calling convention -- yet parameter storage is locked */
+
+int _pthread_cond_signal(pthread_cond_t *param_1)
+
+{
+  int iVar1;
+
+                    /* WARNING: Could not recover jumptable at 0x00003ce0. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  iVar1 = (*(code *)PTR__pthread_cond_signal_00004178)((int)param_1);
+  return iVar1;
+}
+
+
+
+===== 00003ce4 _pthread_cond_wait =====
+XREF 00004180 DATA null
+XREF 0000321c UNCONDITIONAL_CALL _start
+XREF 00003cf0 COMPUTED_JUMP _pthread_cond_wait
+00003ce4 adrp x17,0x4000
+00003ce8 add x17,x17,#0x180
+00003cec ldr x16,[x17]
+00003cf0 braa x16,x17
+
+/* WARNING: Unknown calling convention -- yet parameter storage is locked */
+
+int _pthread_cond_wait(pthread_cond_t *param_1,pthread_mutex_t *param_2)
+
+{
+  int iVar1;
+
+                    /* WARNING: Could not recover jumptable at 0x00003cf0. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  iVar1 = (*(code *)PTR__pthread_cond_wait_00004180)((int)param_1);
+  return iVar1;
+}
+
+
+
+===== 00003cf4 _pthread_create =====
+XREF 00004188 DATA null
+XREF 000031f0 UNCONDITIONAL_CALL _start
+XREF 00003d00 COMPUTED_JUMP _pthread_create
+00003cf4 adrp x17,0x4000
+00003cf8 add x17,x17,#0x188
+00003cfc ldr x16,[x17]
+00003d00 braa x16,x17
+
+/* WARNING: Unknown calling convention -- yet parameter storage is locked */
+
+int _pthread_create(pthread_t *param_1,pthread_attr_t *param_2,void **param_3,void *param_4)
+
+{
+  int iVar1;
+
+                    /* WARNING: Could not recover jumptable at 0x00003d00. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  iVar1 = (*(code *)PTR__pthread_create_00004188)((int)param_1);
+  return iVar1;
+}
+
+
+
+===== 00003d04 _pthread_mutex_lock =====
+XREF 00004190 DATA null
+XREF 00002e98 UNCONDITIONAL_CALL __usb_device_configuration_add_interface
+XREF 00002f0c UNCONDITIONAL_CALL __usb_device_configuration_add_interface
+XREF 00003044 UNCONDITIONAL_CALL __usb_device_configuration_remove_interface
+XREF 000030b8 UNCONDITIONAL_CALL __usb_device_configuration_remove_interface
+XREF 0000319c UNCONDITIONAL_CALL _start
+XREF 000034a8 UNCONDITIONAL_CALL _stop
+XREF 000033ac UNCONDITIONAL_CALL FUN_000032ec
+XREF 00003454 UNCONDITIONAL_CALL FUN_000032ec
+XREF 000036d4 UNCONDITIONAL_CALL FUN_00003548
+XREF 00003d10 COMPUTED_JUMP _pthread_mutex_lock
+00003d04 adrp x17,0x4000
+00003d08 add x17,x17,#0x190
+00003d0c ldr x16,[x17]
+00003d10 braa x16,x17
+
+/* WARNING: Unknown calling convention -- yet parameter storage is locked */
+
+int _pthread_mutex_lock(pthread_mutex_t *param_1)
+
+{
+  int iVar1;
+
+                    /* WARNING: Could not recover jumptable at 0x00003d10. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  iVar1 = (*(code *)PTR__pthread_mutex_lock_00004190)((int)param_1);
+  return iVar1;
+}
+
+
+
+===== 00003d14 _pthread_mutex_unlock =====
+XREF 00004198 DATA null
+XREF 00002ef0 UNCONDITIONAL_CALL __usb_device_configuration_add_interface
+XREF 00002f18 UNCONDITIONAL_CALL __usb_device_configuration_add_interface
+XREF 0000309c UNCONDITIONAL_CALL __usb_device_configuration_remove_interface
+XREF 000030c4 UNCONDITIONAL_CALL __usb_device_configuration_remove_interface
+XREF 00003230 UNCONDITIONAL_CALL _start
+XREF 000034c4 UNCONDITIONAL_CALL _stop
+XREF 000033dc UNCONDITIONAL_CALL FUN_000032ec
+XREF 00003470 UNCONDITIONAL_CALL FUN_000032ec
+XREF 00003700 UNCONDITIONAL_CALL FUN_00003548
+XREF 00003d20 COMPUTED_JUMP _pthread_mutex_unlock
+00003d14 adrp x17,0x4000
+00003d18 add x17,x17,#0x198
+00003d1c ldr x16,[x17]
+00003d20 braa x16,x17
+
+/* WARNING: Unknown calling convention -- yet parameter storage is locked */
+
+int _pthread_mutex_unlock(pthread_mutex_t *param_1)
+
+{
+  int iVar1;
+
+                    /* WARNING: Could not recover jumptable at 0x00003d20. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  iVar1 = (*(code *)PTR__pthread_mutex_unlock_00004198)((int)param_1);
+  return iVar1;
+}

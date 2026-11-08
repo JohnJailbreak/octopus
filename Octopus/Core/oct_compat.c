@@ -6,6 +6,7 @@
 #endif
 #include "oct_compat.h"
 #include "oct_link.h"
+#include "oct_usb.h"
 #include "oct_sha256.h"
 
 #include <stdio.h>
@@ -441,4 +442,80 @@ oct_status oct_compat_reference_digest(const char *folder, const char *name, uin
     free(bytes);
     oct_store_close(store);
     return status;
+}
+
+/* The setup packets and descriptors here are synthetic USB 2.0 fixtures, not
+ * captured Windows traffic. This exercises the same boundary a native owner uses. */
+static bool usb_boundary_script(rig *r)
+{
+    static const uint8_t descriptors[] = {
+        9,2,39,0,1,1,0,0x80,50,
+        9,4,0,0,3,6,1,1,0,
+        7,5,0x81,2,0,2,0,
+        7,5,0x02,2,0,2,0,
+        7,5,0x83,3,64,0,4
+    };
+    oct_usb_interface interface;
+    REQUIRE(r, oct_usb_parse_interface(descriptors, sizeof descriptors, 0, 0, &interface) == OCT_OK,
+            "Synthetic PTP descriptors were rejected");
+    REQUIRE(r, interface.bulk_in == 0x81 && interface.bulk_out == 2 && interface.interrupt_in == 0x83 &&
+            interface.bulk_in_packet == 512 && interface.bulk_out_packet == 512 && interface.interrupt_packet == 64,
+            "PTP endpoint selection was incorrect");
+    for (size_t i = 0; i < sizeof descriptors; i++) {
+        REQUIRE(r, oct_usb_parse_interface(descriptors, i, 0, 0, &interface) == OCT_E_MALFORMED,
+                "Truncated descriptors (%zu bytes) were accepted", i);
+    }
+    uint8_t setup[8] = { 0xA1, OCT_USB_GET_DEVICE_STATUS, 0,0,0,0,4,0 };
+    uint8_t reply[8] = { 0 };
+    size_t length = 99;
+    REQUIRE(r, oct_usb_control(r->link, 0, setup, sizeof setup, NULL, 0, reply, sizeof reply, &length) == OCT_E_STATE &&
+            length == 0, "Unattached interface answered a control request");
+    REQUIRE(r, oct_link_host_attached(r->link) == OCT_OK, "Simulated host could not attach");
+    uint32_t session = 1;
+    uint16_t code;
+    if (!send_command(r, OCT_OP_OPEN_SESSION, &session, 1, &code)) return false;
+    REQUIRE(r, code == OCT_RC_OK, "Could not open the synthetic USB session");
+    for (uint8_t n = 0; n <= 8; n++) {
+        setup[6] = n;
+        memset(reply, 0xCC, sizeof reply);
+        REQUIRE(r, oct_usb_control(r->link, 0, setup, sizeof setup, NULL, 0, reply, sizeof reply, &length) == OCT_OK,
+                "Device status rejected host buffer length %u", n);
+        REQUIRE(r, length == (n < 4 ? n : 4) && reply[length] == 0xCC,
+                "Device status overran host buffer length %u", n);
+    }
+    setup[0] = 0x21; setup[1] = OCT_USB_DEVICE_RESET_REQUEST; setup[6] = 0;
+    for (size_t field = 0; field < sizeof setup; field++) {
+        uint8_t bad[8];
+        memcpy(bad, setup, sizeof bad);
+        bad[field] ^= 0x80;
+        REQUIRE(r, oct_usb_control(r->link, 0, bad, sizeof bad, NULL, 0, reply, sizeof reply, &length) != OCT_OK &&
+                length == 0, "Invalid reset setup field %zu was accepted", field);
+        oct_link_status status;
+        oct_link_get_status(r->link, &status);
+        REQUIRE(r, status.session_open && status.resets == 0, "Invalid reset changed the session");
+    }
+    REQUIRE(r, oct_usb_control(r->link, 0, setup, sizeof setup, reply, 1, NULL, 0, &length) == OCT_E_MALFORMED,
+            "Reset accepted an unexpected OUT data stage");
+    REQUIRE(r, oct_usb_control(r->link, 0, setup, sizeof setup, NULL, 0, NULL, 0, &length) == OCT_OK,
+            "Valid reset failed");
+    oct_link_status status;
+    oct_link_get_status(r->link, &status);
+    REQUIRE(r, !status.session_open && status.resets == 1, "Valid reset did not close the session");
+    setup[1] = OCT_USB_CANCEL_REQUEST; setup[6] = 6;
+    uint8_t cancel[6] = { 1,0x40,1,0,0,0 };
+    REQUIRE(r, oct_usb_control(r->link, 0, setup, sizeof setup, cancel, sizeof cancel, NULL, 0, &length) == OCT_OK,
+            "Valid cancel failed");
+    REQUIRE(r, oct_link_device_status(r->link) == OCT_RC_TRANSACTION_CANCELLED,
+            "Cancellation status was lost at the control boundary");
+    REQUIRE(r, oct_link_set_suspended(r->link, true) == OCT_OK, "Could not suspend");
+    REQUIRE(r, oct_usb_control(r->link, 0, setup, sizeof setup, cancel, sizeof cancel, NULL, 0, &length) == OCT_E_STATE,
+            "Suspended interface accepted control traffic");
+    oct_copy_utf8(r->report->summary, sizeof r->report->summary,
+                 "Synthetic USB descriptors and full setup packets: endpoint selection, interface routing, malformed reset isolation, bounded status, cancel and suspend");
+    return true;
+}
+
+oct_status oct_compat_usb_boundary(oct_compat_report *report)
+{
+    return run(report, 64, usb_boundary_script);
 }

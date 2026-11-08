@@ -1,0 +1,14 @@
+# Integration decision
+
+| Candidate | Evidence and privilege boundary | Photos / Windows / recovery | Decision |
+|---|---|---|---|
+| Extend current provider/request routing in ptpd | Actual responder/camera dispatch identified; concrete PTPFile requirement and one-storage assumption. Would need authorized arm64e process integration, exact identity/method checks, safe ownership and queues on Dopamine. None of those runtime capabilities verified. | Best chance to preserve existing transport; coexistence must be demonstrated. Windows would still use existing WPD interface. Future disable must remove only Octopus routing and leave Photos intact. | Strongest research candidate, **not implementation-ready**. |
+| Independently registered second provider | addStorage exists but warns when a second store is added; no public registration protocol found. | Risk to storage enumeration/Photos; restart could reset sessions. | Reject blind registration. |
+| Connect oct_link directly to existing native interface | Match/init/read/write call paths known, private plug-in definitions/shared-cache implementation missing. Root alone does not establish endpoint ownership or entitlement access. | Competing with ptpd can break Photos. Native callbacks, ZLP, cancel, lifetime and rollback all need measurement. | Implement tested boundary and read-only discovery only; no speculative vtable calls. |
+| Separate USB function | Configuration add-interface chooses matching existing configuration; does not define endpoints. Requires verified controller/function implementation and permissions. | Re-enumeration can affect pairing, Photos and other functions; Windows binding unknown. Restore prior configuration would be mandatory. | No supported extension demonstrated. |
+| AFC/lockdown service | Authorized socket service lifecycle visible; AFC operations imported. | Requires Windows-side AFC client/bridge; no native WPD PTP storage by itself. | Does not satisfy ordinary-use requirement. |
+| PTP/IP | Portable protocol could be reused with a network transport. | Not the requested native USB File Explorer experience. | Not substituted for USB. |
+
+Selected work for this release is the independently testable USB boundary plus exact read-only device match/identity collection. No viable live route is claimed. This preserves the existing working app/update path and provides necessary experiment evidence without risking the native USB owner.
+
+Any future native integration must default disabled, require explicit enable and revocable authorization, reject incompatible iOS/build UUID/method encodings, avoid static runtime addresses, and be removable without replacing Apple executables. UUID alone is insufficient (ad-hoc reference signatures); compare runtime metadata and code provenance. Rootless installation location and injection eligibility remain unverified. ABI maintenance is per iOS build, not a universal iOS17 promise.

@@ -1,0 +1,182 @@
+===== 10000574c PTPDeviceUSBTransport::stop =====
+XREF 10005d722 DATA null
+XREF 100033074 DATA null
+10000574c pacibsp
+100005750 sub sp,sp,#0x60
+100005754 stp x22,x21,[sp, #0x30]
+100005758 stp x20,x19,[sp, #0x40]
+10000575c stp x29,x30,[sp, #0x50]
+100005760 add x29,sp,#0x50
+100005764 mov x19,x0
+100005768 mov w2,#0x0
+10000576c bl 0x100032ea0
+100005770 bl 0x100028978
+100005774 adr x20,0x100044d58
+100005778 nop
+10000577c mov x0,x20
+100005780 bl 0x100030b20
+100005784 cmp x0,#0x15
+100005788 b.cc 0x1000057b0
+10000578c adr x0,0x100044d58
+100005790 nop
+100005794 mov x2,#0x0
+100005798 mov w3,#0x12
+10000579c bl 0x100032ac0
+1000057a0 adr x2,0x100044d78
+1000057a4 nop
+1000057a8 bl 0x1000329e0
+1000057ac mov x20,x0
+1000057b0 nop
+1000057b4 ldr x0,0x100059700
+1000057b8 adr x2,0x100045038
+1000057bc nop
+1000057c0 bl 0x100032a40
+1000057c4 mov x22,x0
+1000057c8 nop
+1000057cc nop
+1000057d0 ldr x21,0x10005a970
+1000057d4 mov x0,x21
+1000057d8 mov w1,#0x0
+1000057dc bl 0x10002eba0
+1000057e0 cbz w0,0x10000582c
+1000057e4 mov x0,x20
+1000057e8 bl 0x10002ed20
+1000057ec mov w8,#0x202
+1000057f0 movk w8,#0x822, LSL #16
+1000057f4 str w8,[sp, #0x10]
+1000057f8 stur x0,[sp, #0x14]
+1000057fc mov w8,#0x842
+100005800 strh w8,[sp, #0x1c]
+100005804 stur x22,[sp, #0x1e]
+100005808 adr x0,0x100000000
+10000580c nop
+100005810 adr x3,0x10003c434
+100005814 nop
+100005818 add x4,sp,#0x10
+10000581c mov x1,x21
+100005820 mov w2,#0x0
+100005824 mov w5,#0x16
+100005828 bl 0x10002e6d0
+10000582c nop
+100005830 nop
+100005834 ldrsw x8,0x100059da4
+100005838 ldr w9,[x19, x8#0x0]
+10000583c cmp w9,#0x1
+100005840 b.ne 0x1000058dc
+100005844 str wzr,[x19, x8#0x0]
+100005848 mov x0,x19
+10000584c mov w2,#0x0
+100005850 bl 0x100031ca0
+100005854 nop
+100005858 ldrsw x8,0x10005998c
+10000585c add x20,x19,x8
+100005860 ldr w0,[x20, #0x8]
+100005864 cbz w0,0x100005870
+100005868 bl 0x10002e580
+10000586c str wzr,[x20, #0x8]
+100005870 ldr x0,[x20, #0x10]
+100005874 cbz x0,0x100005884
+100005878 mov x1,#0x0
+10000587c bl 0x10002e570
+100005880 str xzr,[x20, #0x10]
+100005884 ldr x0,[x20]
+100005888 cbz x0,0x1000058dc
+10000588c stp wzr,wzr,[sp, #0xc]
+100005890 ldr x8,[x0]
+100005894 ldr x8,[x8, #0x120]
+100005898 add x1,sp,#0x10
+10000589c add x2,sp,#0xc
+1000058a0 blraaz x8
+1000058a4 ldr w8,[sp, #0x10]
+1000058a8 cbz w8,0x1000058b4
+1000058ac mov x0,x19
+1000058b0 bl 0x10002f8c0
+1000058b4 ldr x0,[x20]
+1000058b8 ldr x8,[x0]
+1000058bc ldr x8,[x8, #0x28]
+1000058c0 mov w1,#0x0
+1000058c4 blraaz x8
+1000058c8 ldr x0,[x20]
+1000058cc ldr x8,[x0]
+1000058d0 ldr x8,[x8, #0x18]
+1000058d4 blraaz x8
+1000058d8 str xzr,[x20]
+1000058dc bl 0x10000bf04
+1000058e0 mov x19,x0
+1000058e4 bl 0x10002f8e0
+1000058e8 cbz x0,0x1000058f8
+1000058ec mov x0,x19
+1000058f0 mov x2,#0x0
+1000058f4 bl 0x100031d60
+1000058f8 mov w0,#0x0
+1000058fc bl 0x10002e810
+
+/* Function Stack Size: 0x10 bytes */
+
+void PTPDeviceUSBTransport::stop(ID param_1,SEL param_2)
+
+{
+  long *plVar1;
+  undefined8 uVar2;
+  int iVar3;
+  ID IVar4;
+  long *plVar5;
+  ID IVar6;
+  cfstringStruct *self;
+  undefined4 local_54;
+  int local_50;
+  ID local_4c;
+  undefined2 local_44;
+  ID local_42;
+
+  waitForHostConnection_(param_1,0);
+  ___ICOSLogCreate();
+  self = &cf___;
+  IVar4 = objc_stub::length(0x100044d58);
+  if (0x14 < IVar4) {
+    IVar4 = objc_stub::substringWithRange_(0x100044d58,0,0x12);
+    self = (cfstringStruct *)objc_stub::stringByAppendingString_(IVar4,&cf___);
+  }
+  IVar4 = NSString::stringWithFormat_((ID)PTR__OBJC_CLASS___NSString_100059700,&cf_ServiceStopped);
+  uVar2 = __gICOSLog;
+  iVar3 = _os_log_type_enabled(__gICOSLog,0);
+  if (iVar3 != 0) {
+    local_4c = objc_stub::UTF8String((ID)self);
+    local_50 = 0x8220202;
+    local_44 = 0x842;
+    local_42 = IVar4;
+    __os_log_impl(0x100000000,uVar2,0,"%{public}20s | %{public}@",&local_50,0x16);
+  }
+  if (*(int *)(param_1 + (long)PTPTransport::_role) == 1) {
+    *(undefined4 *)(param_1 + (long)PTPTransport::_role) = 0;
+    setConnected_(param_1,0);
+    plVar1 = (long *)(param_1 + (long)_usbCore);
+    if ((int)plVar1[1] != 0) {
+      _IOObjectRelease();
+      *(undefined4 *)(plVar1 + 1) = 0;
+    }
+    if (plVar1[2] != 0) {
+      _IONotificationPortSetDispatchQueue(plVar1[2],0);
+      plVar1[2] = 0;
+    }
+    plVar5 = (long *)*plVar1;
+    if (plVar5 != (long *)0x0) {
+      local_54 = 0;
+      local_50 = 0;
+      (**(code **)(*plVar5 + 0x120))(plVar5,&local_50,&local_54);
+      if (local_50 != 0) {
+        deactivate(param_1);
+      }
+      (**(code **)(*(long *)*plVar1 + 0x28))((long *)*plVar1,0);
+      (**(code **)(*(long *)*plVar1 + 0x18))();
+      *plVar1 = 0;
+    }
+  }
+  IVar4 = FUN_10000bf04();
+  IVar6 = objc_stub::delegate(IVar4);
+  if (IVar6 != 0) {
+    objc_stub::setDelegate_(IVar4,0);
+  }
+                    /* WARNING: Subroutine does not return */
+  _exit(0);
+}

@@ -1,0 +1,680 @@
+{
+  "name": "USBDeviceConfiguration",
+  "size": 73296,
+  "sha256": "68bfd2de405f44b310950e41bc3d4036cdb868a3ec4ea87d181d29407bee3863",
+  "cpu": "0x100000c",
+  "cpu_subtype": "0x80000002",
+  "architecture": "arm64e",
+  "filetype": 8,
+  "flags": "0x85",
+  "commands": [
+    {
+      "name": "LC_SEGMENT_64",
+      "offset": 32,
+      "size": 392
+    },
+    {
+      "name": "LC_SEGMENT_64",
+      "offset": 424,
+      "size": 392
+    },
+    {
+      "name": "LC_SEGMENT_64",
+      "offset": 816,
+      "size": 232
+    },
+    {
+      "name": "LC_SEGMENT_64",
+      "offset": 1048,
+      "size": 72
+    },
+    {
+      "name": "LC_DYLD_CHAINED_FIXUPS",
+      "offset": 1120,
+      "size": 16
+    },
+    {
+      "name": "LC_DYLD_EXPORTS_TRIE",
+      "offset": 1136,
+      "size": 16
+    },
+    {
+      "name": "LC_SYMTAB",
+      "offset": 1152,
+      "size": 24
+    },
+    {
+      "name": "LC_DYSYMTAB",
+      "offset": 1176,
+      "size": 80
+    },
+    {
+      "name": "LC_UUID",
+      "offset": 1256,
+      "size": 24
+    },
+    {
+      "name": "LC_BUILD_VERSION",
+      "offset": 1280,
+      "size": 32
+    },
+    {
+      "name": "LC_SOURCE_VERSION",
+      "offset": 1312,
+      "size": 16
+    },
+    {
+      "name": "LC_LOAD_DYLIB",
+      "offset": 1328,
+      "size": 96
+    },
+    {
+      "name": "LC_LOAD_DYLIB",
+      "offset": 1424,
+      "size": 88
+    },
+    {
+      "name": "LC_LOAD_DYLIB",
+      "offset": 1512,
+      "size": 104
+    },
+    {
+      "name": "LC_LOAD_DYLIB",
+      "offset": 1616,
+      "size": 56
+    },
+    {
+      "name": "LC_LOAD_DYLIB",
+      "offset": 1672,
+      "size": 56
+    },
+    {
+      "name": "LC_FUNCTION_STARTS",
+      "offset": 1728,
+      "size": 16
+    },
+    {
+      "name": "LC_DATA_IN_CODE",
+      "offset": 1744,
+      "size": 16
+    },
+    {
+      "name": "LC_CODE_SIGNATURE",
+      "offset": 1760,
+      "size": 16
+    }
+  ],
+  "segments": [
+    {
+      "name": "__TEXT",
+      "vmaddr": "0x0",
+      "vmsize": 16384,
+      "fileoff": 0,
+      "filesize": 16384
+    },
+    {
+      "name": "__DATA_CONST",
+      "vmaddr": "0x4000",
+      "vmsize": 16384,
+      "fileoff": 16384,
+      "filesize": 16384
+    },
+    {
+      "name": "__DATA",
+      "vmaddr": "0x8000",
+      "vmsize": 16384,
+      "fileoff": 32768,
+      "filesize": 16384
+    },
+    {
+      "name": "__LINKEDIT",
+      "vmaddr": "0xc000",
+      "vmsize": 32768,
+      "fileoff": 49152,
+      "filesize": 24144
+    }
+  ],
+  "dylibs": [
+    "/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation",
+    "/System/Library/Frameworks/IOKit.framework/Versions/A/IOKit",
+    "/System/Library/Frameworks/SystemConfiguration.framework/SystemConfiguration",
+    "/usr/lib/libMobileGestalt.dylib",
+    "/usr/lib/libSystem.B.dylib"
+  ],
+  "sections": [
+    {
+      "name": "__text",
+      "segment": "__TEXT",
+      "address": "0x2dc4",
+      "size": 3104,
+      "offset": 11716
+    },
+    {
+      "name": "__auth_stubs",
+      "segment": "__TEXT",
+      "address": "0x39e4",
+      "size": 832,
+      "offset": 14820
+    },
+    {
+      "name": "__cstring",
+      "segment": "__TEXT",
+      "address": "0x3d24",
+      "size": 598,
+      "offset": 15652
+    },
+    {
+      "name": "__unwind_info",
+      "segment": "__TEXT",
+      "address": "0x3f7c",
+      "size": 132,
+      "offset": 16252
+    },
+    {
+      "name": "__auth_got",
+      "segment": "__DATA_CONST",
+      "address": "0x4000",
+      "size": 416,
+      "offset": 16384
+    },
+    {
+      "name": "__got",
+      "segment": "__DATA_CONST",
+      "address": "0x41a0",
+      "size": 64,
+      "offset": 16800
+    },
+    {
+      "name": "__const",
+      "segment": "__DATA_CONST",
+      "address": "0x41e0",
+      "size": 112,
+      "offset": 16864
+    },
+    {
+      "name": "__cfstring",
+      "segment": "__DATA_CONST",
+      "address": "0x4250",
+      "size": 480,
+      "offset": 16976
+    },
+    {
+      "name": "__data",
+      "segment": "__DATA",
+      "address": "0x8000",
+      "size": 112,
+      "offset": 32768
+    },
+    {
+      "name": "__bss",
+      "segment": "__DATA",
+      "address": "0x8070",
+      "size": 56,
+      "offset": 0
+    }
+  ],
+  "symbols": [
+    {
+      "name": "radr://5614542",
+      "type": 60,
+      "section": 0,
+      "value": "0x5614542"
+    },
+    {
+      "name": "__usb_device_configuration_add_interface",
+      "type": 15,
+      "section": 1,
+      "value": "0x2e40"
+    },
+    {
+      "name": "__usb_device_configuration_remove_interface",
+      "type": 15,
+      "section": 1,
+      "value": "0x2fec"
+    },
+    {
+      "name": "__usb_device_configuration_subsystem",
+      "type": 15,
+      "section": 7,
+      "value": "0x41e0"
+    },
+    {
+      "name": "_lockdownArrivalCallback",
+      "type": 15,
+      "section": 1,
+      "value": "0x2dc4"
+    },
+    {
+      "name": "_start",
+      "type": 15,
+      "section": 1,
+      "value": "0x30e8"
+    },
+    {
+      "name": "_stop",
+      "type": 15,
+      "section": 1,
+      "value": "0x348c"
+    },
+    {
+      "name": "_usb_device_configuration_server",
+      "type": 15,
+      "section": 1,
+      "value": "0x3950"
+    },
+    {
+      "name": "_usb_device_configuration_server_routine",
+      "type": 15,
+      "section": 1,
+      "value": "0x3774"
+    },
+    {
+      "name": "_CFArrayAppendValue",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_CFArrayCreateCopy",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_CFArrayCreateMutable",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_CFArrayGetCount",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_CFArrayGetFirstIndexOfValue",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_CFArrayRemoveValueAtIndex",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_CFMachPortCreateRunLoopSource",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_CFMachPortInvalidate",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_CFRelease",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_CFRunLoopAddSource",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_CFRunLoopGetCurrent",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_CFRunLoopRun",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_CFRunLoopSourceInvalidate",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_CFRunLoopSourceSignal",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_CFRunLoopStop",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_CFStringCreateMutableCopy",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_CFStringCreateWithCStringNoCopy",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_CFStringFindAndReplace",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_CFStringGetCStringPtr",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_CFStringGetLength",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_IOMIGMachPortCreate",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_IOMIGMachPortGetPort",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_IOMIGMachPortRegisterDemuxCallback",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_IOMIGMachPortScheduleWithRunLoop",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_IOMIGMachPortUnscheduleFromRunLoop",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_IOUSBDeviceControllerCreate",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_IOUSBDeviceControllerRegisterArrivalCallback",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_IOUSBDeviceControllerSetDescription",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_IOUSBDeviceControllerSetPreferredConfiguration",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_IOUSBDeviceDescriptionCreateFromController",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_IOUSBDeviceDescriptionCreateFromDefaultsAndController",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_IOUSBDeviceDescriptionGetMatchingConfiguration",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_IOUSBDeviceDescriptionSetSerialString",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_IOUSBDeviceDescriptionSetUDIDString",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_MGCopyAnswer",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_NDR_record",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_SCLog",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "__SC_CFMachPortCreateWithPort",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "___CFConstantStringClassReference",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "___stack_chk_fail",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "___stack_chk_guard",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_bootstrap_check_in",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_bootstrap_port",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_kCFAllocatorDefault",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_kCFAllocatorNull",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_kCFRunLoopDefaultMode",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_kCFTypeArrayCallBacks",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_mach_port_mod_refs",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_mach_task_self_",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_memchr",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_notify_cancel",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_notify_get_state",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_notify_register_mach_port",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_pthread_attr_destroy",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_pthread_attr_init",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_pthread_attr_setdetachstate",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_pthread_cond_signal",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_pthread_cond_wait",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_pthread_create",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_pthread_mutex_lock",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    },
+    {
+      "name": "_pthread_mutex_unlock",
+      "type": 1,
+      "section": 0,
+      "value": "0x0"
+    }
+  ],
+  "symtab": {
+    "nsyms": 70,
+    "offset": 51224,
+    "string_size": 1760
+  },
+  "uuid": "DFA3C76A-08EE-3D68-9D96-BD56F908A6FA",
+  "build": {
+    "platform": 2,
+    "minos": "17.0.0",
+    "sdk": "17.0.0"
+  },
+  "signature": {
+    "offset": 54560,
+    "size": 18736,
+    "blobs": [
+      {
+        "slot": 0,
+        "magic": "0xfade0c02",
+        "length": 666,
+        "version": "0x20400",
+        "flags": "0x2",
+        "identifier": "com.apple.configd.usbdeviceconfig",
+        "code_limit": 54560,
+        "hash_type": 2,
+        "hash_size": 32,
+        "page_log2": 12,
+        "code_slots": 14,
+        "special_slots": 3,
+        "code_page_hashes_match": true
+      },
+      {
+        "slot": 2,
+        "magic": "0xfade0c01",
+        "length": 12
+      },
+      {
+        "slot": 65536,
+        "magic": "0xfade0b01",
+        "length": 8
+      }
+    ]
+  }
+}

@@ -1,0 +1,980 @@
+===== 1000160c4 PTPStorage::initWithParent:andOptionalID:forSessionID: =====
+XREF 10005d896 DATA null
+XREF 100033b1c DATA null
+XREF 10000d1d0 CALL_OVERRIDE_UNCONDITIONAL PTPVirtualCamera::preparePhotoStorage
+XREF 10000c430 CALL_OVERRIDE_UNCONDITIONAL PTPVirtualCamera::initWithName:andPath:
+XREF 10000d3ec CALL_OVERRIDE_UNCONDITIONAL FUN_10000d398
+1000160c4 pacibsp
+1000160c8 stp x28,x27,[sp, #-0x60]!
+1000160cc stp x26,x25,[sp, #0x10]
+1000160d0 stp x24,x23,[sp, #0x20]
+1000160d4 stp x22,x21,[sp, #0x30]
+1000160d8 stp x20,x19,[sp, #0x40]
+1000160dc stp x29,x30,[sp, #0x50]
+1000160e0 add x29,sp,#0x50
+1000160e4 sub sp,sp,#0x8d0
+1000160e8 mov x20,x4
+1000160ec mov x22,x3
+1000160f0 mov x23,x2
+1000160f4 mov x19,x0
+1000160f8 nop
+1000160fc ldr x8,0x100044518
+100016100 ldr x8,[x8]
+100016104 stur x8,[x29, #-0x60]
+100016108 mov x21,x3
+10001610c cbnz w3,0x100016118
+100016110 bl 0x100004204
+100016114 mov x21,x0
+100016118 nop
+10001611c ldr x8,0x1000598a0
+100016120 stp x19,x8,[sp, #0x10]
+100016124 nop
+100016128 ldr x1,0x100058750
+10001612c add x0,sp,#0x10
+100016130 bl 0x10002e9d0
+100016134 mov x19,x0
+100016138 adrp x28,0x100059000
+10001613c adr x27,0x10005a970
+100016140 nop
+100016144 cbz x0,0x100016528
+100016148 movi v0.2D,#0x0
+10001614c stp q0,q0,[sp, #0x220]
+100016150 stp q0,q0,[sp, #0x200]
+100016154 stp q0,q0,[sp, #0x1e0]
+100016158 stp q0,q0,[sp, #0x1c0]
+10001615c stp q0,q0,[sp, #0x1a0]
+100016160 stp q0,q0,[sp, #0x180]
+100016164 stp q0,q0,[sp, #0x160]
+100016168 stp q0,q0,[sp, #0x140]
+10001616c stp q0,q0,[sp, #0x120]
+100016170 stp q0,q0,[sp, #0x100]
+100016174 stp q0,q0,[sp, #0xe0]
+100016178 stp q0,q0,[sp, #0xc0]
+10001617c stp q0,q0,[sp, #0xa0]
+100016180 stp q0,q0,[sp, #0x80]
+100016184 stp q0,q0,[sp, #0x60]
+100016188 stp q0,q0,[sp, #0x40]
+10001618c mov x0,x19
+100016190 mov x2,x23
+100016194 bl 0x100032260
+100016198 mov x0,x23
+10001619c bl 0x100030240
+1000161a0 mov x2,x0
+1000161a4 mov x0,x19
+1000161a8 bl 0x100032540
+1000161ac mov x0,x23
+1000161b0 bl 0x100031300
+1000161b4 adr x2,0x100046fb8
+1000161b8 nop
+1000161bc bl 0x1000329c0
+1000161c0 bl 0x10002fc20
+1000161c4 add x1,sp,#0x40
+1000161c8 bl 0x10002ec40
+1000161cc ldr w8,[sp, #0x40]
+1000161d0 ldr x9,[sp, #0x48]
+1000161d4 ldr x10,[sp, #0x58]
+1000161d8 mul x24,x9,x8
+1000161dc mul x23,x10,x8
+1000161e0 nop
+1000161e4 ldr x0,0x1000597f8
+1000161e8 bl 0x10002e920
+1000161ec adr x2,0x10004fbc0
+1000161f0 nop
+1000161f4 bl 0x1000307e0
+1000161f8 str x0,[x19, #0x48]
+1000161fc mov x8,#0x3a07
+100016200 movk x8,#0xa06d, LSL #16
+100016204 movk x8,#0x6d3, LSL #32
+100016208 movk x8,#0x6d3a, LSL #48
+10001620c umulh x8,x23,x8
+100016210 lsr x25,x8,#0x8
+100016214 str w21,[x19, #0x40]
+100016218 nop
+10001621c ldr x0,0x100059800
+100016220 bl 0x10002e930
+100016224 str x0,[x19, #0x20]
+100016228 str w21,[x19, #0x44]
+10001622c bl 0x10000bf04
+100016230 bl 0x10002f660
+100016234 cmp x0,#0x0
+100016238 cset w2,ne
+10001623c ldr x0,[x19, #0x20]
+100016240 bl 0x100031be0
+100016244 ldr x0,[x19, #0x20]
+100016248 mov w2,#0x3
+10001624c bl 0x100032520
+100016250 ldr x0,[x19, #0x20]
+100016254 mov w2,#0x3
+100016258 bl 0x100031ec0
+10001625c ldr x0,[x19, #0x20]
+100016260 mov x2,x24
+100016264 bl 0x1000320a0
+100016268 ldr x0,[x19, #0x20]
+10001626c mov x2,x23
+100016270 bl 0x100031f20
+100016274 ldr x0,[x19, #0x20]
+100016278 mov x2,x25
+10001627c bl 0x100031f40
+100016280 ldr x0,[x19, #0x20]
+100016284 adr x23,0x100047018
+100016288 nop
+10001628c mov x2,x23
+100016290 bl 0x1000324e0
+100016294 ldr x0,[x19, #0x20]
+100016298 mov x2,x23
+10001629c bl 0x100032740
+1000162a0 str w20,[x19, #0x8]
+1000162a4 nop
+1000162a8 ldr x0,0x100059738
+1000162ac bl 0x10002e930
+1000162b0 str x0,[x19, #0x30]
+1000162b4 cbnz w22,0x100016308
+1000162b8 nop
+1000162bc ldr x0,0x1000597e8
+1000162c0 bl 0x10002f820
+1000162c4 str xzr,[sp, #0x28]
+1000162c8 bl 0x100032bc0
+1000162cc fcvtzs x8,d0
+1000162d0 str x8,[sp, #0x20]
+1000162d4 nop
+1000162d8 ldr x0,0x1000597d8
+1000162dc bl 0x10002e920
+1000162e0 adr x2,0x100046fb8
+1000162e4 nop
+1000162e8 add x3,sp,#0x20
+1000162ec mov x4,x19
+1000162f0 mov x5,x19
+1000162f4 bl 0x100030600
+1000162f8 mov x2,x0
+1000162fc str x0,[x19, #0x28]
+100016300 mov x0,x19
+100016304 bl 0x10002ede0
+100016308 mov x0,x19
+10001630c mov w2,#0x0
+100016310 bl 0x100031de0
+100016314 adr x0,0x100047038
+100016318 nop
+10001631c mov x1,#0x0
+100016320 bl 0x10002e600
+100016324 cbz x0,0x100016528
+100016328 mov x22,x0
+10001632c nop
+100016330 ldr x8,0x100044598
+100016334 ldr x2,[x8]
+100016338 bl 0x100030ec0
+10001633c bl 0x100030b80
+100016340 mov x23,x0
+100016344 bl 0x100028978
+100016348 adr x24,0x100044d58
+10001634c nop
+100016350 mov x0,x24
+100016354 bl 0x100030b20
+100016358 cmp x0,#0x15
+10001635c b.cc 0x100016384
+100016360 adr x0,0x100044d58
+100016364 nop
+100016368 mov x2,#0x0
+10001636c mov w3,#0x12
+100016370 bl 0x100032ac0
+100016374 adr x2,0x100044d78
+100016378 nop
+10001637c bl 0x1000329e0
+100016380 mov x24,x0
+100016384 ldr x0,[x28, #0x700]
+100016388 ucvtf d0,x23
+10001638c mov x8,#0x3e10000000000000
+100016390 fmov d1,x8
+100016394 fmul d0,d0,d1
+100016398 str d0,[sp]
+10001639c adr x2,0x100047058
+1000163a0 nop
+1000163a4 bl 0x100032a40
+1000163a8 mov x26,x0
+1000163ac ldr x25,[x27]
+1000163b0 mov x0,x25
+1000163b4 mov w1,#0x0
+1000163b8 bl 0x10002eba0
+1000163bc cbz w0,0x100016408
+1000163c0 mov x0,x24
+1000163c4 bl 0x10002ed20
+1000163c8 mov w8,#0x202
+1000163cc movk w8,#0x822, LSL #16
+1000163d0 str w8,[sp, #0x20]
+1000163d4 stur x0,[sp, #0x24]
+1000163d8 mov w8,#0x842
+1000163dc strh w8,[sp, #0x2c]
+1000163e0 stur x26,[sp, #0x2e]
+1000163e4 adr x0,0x100000000
+1000163e8 nop
+1000163ec adr x3,0x10003c434
+1000163f0 nop
+1000163f4 add x4,sp,#0x20
+1000163f8 mov x1,x25
+1000163fc mov w2,#0x0
+100016400 mov w5,#0x16
+100016404 bl 0x10002e6d0
+100016408 ldr x0,[x19, #0x20]
+10001640c mov x2,x23
+100016410 bl 0x100031f20
+100016414 ldr x0,[x19, #0x20]
+100016418 lsr x8,x23,#0x5
+10001641c mov x9,#0x908d
+100016420 movk x9,#0x794, LSL #16
+100016424 movk x9,#0xf4fc, LSL #32
+100016428 movk x9,#0xb2, LSL #48
+10001642c umulh x8,x8,x9
+100016430 lsr x2,x8,#0x7
+100016434 bl 0x100031f40
+100016438 nop
+10001643c ldr x8,0x1000445a0
+100016440 ldr x2,[x8]
+100016444 mov x0,x22
+100016448 bl 0x100030ec0
+10001644c bl 0x100030b80
+100016450 mov x23,x0
+100016454 bl 0x100028978
+100016458 adr x24,0x100044d58
+10001645c nop
+100016460 mov x0,x24
+100016464 bl 0x100030b20
+100016468 cmp x0,#0x15
+10001646c b.cc 0x100016494
+100016470 adr x0,0x100044d58
+100016474 nop
+100016478 mov x2,#0x0
+10001647c mov w3,#0x12
+100016480 bl 0x100032ac0
+100016484 adr x2,0x100044d78
+100016488 nop
+10001648c bl 0x1000329e0
+100016490 mov x24,x0
+100016494 ldr x0,[x28, #0x700]
+100016498 ucvtf d0,x23
+10001649c mov x8,#0x3e10000000000000
+1000164a0 fmov d1,x8
+1000164a4 fmul d0,d0,d1
+1000164a8 str d0,[sp]
+1000164ac adr x2,0x100047078
+1000164b0 nop
+1000164b4 bl 0x100032a40
+1000164b8 mov x26,x0
+1000164bc ldr x25,[x27]
+1000164c0 mov x0,x25
+1000164c4 mov w1,#0x0
+1000164c8 bl 0x10002eba0
+1000164cc cbz w0,0x100016518
+1000164d0 mov x0,x24
+1000164d4 bl 0x10002ed20
+1000164d8 mov w8,#0x202
+1000164dc movk w8,#0x822, LSL #16
+1000164e0 str w8,[sp, #0x20]
+1000164e4 stur x0,[sp, #0x24]
+1000164e8 mov w8,#0x842
+1000164ec strh w8,[sp, #0x2c]
+1000164f0 stur x26,[sp, #0x2e]
+1000164f4 adr x0,0x100000000
+1000164f8 nop
+1000164fc adr x3,0x10003c434
+100016500 nop
+100016504 add x4,sp,#0x20
+100016508 mov x1,x25
+10001650c mov w2,#0x0
+100016510 mov w5,#0x16
+100016514 bl 0x10002e6d0
+100016518 ldr x0,[x19, #0x20]
+10001651c mov x2,x23
+100016520 bl 0x1000320a0
+100016524 bl 0x10002ea70
+100016528 bl 0x100028978
+10001652c adr x22,0x100044d58
+100016530 nop
+100016534 mov x0,x22
+100016538 bl 0x100030b20
+10001653c cmp x0,#0x15
+100016540 b.cc 0x100016568
+100016544 adr x0,0x100044d58
+100016548 nop
+10001654c mov x2,#0x0
+100016550 mov w3,#0x12
+100016554 bl 0x100032ac0
+100016558 adr x2,0x100044d78
+10001655c nop
+100016560 bl 0x1000329e0
+100016564 mov x22,x0
+100016568 ldr x0,[x28, #0x700]
+10001656c stp x21,x20,[sp]
+100016570 adr x2,0x100047098
+100016574 nop
+100016578 bl 0x100032a40
+10001657c mov x21,x0
+100016580 ldr x20,[x27]
+100016584 mov x0,x20
+100016588 mov w1,#0x0
+10001658c bl 0x10002eba0
+100016590 cbz w0,0x1000165dc
+100016594 mov x0,x22
+100016598 bl 0x10002ed20
+10001659c mov w8,#0x202
+1000165a0 movk w8,#0x822, LSL #16
+1000165a4 str w8,[sp, #0x40]
+1000165a8 stur x0,[sp, #0x44]
+1000165ac mov w8,#0x842
+1000165b0 strh w8,[sp, #0x4c]
+1000165b4 stur x21,[sp, #0x4e]
+1000165b8 adr x0,0x100000000
+1000165bc nop
+1000165c0 adr x3,0x10003c434
+1000165c4 nop
+1000165c8 add x4,sp,#0x40
+1000165cc mov x1,x20
+1000165d0 mov w2,#0x0
+1000165d4 mov w5,#0x16
+1000165d8 bl 0x10002e6d0
+1000165dc ldur x8,[x29, #-0x60]
+1000165e0 nop
+1000165e4 ldr x9,0x100044518
+1000165e8 ldr x9,[x9]
+1000165ec cmp x9,x8
+1000165f0 b.ne 0x100016618
+1000165f4 mov x0,x19
+1000165f8 add sp,sp,#0x8d0
+1000165fc ldp x29,x30,[sp, #0x50]
+100016600 ldp x20,x19,[sp, #0x40]
+100016604 ldp x22,x21,[sp, #0x30]
+100016608 ldp x24,x23,[sp, #0x20]
+10001660c ldp x26,x25,[sp, #0x10]
+100016610 ldp x28,x27,[sp], #0x60
+100016614 retab
+100016618 bl 0x10002e690
+
+/* WARNING: Function: _objc_release_x22 replaced with injection: _objc_release_fixup */
+/* Function Stack Size: 0x20 bytes */
+
+ID PTPStorage::initWithParent_andOptionalID_forSessionID_
+             (ID param_1,SEL param_2,ID param_3,unsigned_int param_4,unsigned_int param_5)
+
+{
+  long lVar1;
+  int iVar2;
+  ulong uVar3;
+  ID self;
+  ID IVar4;
+  char *pcVar5;
+  undefined8 uVar6;
+  ID IVar7;
+  ID IVar8;
+  ID IVar9;
+  ulong uVar10;
+  undefined8 in_x6;
+  undefined8 in_x7;
+  ulong uVar11;
+  ulong uVar12;
+  cfstringStruct *pcVar13;
+  double extraout_d0;
+  double dVar14;
+  ID local_920;
+  undefined *puStack_918;
+  timespec local_910;
+  undefined6 uStack_900;
+  statfs local_8f0;
+  long local_70;
+
+  uVar10 = (ulong)param_5;
+  uVar3 = (ulong)param_4;
+  local_70 = *(long *)PTR____stack_chk_guard_100044518;
+  if (param_4 == 0) {
+    uVar3 = FUN_100004204();
+  }
+  puStack_918 = PTR_PTPStorage_1000598a0;
+  local_920 = param_1;
+  self = NSObject::init((ID)&local_920,PTR_s_init_100058750);
+  if (self != 0) {
+    local_8f0.f_mntonname[400] = '\0';
+    local_8f0.f_mntonname[0x191] = '\0';
+    local_8f0.f_mntonname[0x192] = '\0';
+    local_8f0.f_mntonname[0x193] = '\0';
+    local_8f0.f_mntonname[0x194] = '\0';
+    local_8f0.f_mntonname[0x195] = '\0';
+    local_8f0.f_mntonname[0x196] = '\0';
+    local_8f0.f_mntonname[0x197] = '\0';
+    local_8f0.f_mntonname[0x188] = '\0';
+    local_8f0.f_mntonname[0x189] = '\0';
+    local_8f0.f_mntonname[0x18a] = '\0';
+    local_8f0.f_mntonname[0x18b] = '\0';
+    local_8f0.f_mntonname[0x18c] = '\0';
+    local_8f0.f_mntonname[0x18d] = '\0';
+    local_8f0.f_mntonname[0x18e] = '\0';
+    local_8f0.f_mntonname[399] = '\0';
+    local_8f0.f_mntonname[0x1a0] = '\0';
+    local_8f0.f_mntonname[0x1a1] = '\0';
+    local_8f0.f_mntonname[0x1a2] = '\0';
+    local_8f0.f_mntonname[0x1a3] = '\0';
+    local_8f0.f_mntonname[0x1a4] = '\0';
+    local_8f0.f_mntonname[0x1a5] = '\0';
+    local_8f0.f_mntonname[0x1a6] = '\0';
+    local_8f0.f_mntonname[0x1a7] = '\0';
+    local_8f0.f_mntonname[0x198] = '\0';
+    local_8f0.f_mntonname[0x199] = '\0';
+    local_8f0.f_mntonname[0x19a] = '\0';
+    local_8f0.f_mntonname[0x19b] = '\0';
+    local_8f0.f_mntonname[0x19c] = '\0';
+    local_8f0.f_mntonname[0x19d] = '\0';
+    local_8f0.f_mntonname[0x19e] = '\0';
+    local_8f0.f_mntonname[0x19f] = '\0';
+    local_8f0.f_mntonname[0x170] = '\0';
+    local_8f0.f_mntonname[0x171] = '\0';
+    local_8f0.f_mntonname[0x172] = '\0';
+    local_8f0.f_mntonname[0x173] = '\0';
+    local_8f0.f_mntonname[0x174] = '\0';
+    local_8f0.f_mntonname[0x175] = '\0';
+    local_8f0.f_mntonname[0x176] = '\0';
+    local_8f0.f_mntonname[0x177] = '\0';
+    local_8f0.f_mntonname[0x168] = '\0';
+    local_8f0.f_mntonname[0x169] = '\0';
+    local_8f0.f_mntonname[0x16a] = '\0';
+    local_8f0.f_mntonname[0x16b] = '\0';
+    local_8f0.f_mntonname[0x16c] = '\0';
+    local_8f0.f_mntonname[0x16d] = '\0';
+    local_8f0.f_mntonname[0x16e] = '\0';
+    local_8f0.f_mntonname[0x16f] = '\0';
+    local_8f0.f_mntonname[0x180] = '\0';
+    local_8f0.f_mntonname[0x181] = '\0';
+    local_8f0.f_mntonname[0x182] = '\0';
+    local_8f0.f_mntonname[0x183] = '\0';
+    local_8f0.f_mntonname[0x184] = '\0';
+    local_8f0.f_mntonname[0x185] = '\0';
+    local_8f0.f_mntonname[0x186] = '\0';
+    local_8f0.f_mntonname[0x187] = '\0';
+    local_8f0.f_mntonname[0x178] = '\0';
+    local_8f0.f_mntonname[0x179] = '\0';
+    local_8f0.f_mntonname[0x17a] = '\0';
+    local_8f0.f_mntonname[0x17b] = '\0';
+    local_8f0.f_mntonname[0x17c] = '\0';
+    local_8f0.f_mntonname[0x17d] = '\0';
+    local_8f0.f_mntonname[0x17e] = '\0';
+    local_8f0.f_mntonname[0x17f] = '\0';
+    local_8f0.f_mntonname[0x150] = '\0';
+    local_8f0.f_mntonname[0x151] = '\0';
+    local_8f0.f_mntonname[0x152] = '\0';
+    local_8f0.f_mntonname[0x153] = '\0';
+    local_8f0.f_mntonname[0x154] = '\0';
+    local_8f0.f_mntonname[0x155] = '\0';
+    local_8f0.f_mntonname[0x156] = '\0';
+    local_8f0.f_mntonname[0x157] = '\0';
+    local_8f0.f_mntonname[0x148] = '\0';
+    local_8f0.f_mntonname[0x149] = '\0';
+    local_8f0.f_mntonname[0x14a] = '\0';
+    local_8f0.f_mntonname[0x14b] = '\0';
+    local_8f0.f_mntonname[0x14c] = '\0';
+    local_8f0.f_mntonname[0x14d] = '\0';
+    local_8f0.f_mntonname[0x14e] = '\0';
+    local_8f0.f_mntonname[0x14f] = '\0';
+    local_8f0.f_mntonname[0x160] = '\0';
+    local_8f0.f_mntonname[0x161] = '\0';
+    local_8f0.f_mntonname[0x162] = '\0';
+    local_8f0.f_mntonname[0x163] = '\0';
+    local_8f0.f_mntonname[0x164] = '\0';
+    local_8f0.f_mntonname[0x165] = '\0';
+    local_8f0.f_mntonname[0x166] = '\0';
+    local_8f0.f_mntonname[0x167] = '\0';
+    local_8f0.f_mntonname[0x158] = '\0';
+    local_8f0.f_mntonname[0x159] = '\0';
+    local_8f0.f_mntonname[0x15a] = '\0';
+    local_8f0.f_mntonname[0x15b] = '\0';
+    local_8f0.f_mntonname[0x15c] = '\0';
+    local_8f0.f_mntonname[0x15d] = '\0';
+    local_8f0.f_mntonname[0x15e] = '\0';
+    local_8f0.f_mntonname[0x15f] = '\0';
+    local_8f0.f_mntonname[0x130] = '\0';
+    local_8f0.f_mntonname[0x131] = '\0';
+    local_8f0.f_mntonname[0x132] = '\0';
+    local_8f0.f_mntonname[0x133] = '\0';
+    local_8f0.f_mntonname[0x134] = '\0';
+    local_8f0.f_mntonname[0x135] = '\0';
+    local_8f0.f_mntonname[0x136] = '\0';
+    local_8f0.f_mntonname[0x137] = '\0';
+    local_8f0.f_mntonname[0x128] = '\0';
+    local_8f0.f_mntonname[0x129] = '\0';
+    local_8f0.f_mntonname[0x12a] = '\0';
+    local_8f0.f_mntonname[299] = '\0';
+    local_8f0.f_mntonname[300] = '\0';
+    local_8f0.f_mntonname[0x12d] = '\0';
+    local_8f0.f_mntonname[0x12e] = '\0';
+    local_8f0.f_mntonname[0x12f] = '\0';
+    local_8f0.f_mntonname[0x140] = '\0';
+    local_8f0.f_mntonname[0x141] = '\0';
+    local_8f0.f_mntonname[0x142] = '\0';
+    local_8f0.f_mntonname[0x143] = '\0';
+    local_8f0.f_mntonname[0x144] = '\0';
+    local_8f0.f_mntonname[0x145] = '\0';
+    local_8f0.f_mntonname[0x146] = '\0';
+    local_8f0.f_mntonname[0x147] = '\0';
+    local_8f0.f_mntonname[0x138] = '\0';
+    local_8f0.f_mntonname[0x139] = '\0';
+    local_8f0.f_mntonname[0x13a] = '\0';
+    local_8f0.f_mntonname[0x13b] = '\0';
+    local_8f0.f_mntonname[0x13c] = '\0';
+    local_8f0.f_mntonname[0x13d] = '\0';
+    local_8f0.f_mntonname[0x13e] = '\0';
+    local_8f0.f_mntonname[0x13f] = '\0';
+    local_8f0.f_mntonname[0x110] = '\0';
+    local_8f0.f_mntonname[0x111] = '\0';
+    local_8f0.f_mntonname[0x112] = '\0';
+    local_8f0.f_mntonname[0x113] = '\0';
+    local_8f0.f_mntonname[0x114] = '\0';
+    local_8f0.f_mntonname[0x115] = '\0';
+    local_8f0.f_mntonname[0x116] = '\0';
+    local_8f0.f_mntonname[0x117] = '\0';
+    local_8f0.f_mntonname[0x108] = '\0';
+    local_8f0.f_mntonname[0x109] = '\0';
+    local_8f0.f_mntonname[0x10a] = '\0';
+    local_8f0.f_mntonname[0x10b] = '\0';
+    local_8f0.f_mntonname[0x10c] = '\0';
+    local_8f0.f_mntonname[0x10d] = '\0';
+    local_8f0.f_mntonname[0x10e] = '\0';
+    local_8f0.f_mntonname[0x10f] = '\0';
+    local_8f0.f_mntonname[0x120] = '\0';
+    local_8f0.f_mntonname[0x121] = '\0';
+    local_8f0.f_mntonname[0x122] = '\0';
+    local_8f0.f_mntonname[0x123] = '\0';
+    local_8f0.f_mntonname[0x124] = '\0';
+    local_8f0.f_mntonname[0x125] = '\0';
+    local_8f0.f_mntonname[0x126] = '\0';
+    local_8f0.f_mntonname[0x127] = '\0';
+    local_8f0.f_mntonname[0x118] = '\0';
+    local_8f0.f_mntonname[0x119] = '\0';
+    local_8f0.f_mntonname[0x11a] = '\0';
+    local_8f0.f_mntonname[0x11b] = '\0';
+    local_8f0.f_mntonname[0x11c] = '\0';
+    local_8f0.f_mntonname[0x11d] = '\0';
+    local_8f0.f_mntonname[0x11e] = '\0';
+    local_8f0.f_mntonname[0x11f] = '\0';
+    local_8f0.f_mntonname[0xf0] = '\0';
+    local_8f0.f_mntonname[0xf1] = '\0';
+    local_8f0.f_mntonname[0xf2] = '\0';
+    local_8f0.f_mntonname[0xf3] = '\0';
+    local_8f0.f_mntonname[0xf4] = '\0';
+    local_8f0.f_mntonname[0xf5] = '\0';
+    local_8f0.f_mntonname[0xf6] = '\0';
+    local_8f0.f_mntonname[0xf7] = '\0';
+    local_8f0.f_mntonname[0xe8] = '\0';
+    local_8f0.f_mntonname[0xe9] = '\0';
+    local_8f0.f_mntonname[0xea] = '\0';
+    local_8f0.f_mntonname[0xeb] = '\0';
+    local_8f0.f_mntonname[0xec] = '\0';
+    local_8f0.f_mntonname[0xed] = '\0';
+    local_8f0.f_mntonname[0xee] = '\0';
+    local_8f0.f_mntonname[0xef] = '\0';
+    local_8f0.f_mntonname[0x100] = '\0';
+    local_8f0.f_mntonname[0x101] = '\0';
+    local_8f0.f_mntonname[0x102] = '\0';
+    local_8f0.f_mntonname[0x103] = '\0';
+    local_8f0.f_mntonname[0x104] = '\0';
+    local_8f0.f_mntonname[0x105] = '\0';
+    local_8f0.f_mntonname[0x106] = '\0';
+    local_8f0.f_mntonname[0x107] = '\0';
+    local_8f0.f_mntonname[0xf8] = '\0';
+    local_8f0.f_mntonname[0xf9] = '\0';
+    local_8f0.f_mntonname[0xfa] = '\0';
+    local_8f0.f_mntonname[0xfb] = '\0';
+    local_8f0.f_mntonname[0xfc] = '\0';
+    local_8f0.f_mntonname[0xfd] = '\0';
+    local_8f0.f_mntonname[0xfe] = '\0';
+    local_8f0.f_mntonname[0xff] = '\0';
+    local_8f0.f_mntonname[0xd0] = '\0';
+    local_8f0.f_mntonname[0xd1] = '\0';
+    local_8f0.f_mntonname[0xd2] = '\0';
+    local_8f0.f_mntonname[0xd3] = '\0';
+    local_8f0.f_mntonname[0xd4] = '\0';
+    local_8f0.f_mntonname[0xd5] = '\0';
+    local_8f0.f_mntonname[0xd6] = '\0';
+    local_8f0.f_mntonname[0xd7] = '\0';
+    local_8f0.f_mntonname[200] = '\0';
+    local_8f0.f_mntonname[0xc9] = '\0';
+    local_8f0.f_mntonname[0xca] = '\0';
+    local_8f0.f_mntonname[0xcb] = '\0';
+    local_8f0.f_mntonname[0xcc] = '\0';
+    local_8f0.f_mntonname[0xcd] = '\0';
+    local_8f0.f_mntonname[0xce] = '\0';
+    local_8f0.f_mntonname[0xcf] = '\0';
+    local_8f0.f_mntonname[0xe0] = '\0';
+    local_8f0.f_mntonname[0xe1] = '\0';
+    local_8f0.f_mntonname[0xe2] = '\0';
+    local_8f0.f_mntonname[0xe3] = '\0';
+    local_8f0.f_mntonname[0xe4] = '\0';
+    local_8f0.f_mntonname[0xe5] = '\0';
+    local_8f0.f_mntonname[0xe6] = '\0';
+    local_8f0.f_mntonname[0xe7] = '\0';
+    local_8f0.f_mntonname[0xd8] = '\0';
+    local_8f0.f_mntonname[0xd9] = '\0';
+    local_8f0.f_mntonname[0xda] = '\0';
+    local_8f0.f_mntonname[0xdb] = '\0';
+    local_8f0.f_mntonname[0xdc] = '\0';
+    local_8f0.f_mntonname[0xdd] = '\0';
+    local_8f0.f_mntonname[0xde] = '\0';
+    local_8f0.f_mntonname[0xdf] = '\0';
+    local_8f0.f_mntonname[0xb0] = '\0';
+    local_8f0.f_mntonname[0xb1] = '\0';
+    local_8f0.f_mntonname[0xb2] = '\0';
+    local_8f0.f_mntonname[0xb3] = '\0';
+    local_8f0.f_mntonname[0xb4] = '\0';
+    local_8f0.f_mntonname[0xb5] = '\0';
+    local_8f0.f_mntonname[0xb6] = '\0';
+    local_8f0.f_mntonname[0xb7] = '\0';
+    local_8f0.f_mntonname[0xa8] = '\0';
+    local_8f0.f_mntonname[0xa9] = '\0';
+    local_8f0.f_mntonname[0xaa] = '\0';
+    local_8f0.f_mntonname[0xab] = '\0';
+    local_8f0.f_mntonname[0xac] = '\0';
+    local_8f0.f_mntonname[0xad] = '\0';
+    local_8f0.f_mntonname[0xae] = '\0';
+    local_8f0.f_mntonname[0xaf] = '\0';
+    local_8f0.f_mntonname[0xc0] = '\0';
+    local_8f0.f_mntonname[0xc1] = '\0';
+    local_8f0.f_mntonname[0xc2] = '\0';
+    local_8f0.f_mntonname[0xc3] = '\0';
+    local_8f0.f_mntonname[0xc4] = '\0';
+    local_8f0.f_mntonname[0xc5] = '\0';
+    local_8f0.f_mntonname[0xc6] = '\0';
+    local_8f0.f_mntonname[199] = '\0';
+    local_8f0.f_mntonname[0xb8] = '\0';
+    local_8f0.f_mntonname[0xb9] = '\0';
+    local_8f0.f_mntonname[0xba] = '\0';
+    local_8f0.f_mntonname[0xbb] = '\0';
+    local_8f0.f_mntonname[0xbc] = '\0';
+    local_8f0.f_mntonname[0xbd] = '\0';
+    local_8f0.f_mntonname[0xbe] = '\0';
+    local_8f0.f_mntonname[0xbf] = '\0';
+    local_8f0.f_mntonname[0x90] = '\0';
+    local_8f0.f_mntonname[0x91] = '\0';
+    local_8f0.f_mntonname[0x92] = '\0';
+    local_8f0.f_mntonname[0x93] = '\0';
+    local_8f0.f_mntonname[0x94] = '\0';
+    local_8f0.f_mntonname[0x95] = '\0';
+    local_8f0.f_mntonname[0x96] = '\0';
+    local_8f0.f_mntonname[0x97] = '\0';
+    local_8f0.f_mntonname[0x88] = '\0';
+    local_8f0.f_mntonname[0x89] = '\0';
+    local_8f0.f_mntonname[0x8a] = '\0';
+    local_8f0.f_mntonname[0x8b] = '\0';
+    local_8f0.f_mntonname[0x8c] = '\0';
+    local_8f0.f_mntonname[0x8d] = '\0';
+    local_8f0.f_mntonname[0x8e] = '\0';
+    local_8f0.f_mntonname[0x8f] = '\0';
+    local_8f0.f_mntonname[0xa0] = '\0';
+    local_8f0.f_mntonname[0xa1] = '\0';
+    local_8f0.f_mntonname[0xa2] = '\0';
+    local_8f0.f_mntonname[0xa3] = '\0';
+    local_8f0.f_mntonname[0xa4] = '\0';
+    local_8f0.f_mntonname[0xa5] = '\0';
+    local_8f0.f_mntonname[0xa6] = '\0';
+    local_8f0.f_mntonname[0xa7] = '\0';
+    local_8f0.f_mntonname[0x98] = '\0';
+    local_8f0.f_mntonname[0x99] = '\0';
+    local_8f0.f_mntonname[0x9a] = '\0';
+    local_8f0.f_mntonname[0x9b] = '\0';
+    local_8f0.f_mntonname[0x9c] = '\0';
+    local_8f0.f_mntonname[0x9d] = '\0';
+    local_8f0.f_mntonname[0x9e] = '\0';
+    local_8f0.f_mntonname[0x9f] = '\0';
+    local_8f0.f_mntonname[0x70] = '\0';
+    local_8f0.f_mntonname[0x71] = '\0';
+    local_8f0.f_mntonname[0x72] = '\0';
+    local_8f0.f_mntonname[0x73] = '\0';
+    local_8f0.f_mntonname[0x74] = '\0';
+    local_8f0.f_mntonname[0x75] = '\0';
+    local_8f0.f_mntonname[0x76] = '\0';
+    local_8f0.f_mntonname[0x77] = '\0';
+    local_8f0.f_mntonname[0x68] = '\0';
+    local_8f0.f_mntonname[0x69] = '\0';
+    local_8f0.f_mntonname[0x6a] = '\0';
+    local_8f0.f_mntonname[0x6b] = '\0';
+    local_8f0.f_mntonname[0x6c] = '\0';
+    local_8f0.f_mntonname[0x6d] = '\0';
+    local_8f0.f_mntonname[0x6e] = '\0';
+    local_8f0.f_mntonname[0x6f] = '\0';
+    local_8f0.f_mntonname[0x80] = '\0';
+    local_8f0.f_mntonname[0x81] = '\0';
+    local_8f0.f_mntonname[0x82] = '\0';
+    local_8f0.f_mntonname[0x83] = '\0';
+    local_8f0.f_mntonname[0x84] = '\0';
+    local_8f0.f_mntonname[0x85] = '\0';
+    local_8f0.f_mntonname[0x86] = '\0';
+    local_8f0.f_mntonname[0x87] = '\0';
+    local_8f0.f_mntonname[0x78] = '\0';
+    local_8f0.f_mntonname[0x79] = '\0';
+    local_8f0.f_mntonname[0x7a] = '\0';
+    local_8f0.f_mntonname[0x7b] = '\0';
+    local_8f0.f_mntonname[0x7c] = '\0';
+    local_8f0.f_mntonname[0x7d] = '\0';
+    local_8f0.f_mntonname[0x7e] = '\0';
+    local_8f0.f_mntonname[0x7f] = '\0';
+    local_8f0.f_mntonname[0x50] = '\0';
+    local_8f0.f_mntonname[0x51] = '\0';
+    local_8f0.f_mntonname[0x52] = '\0';
+    local_8f0.f_mntonname[0x53] = '\0';
+    local_8f0.f_mntonname[0x54] = '\0';
+    local_8f0.f_mntonname[0x55] = '\0';
+    local_8f0.f_mntonname[0x56] = '\0';
+    local_8f0.f_mntonname[0x57] = '\0';
+    local_8f0.f_mntonname[0x48] = '\0';
+    local_8f0.f_mntonname[0x49] = '\0';
+    local_8f0.f_mntonname[0x4a] = '\0';
+    local_8f0.f_mntonname[0x4b] = '\0';
+    local_8f0.f_mntonname[0x4c] = '\0';
+    local_8f0.f_mntonname[0x4d] = '\0';
+    local_8f0.f_mntonname[0x4e] = '\0';
+    local_8f0.f_mntonname[0x4f] = '\0';
+    local_8f0.f_mntonname[0x60] = '\0';
+    local_8f0.f_mntonname[0x61] = '\0';
+    local_8f0.f_mntonname[0x62] = '\0';
+    local_8f0.f_mntonname[99] = '\0';
+    local_8f0.f_mntonname[100] = '\0';
+    local_8f0.f_mntonname[0x65] = '\0';
+    local_8f0.f_mntonname[0x66] = '\0';
+    local_8f0.f_mntonname[0x67] = '\0';
+    local_8f0.f_mntonname[0x58] = '\0';
+    local_8f0.f_mntonname[0x59] = '\0';
+    local_8f0.f_mntonname[0x5a] = '\0';
+    local_8f0.f_mntonname[0x5b] = '\0';
+    local_8f0.f_mntonname[0x5c] = '\0';
+    local_8f0.f_mntonname[0x5d] = '\0';
+    local_8f0.f_mntonname[0x5e] = '\0';
+    local_8f0.f_mntonname[0x5f] = '\0';
+    local_8f0.f_mntonname[0x30] = '\0';
+    local_8f0.f_mntonname[0x31] = '\0';
+    local_8f0.f_mntonname[0x32] = '\0';
+    local_8f0.f_mntonname[0x33] = '\0';
+    local_8f0.f_mntonname[0x34] = '\0';
+    local_8f0.f_mntonname[0x35] = '\0';
+    local_8f0.f_mntonname[0x36] = '\0';
+    local_8f0.f_mntonname[0x37] = '\0';
+    local_8f0.f_mntonname[0x28] = '\0';
+    local_8f0.f_mntonname[0x29] = '\0';
+    local_8f0.f_mntonname[0x2a] = '\0';
+    local_8f0.f_mntonname[0x2b] = '\0';
+    local_8f0.f_mntonname[0x2c] = '\0';
+    local_8f0.f_mntonname[0x2d] = '\0';
+    local_8f0.f_mntonname[0x2e] = '\0';
+    local_8f0.f_mntonname[0x2f] = '\0';
+    local_8f0.f_mntonname[0x40] = '\0';
+    local_8f0.f_mntonname[0x41] = '\0';
+    local_8f0.f_mntonname[0x42] = '\0';
+    local_8f0.f_mntonname[0x43] = '\0';
+    local_8f0.f_mntonname[0x44] = '\0';
+    local_8f0.f_mntonname[0x45] = '\0';
+    local_8f0.f_mntonname[0x46] = '\0';
+    local_8f0.f_mntonname[0x47] = '\0';
+    local_8f0.f_mntonname[0x38] = '\0';
+    local_8f0.f_mntonname[0x39] = '\0';
+    local_8f0.f_mntonname[0x3a] = '\0';
+    local_8f0.f_mntonname[0x3b] = '\0';
+    local_8f0.f_mntonname[0x3c] = '\0';
+    local_8f0.f_mntonname[0x3d] = '\0';
+    local_8f0.f_mntonname[0x3e] = '\0';
+    local_8f0.f_mntonname[0x3f] = '\0';
+    local_8f0.f_mntonname[0x10] = '\0';
+    local_8f0.f_mntonname[0x11] = '\0';
+    local_8f0.f_mntonname[0x12] = '\0';
+    local_8f0.f_mntonname[0x13] = '\0';
+    local_8f0.f_mntonname[0x14] = '\0';
+    local_8f0.f_mntonname[0x15] = '\0';
+    local_8f0.f_mntonname[0x16] = '\0';
+    local_8f0.f_mntonname[0x17] = '\0';
+    local_8f0.f_mntonname[8] = '\0';
+    local_8f0.f_mntonname[9] = '\0';
+    local_8f0.f_mntonname[10] = '\0';
+    local_8f0.f_mntonname[0xb] = '\0';
+    local_8f0.f_mntonname[0xc] = '\0';
+    local_8f0.f_mntonname[0xd] = '\0';
+    local_8f0.f_mntonname[0xe] = '\0';
+    local_8f0.f_mntonname[0xf] = '\0';
+    local_8f0.f_mntonname[0x20] = '\0';
+    local_8f0.f_mntonname[0x21] = '\0';
+    local_8f0.f_mntonname[0x22] = '\0';
+    local_8f0.f_mntonname[0x23] = '\0';
+    local_8f0.f_mntonname[0x24] = '\0';
+    local_8f0.f_mntonname[0x25] = '\0';
+    local_8f0.f_mntonname[0x26] = '\0';
+    local_8f0.f_mntonname[0x27] = '\0';
+    local_8f0.f_mntonname[0x18] = '\0';
+    local_8f0.f_mntonname[0x19] = '\0';
+    local_8f0.f_mntonname[0x1a] = '\0';
+    local_8f0.f_mntonname[0x1b] = '\0';
+    local_8f0.f_mntonname[0x1c] = '\0';
+    local_8f0.f_mntonname[0x1d] = '\0';
+    local_8f0.f_mntonname[0x1e] = '\0';
+    local_8f0.f_mntonname[0x1f] = '\0';
+    local_8f0.f_fstypename[0] = '\0';
+    local_8f0.f_fstypename[1] = '\0';
+    local_8f0.f_fstypename[2] = '\0';
+    local_8f0.f_fstypename[3] = '\0';
+    local_8f0.f_fstypename[4] = '\0';
+    local_8f0.f_fstypename[5] = '\0';
+    local_8f0.f_fstypename[6] = '\0';
+    local_8f0.f_fstypename[7] = '\0';
+    local_8f0.f_flags = 0;
+    local_8f0.f_fssubtype = 0;
+    local_8f0.f_mntonname[0] = '\0';
+    local_8f0.f_mntonname[1] = '\0';
+    local_8f0.f_mntonname[2] = '\0';
+    local_8f0.f_mntonname[3] = '\0';
+    local_8f0.f_mntonname[4] = '\0';
+    local_8f0.f_mntonname[5] = '\0';
+    local_8f0.f_mntonname[6] = '\0';
+    local_8f0.f_mntonname[7] = '\0';
+    local_8f0.f_fstypename[8] = '\0';
+    local_8f0.f_fstypename[9] = '\0';
+    local_8f0.f_fstypename[10] = '\0';
+    local_8f0.f_fstypename[0xb] = '\0';
+    local_8f0.f_fstypename[0xc] = '\0';
+    local_8f0.f_fstypename[0xd] = '\0';
+    local_8f0.f_fstypename[0xe] = '\0';
+    local_8f0.f_fstypename[0xf] = '\0';
+    local_8f0.f_ffree = 0;
+    local_8f0.f_files = 0;
+    local_8f0.f_owner = 0;
+    local_8f0.f_type = 0;
+    local_8f0.f_fsid.val[0] = 0;
+    local_8f0.f_fsid.val[1] = 0;
+    local_8f0.f_blocks._0_4_ = 0;
+    local_8f0.f_blocks._4_2_ = 0;
+    local_8f0.f_blocks._6_2_ = 0;
+    local_8f0.f_bsize = 0;
+    local_8f0.f_iosize = 0;
+    local_8f0.f_bavail = 0;
+    local_8f0.f_bfree._0_6_ = 0;
+    local_8f0.f_bfree._6_2_ = 0;
+    NSObject::setParent_(self,param_3);
+    IVar4 = objc_stub::hostMediaSupportedFormats(param_3);
+    NSObject::setSupportedFormats_(self,IVar4);
+    IVar4 = objc_stub::path(param_3);
+    IVar4 = objc_stub::stringByAppendingPathComponent_(IVar4,&cf_DCIM);
+    pcVar5 = (char *)objc_stub::fileSystemRepresentation(IVar4);
+    _statfs(pcVar5,&local_8f0);
+    uVar11 = (ulong)local_8f0.f_bsize;
+    lVar1 = CONCAT26(local_8f0.f_blocks._6_2_,
+                     CONCAT24(local_8f0.f_blocks._4_2_,(undefined4)local_8f0.f_blocks));
+    uVar12 = local_8f0.f_bavail * uVar11;
+    IVar4 = _objc_alloc(PTR_ICOrderedMediaSet_1000597f8);
+    IVar4 = ICOrderedMediaSet::initWithTypes_(IVar4,0x10004fbc0);
+    *(ID *)(self + 0x48) = IVar4;
+    *(int *)(self + 0x40) = (int)uVar3;
+    uVar6 = _objc_alloc_init(PTR_PTPStorageInfoDataset_100059800);
+    *(undefined8 *)(self + 0x20) = uVar6;
+    *(int *)(self + 0x44) = (int)uVar3;
+    IVar4 = FUN_10000bf04();
+    IVar4 = objc_stub::cplStorageState(IVar4);
+    objc_stub::setAccessCapability_(*(ID *)(self + 0x20),(ulong)(IVar4 != 0));
+    objc_stub::setStorageType_(*(ID *)(self + 0x20),3);
+    objc_stub::setFilesystemType_(*(ID *)(self + 0x20),3);
+    objc_stub::setMaxCapacity_(*(ID *)(self + 0x20),lVar1 * uVar11);
+    objc_stub::setFreeSpaceInBytes_(*(ID *)(self + 0x20),uVar12);
+    objc_stub::setFreeSpaceInImages_(*(ID *)(self + 0x20),uVar12 / 600);
+    objc_stub::setStorageDescription_(*(ID *)(self + 0x20),&cf_InternalStorage);
+    objc_stub::setVolumeLabel_(*(ID *)(self + 0x20),&cf_InternalStorage);
+    *(unsigned_int *)(self + 8) = param_5;
+    uVar6 = _objc_alloc_init(PTR__OBJC_CLASS___NSMutableArray_100059738);
+    *(undefined8 *)(self + 0x30) = uVar6;
+    if (param_4 == 0) {
+      IVar4 = NSDate::date((ID)PTR__OBJC_CLASS___NSDate_1000597e8);
+      local_910.field1_0x8._0_4_ = 0;
+      local_910.field1_0x8._4_2_ = 0;
+      local_910.field1_0x8._6_2_ = 0;
+      NSDate::timeIntervalSince1970(IVar4);
+      local_910.field0_0x0 = (long_long)extraout_d0;
+      IVar4 = _objc_alloc(PTR_PTPFolder_1000597d8);
+      IVar4 = PTPFolder::initWithName_captureTimeSpec_parent_storage_
+                        (IVar4,0x100046fb8,&local_910,self,self);
+      *(ID *)(self + 0x28) = IVar4;
+      NSObject::addCameraFolderToIndex_(self,IVar4);
+    }
+    NSObject::setEnumerated_(self,0);
+    IVar4 = _MGCopyAnswer(&cf_DiskUsage,0);
+    if (IVar4 != 0) {
+      IVar7 = objc_stub::objectForKey_
+                        (IVar4,*(undefined8 *)PTR__kMGQDiskUsageAmountDataAvailable_100044598);
+      IVar7 = objc_stub::longLongValue(IVar7);
+      ___ICOSLogCreate();
+      pcVar13 = &cf___;
+      IVar8 = objc_stub::length(0x100044d58);
+      if (0x14 < IVar8) {
+        IVar8 = objc_stub::substringWithRange_(0x100044d58,0,0x12);
+        pcVar13 = (cfstringStruct *)objc_stub::stringByAppendingString_(IVar8,&cf___);
+      }
+      dVar14 = (double)IVar7 * 9.313225746154785e-10;
+      IVar8 = NSString::stringWithFormat_
+                        ((ID)PTR__OBJC_CLASS___NSString_100059700,&cf_AvailableStorage___2fGB);
+      uVar6 = __gICOSLog;
+      iVar2 = _os_log_type_enabled(__gICOSLog,0);
+      if (iVar2 != 0) {
+        IVar9 = objc_stub::UTF8String((ID)pcVar13);
+        local_910.field0_0x0._0_4_ = 0x8220202;
+        local_910.field0_0x0._4_4_ = (undefined4)IVar9;
+        local_910.field1_0x8._0_4_ = (undefined4)(IVar9 >> 0x20);
+        local_910.field1_0x8._4_2_ = 0x842;
+        local_910.field1_0x8._6_2_ = (undefined2)IVar8;
+        uStack_900 = (undefined6)(IVar8 >> 0x10);
+        __os_log_impl(0x100000000,uVar6,0,"%{public}20s | %{public}@",&local_910,0x16,in_x6,in_x7,
+                      dVar14);
+      }
+      objc_stub::setFreeSpaceInBytes_(*(ID *)(self + 0x20),IVar7);
+      objc_stub::setFreeSpaceInImages_(*(ID *)(self + 0x20),IVar7 / 1500000);
+      IVar4 = objc_stub::objectForKey_
+                        (IVar4,*(undefined8 *)PTR__kMGQDiskUsageTotalDiskCapacity_1000445a0);
+      IVar4 = objc_stub::longLongValue(IVar4);
+      ___ICOSLogCreate();
+      pcVar13 = &cf___;
+      IVar7 = objc_stub::length(0x100044d58);
+      if (0x14 < IVar7) {
+        IVar7 = objc_stub::substringWithRange_(0x100044d58,0,0x12);
+        pcVar13 = (cfstringStruct *)objc_stub::stringByAppendingString_(IVar7,&cf___);
+      }
+      dVar14 = (double)IVar4 * 9.313225746154785e-10;
+      IVar7 = NSString::stringWithFormat_
+                        ((ID)PTR__OBJC_CLASS___NSString_100059700,&cf_StorageCapacity___2fGB);
+      uVar6 = __gICOSLog;
+      iVar2 = _os_log_type_enabled(__gICOSLog,0);
+      if (iVar2 != 0) {
+        IVar8 = objc_stub::UTF8String((ID)pcVar13);
+        local_910.field0_0x0._0_4_ = 0x8220202;
+        local_910.field0_0x0._4_4_ = (undefined4)IVar8;
+        local_910.field1_0x8._0_4_ = (undefined4)(IVar8 >> 0x20);
+        local_910.field1_0x8._4_2_ = 0x842;
+        local_910.field1_0x8._6_2_ = (undefined2)IVar7;
+        uStack_900 = (undefined6)(IVar7 >> 0x10);
+        __os_log_impl(0x100000000,uVar6,0,"%{public}20s | %{public}@",&local_910,0x16,in_x6,in_x7,
+                      dVar14);
+      }
+      objc_stub::setMaxCapacity_(*(ID *)(self + 0x20),IVar4);
+    }
+  }
+  ___ICOSLogCreate(0);
+  pcVar13 = &cf___;
+  IVar4 = objc_stub::length(0x100044d58);
+  if (0x14 < IVar4) {
+    IVar4 = objc_stub::substringWithRange_(0x100044d58,0,0x12);
+    pcVar13 = (cfstringStruct *)objc_stub::stringByAppendingString_(IVar4,&cf___);
+  }
+  IVar4 = NSString::stringWithFormat_
+                    ((ID)PTR__OBJC_CLASS___NSString_100059700,
+                     &cf_CreatedStorage_PTPStorageID_0x_xSessionID_0x_x);
+  uVar6 = __gICOSLog;
+  iVar2 = _os_log_type_enabled(__gICOSLog,0);
+  if (iVar2 != 0) {
+    IVar7 = objc_stub::UTF8String((ID)pcVar13);
+    local_8f0.f_bsize = 0x8220202;
+    local_8f0.f_iosize = (int32_t)IVar7;
+    local_8f0.f_blocks._0_4_ = (undefined4)(IVar7 >> 0x20);
+    local_8f0.f_blocks._4_2_ = 0x842;
+    local_8f0.f_blocks._6_2_ = (undefined2)IVar4;
+    local_8f0.f_bfree._0_6_ = (undefined6)(IVar4 >> 0x10);
+    __os_log_impl(0x100000000,uVar6,0,"%{public}20s | %{public}@",&local_8f0,0x16,in_x6,in_x7,uVar3,
+                  uVar10);
+  }
+  if (*(long *)PTR____stack_chk_guard_100044518 == local_70) {
+    return self;
+  }
+                    /* WARNING: Subroutine does not return */
+  ___stack_chk_fail();
+}

@@ -5,8 +5,10 @@ module OctopusCore {
     header "Core/oct_service.h"
     header "Core/oct_log.h"
     header "Core/oct_link.h"
+    header "Core/oct_usb.h"
     header "Core/oct_compat.h"
     header "Core/oct_diag.h"
+    header "Core/oct_device.h"
     header "Core/oct_sha256.h"
     header "Core/oct_zip.h"
     export *

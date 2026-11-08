@@ -1,0 +1,566 @@
+===== 100006fd0 PTPDeviceUSBTransport::sendDataPackets: =====
+XREF 10005d738 DATA null
+XREF 1000330e0 DATA null
+100006fd0 pacibsp
+100006fd4 sub sp,sp,#0xa0
+100006fd8 stp x28,x27,[sp, #0x40]
+100006fdc stp x26,x25,[sp, #0x50]
+100006fe0 stp x24,x23,[sp, #0x60]
+100006fe4 stp x22,x21,[sp, #0x70]
+100006fe8 stp x20,x19,[sp, #0x80]
+100006fec stp x29,x30,[sp, #0x90]
+100006ff0 add x29,sp,#0x90
+100006ff4 mov x26,x2
+100006ff8 mov x19,x0
+100006ffc nop
+100007000 ldr x8,0x100044518
+100007004 ldr x8,[x8]
+100007008 str x8,[sp, #0x38]
+10000700c mov x0,x2
+100007010 bl 0x100032c20
+100007014 mov x24,x0
+100007018 nop
+10000701c ldr x0,0x100059720
+100007020 bl 0x10002e920
+100007024 nop
+100007028 ldrsw x8,0x100059984
+10000702c ldr x2,[x19, x8#0x0]
+100007030 nop
+100007034 ldrsw x28,0x10005996c
+100007038 ldr w3,[x19, x28#0x0]
+10000703c bl 0x100030400
+100007040 mov x22,x0
+100007044 mov x0,x26
+100007048 bl 0x100031700
+10000704c str x1,[sp, #0x18]
+100007050 mov x0,x19
+100007054 mov x2,x24
+100007058 bl 0x100032c00
+10000705c nop
+100007060 ldrsw x20,0x1000599b4
+100007064 cmp w24,#0x0
+100007068 cset w8,eq
+10000706c cmp w0,#0x0
+100007070 cset w27,eq
+100007074 ldrb w9,[x19, x20]
+100007078 orr w8,w8,w27
+10000707c cmp w9,#0x0
+100007080 ccmp w8,#0x0,#0x4,ne
+100007084 b.ne 0x10000709c
+100007088 mov x23,#0x0
+10000708c mov w25,#0x2bc
+100007090 movk w25,#0xe000, LSL #16
+100007094 tbz w27,#0x0,0x10000721c
+100007098 b 0x10000730c
+10000709c str x26,[sp, #0x10]
+1000070a0 mov x0,x26
+1000070a4 mov x2,x22
+1000070a8 mov w3,#0x1
+1000070ac bl 0x10002f600
+1000070b0 mov x21,x0
+1000070b4 mov x0,x22
+1000070b8 bl 0x100030b20
+1000070bc ldr w8,[x19, x28#0x0]
+1000070c0 cmp x0,x8
+1000070c4 b.ne 0x1000071e0
+1000070c8 mov x23,#0x0
+1000070cc mov x0,x19
+1000070d0 mov x2,x22
+1000070d4 bl 0x100032f20
+1000070d8 cbnz w0,0x100007204
+1000070dc add x23,x21,x23
+1000070e0 bl 0x100028978
+1000070e4 nop
+1000070e8 ldr x21,0x100059700
+1000070ec ldr x8,[sp, #0x18]
+1000070f0 stp x23,x8,[sp]
+1000070f4 mov x0,x21
+1000070f8 adr x2,0x100045378
+1000070fc nop
+100007100 bl 0x100032a40
+100007104 str x0,[sp]
+100007108 mov x0,x21
+10000710c adr x2,0x100045358
+100007110 nop
+100007114 bl 0x100032a40
+100007118 mov x21,x0
+10000711c mov w0,#0x4
+100007120 bl 0x100028b30
+100007124 ldr x26,[sp, #0x10]
+100007128 cbz x0,0x10000717c
+10000712c nop
+100007130 nop
+100007134 ldr x25,0x10005a970
+100007138 mov x0,x25
+10000713c mov w1,#0x0
+100007140 bl 0x10002eba0
+100007144 cbz w0,0x10000717c
+100007148 mov w8,#0x102
+10000714c movk w8,#0x842, LSL #16
+100007150 str w8,[sp, #0x20]
+100007154 stur x21,[sp, #0x24]
+100007158 add x4,sp,#0x20
+10000715c adr x0,0x100000000
+100007160 nop
+100007164 mov x1,x25
+100007168 mov w2,#0x0
+10000716c adr x3,0x10003c44e
+100007170 nop
+100007174 mov w5,#0xc
+100007178 bl 0x10002e6d0
+10000717c cmp w24,#0x0
+100007180 cset w21,eq
+100007184 mov x0,x19
+100007188 mov x2,x24
+10000718c bl 0x100032c00
+100007190 cmp w0,#0x0
+100007194 cset w27,eq
+100007198 ldrb w8,[x19, x20]
+10000719c cbz w8,0x100007214
+1000071a0 orr w8,w21,w27
+1000071a4 tbz w8,#0x0,0x100007214
+1000071a8 mov x0,x26
+1000071ac mov x2,x22
+1000071b0 mov w3,#0x1
+1000071b4 bl 0x10002f600
+1000071b8 mov x21,x0
+1000071bc mov x0,x22
+1000071c0 bl 0x100030b20
+1000071c4 ldr w8,[x19, x28#0x0]
+1000071c8 cmp x0,x8
+1000071cc b.eq 0x1000070cc
+1000071d0 mov x26,x0
+1000071d4 mov w25,#0x0
+1000071d8 cbnz x26,0x1000071f4
+1000071dc b 0x1000072e0
+1000071e0 mov x26,x0
+1000071e4 mov x23,#0x0
+1000071e8 mov w25,#0x2bc
+1000071ec movk w25,#0xe000, LSL #16
+1000071f0 cbz x26,0x1000072e0
+1000071f4 mov x0,x19
+1000071f8 mov x2,x22
+1000071fc bl 0x100032f20
+100007200 cbz w0,0x100007240
+100007204 mov x25,x0
+100007208 ldr x26,[sp, #0x10]
+10000720c tbz w27,#0x0,0x10000721c
+100007210 b 0x10000730c
+100007214 mov w25,#0x0
+100007218 tbnz w27,#0x0,0x10000730c
+10000721c mov x0,x22
+100007220 mov x2,#0x0
+100007224 bl 0x100032060
+100007228 mov x0,x19
+10000722c mov x2,x22
+100007230 bl 0x100032f20
+100007234 mov x25,x0
+100007238 mov w20,#0x1
+10000723c b 0x100007310
+100007240 add x23,x21,x23
+100007244 bl 0x100028978
+100007248 nop
+10000724c ldr x21,0x100059700
+100007250 ldr x8,[sp, #0x18]
+100007254 stp x23,x8,[sp]
+100007258 adr x2,0x100045378
+10000725c nop
+100007260 mov x0,x21
+100007264 bl 0x100032a40
+100007268 str x0,[sp]
+10000726c adr x2,0x100045358
+100007270 nop
+100007274 mov x0,x21
+100007278 bl 0x100032a40
+10000727c mov x24,x0
+100007280 mov w0,#0x4
+100007284 bl 0x100028b30
+100007288 cbz x0,0x1000072dc
+10000728c nop
+100007290 nop
+100007294 ldr x21,0x10005a970
+100007298 mov x0,x21
+10000729c mov w1,#0x0
+1000072a0 bl 0x10002eba0
+1000072a4 cbz w0,0x1000072dc
+1000072a8 mov w8,#0x102
+1000072ac movk w8,#0x842, LSL #16
+1000072b0 str w8,[sp, #0x20]
+1000072b4 stur x24,[sp, #0x24]
+1000072b8 adr x0,0x100000000
+1000072bc nop
+1000072c0 adr x3,0x10003c44e
+1000072c4 nop
+1000072c8 add x4,sp,#0x20
+1000072cc mov x1,x21
+1000072d0 mov w2,#0x0
+1000072d4 mov w5,#0xc
+1000072d8 bl 0x10002e6d0
+1000072dc mov w25,#0x0
+1000072e0 nop
+1000072e4 ldrsw x8,0x1000599bc
+1000072e8 ldrsw x8,[x19, x8#0x0]
+1000072ec sdiv x9,x26,x8
+1000072f0 msub x8,x9,x8,x26
+1000072f4 ldr x26,[sp, #0x10]
+1000072f8 cbz x8,0x1000074b0
+1000072fc mov x0,x26
+100007300 mov x2,x23
+100007304 bl 0x100031c40
+100007308 tbz w27,#0x0,0x10000721c
+10000730c mov w20,#0x0
+100007310 bl 0x10002ea70
+100007314 adr x0,0x1000453b8
+100007318 nop
+10000731c bl 0x10002e640
+100007320 mov x21,x0
+100007324 nop
+100007328 nop
+10000732c ldrsw x22,0x100059dac
+100007330 ldr x0,[x19, x22#0x0]
+100007334 cbz x0,0x100007468
+100007338 mov x1,x21
+10000733c bl 0x10002ea10
+100007340 tbz w0,#0x0,0x100007468
+100007344 ldr x8,[sp, #0x18]
+100007348 cmp x23,x8
+10000734c cset w8,ne
+100007350 orr w8,w8,w20
+100007354 tbz w8,#0x0,0x10000742c
+100007358 mov w8,#0x2bc
+10000735c movk w8,#0xe000, LSL #16
+100007360 add w8,w8,#0x1a
+100007364 cmp w25,w8
+100007368 b.ne 0x100007440
+10000736c bl 0x100028978
+100007370 adr x20,0x100044d58
+100007374 nop
+100007378 mov x0,x20
+10000737c bl 0x100030b20
+100007380 cmp x0,#0x15
+100007384 b.cc 0x1000073ac
+100007388 adr x0,0x100044d58
+10000738c nop
+100007390 mov x2,#0x0
+100007394 mov w3,#0x12
+100007398 bl 0x100032ac0
+10000739c adr x2,0x100044d78
+1000073a0 nop
+1000073a4 bl 0x1000329e0
+1000073a8 mov x20,x0
+1000073ac nop
+1000073b0 ldr x0,0x100059700
+1000073b4 adr x2,0x1000453d8
+1000073b8 nop
+1000073bc bl 0x100032a40
+1000073c0 mov x22,x0
+1000073c4 nop
+1000073c8 nop
+1000073cc ldr x21,0x10005a970
+1000073d0 mov x0,x21
+1000073d4 mov w1,#0x0
+1000073d8 bl 0x10002eba0
+1000073dc cbz w0,0x100007468
+1000073e0 mov x0,x20
+1000073e4 bl 0x10002ed20
+1000073e8 mov w8,#0x202
+1000073ec movk w8,#0x822, LSL #16
+1000073f0 str w8,[sp, #0x20]
+1000073f4 stur x0,[sp, #0x24]
+1000073f8 mov w8,#0x842
+1000073fc strh w8,[sp, #0x2c]
+100007400 stur x22,[sp, #0x2e]
+100007404 adr x0,0x100000000
+100007408 nop
+10000740c adr x3,0x10003c434
+100007410 nop
+100007414 add x4,sp,#0x20
+100007418 mov x1,x21
+10000741c mov w2,#0x0
+100007420 mov w5,#0x16
+100007424 bl 0x10002e6d0
+100007428 b 0x100007468
+10000742c ldr x22,[x19, x22#0x0]
+100007430 nop
+100007434 ldr x0,0x100059740
+100007438 mov w2,#0x2001
+10000743c b 0x100007450
+100007440 ldr x22,[x19, x22#0x0]
+100007444 nop
+100007448 ldr x0,0x100059740
+10000744c mov w2,#0x2007
+100007450 bl 0x100030e20
+100007454 mov x4,x0
+100007458 mov x0,x22
+10000745c mov x2,x21
+100007460 mov x3,x26
+100007464 bl 0x1000313c0
+100007468 nop
+10000746c nop
+100007470 ldrsw x8,0x100059db8
+100007474 strb wzr,[x19, x8]
+100007478 ldr x8,[sp, #0x38]
+10000747c nop
+100007480 ldr x9,0x100044518
+100007484 ldr x9,[x9]
+100007488 cmp x9,x8
+10000748c b.ne 0x10000757c
+100007490 ldp x29,x30,[sp, #0x90]
+100007494 ldp x20,x19,[sp, #0x80]
+100007498 ldp x22,x21,[sp, #0x70]
+10000749c ldp x24,x23,[sp, #0x60]
+1000074a0 ldp x26,x25,[sp, #0x50]
+1000074a4 ldp x28,x27,[sp, #0x40]
+1000074a8 add sp,sp,#0xa0
+1000074ac retab
+1000074b0 mov x0,x22
+1000074b4 mov x2,#0x0
+1000074b8 bl 0x100032060
+1000074bc mov x0,x19
+1000074c0 mov x2,x22
+1000074c4 bl 0x100032f20
+1000074c8 cbz w0,0x1000074d8
+1000074cc mov x25,x0
+1000074d0 tbz w27,#0x0,0x10000721c
+1000074d4 b 0x10000730c
+1000074d8 bl 0x100028978
+1000074dc nop
+1000074e0 ldr x21,0x100059700
+1000074e4 ldr x8,[sp, #0x18]
+1000074e8 stp x23,x8,[sp]
+1000074ec adr x2,0x100045398
+1000074f0 nop
+1000074f4 mov x0,x21
+1000074f8 bl 0x100032a40
+1000074fc str x0,[sp]
+100007500 adr x2,0x100045358
+100007504 nop
+100007508 mov x0,x21
+10000750c bl 0x100032a40
+100007510 mov x24,x0
+100007514 mov w0,#0x4
+100007518 bl 0x100028b30
+10000751c cbz x0,0x100007574
+100007520 nop
+100007524 nop
+100007528 ldr x21,0x10005a970
+10000752c mov x0,x21
+100007530 mov w1,#0x0
+100007534 bl 0x10002eba0
+100007538 mov w25,#0x0
+10000753c cbz w0,0x1000072fc
+100007540 mov w8,#0x102
+100007544 movk w8,#0x842, LSL #16
+100007548 str w8,[sp, #0x20]
+10000754c stur x24,[sp, #0x24]
+100007550 adr x0,0x100000000
+100007554 nop
+100007558 adr x3,0x10003c44e
+10000755c nop
+100007560 add x4,sp,#0x20
+100007564 mov x1,x21
+100007568 mov w2,#0x0
+10000756c mov w5,#0xc
+100007570 bl 0x10002e6d0
+100007574 mov w25,#0x0
+100007578 b 0x1000072fc
+10000757c bl 0x10002e690
+
+/* WARNING: Function: _objc_release_x22 replaced with injection: _objc_release_fixup */
+/* Function Stack Size: 0x18 bytes */
+
+void PTPDeviceUSBTransport::sendDataPackets_(ID param_1,SEL param_2,ID param_3)
+
+{
+  undefined *puVar1;
+  bool bVar2;
+  unsigned_int uVar3;
+  int iVar4;
+  int iVar5;
+  ID IVar6;
+  ID IVar7;
+  unsigned_long_long uVar8;
+  ID IVar9;
+  long lVar10;
+  undefined8 uVar11;
+  ulong uVar12;
+  long extraout_x1;
+  unsigned_int uVar13;
+  undefined8 uVar14;
+  undefined8 in_x6;
+  undefined8 in_x7;
+  long lVar15;
+  cfstringStruct *self;
+  long lVar16;
+  long lVar17;
+  long lVar18;
+  undefined4 local_80;
+  ID local_7c;
+  undefined2 local_74;
+  ID local_72;
+  long local_68;
+
+  local_68 = *(long *)PTR____stack_chk_guard_100044518;
+  IVar6 = objc_stub::transactionID(param_3);
+  IVar7 = _objc_alloc(PTR_PTPWrappedBytes_100059720);
+  lVar17 = (long)_writeBufferSize;
+  IVar7 = PTPWrappedBytes::initWithBytes_capacity_
+                    (IVar7,*(void **)(param_1 + (long)_writeBuffer),
+                     (ulong)*(uint *)(param_1 + lVar17));
+  objc_stub::range(param_3);
+  uVar13 = (unsigned_int)IVar6;
+  uVar3 = transactionCanceled_(param_1,uVar13);
+  lVar15 = (long)_connected;
+  bVar2 = uVar3 == 0;
+  if (*(char *)(param_1 + lVar15) != '\0' && (uVar13 == 0 || bVar2)) {
+    IVar6 = objc_stub::copyToWrappedBytes_forTransport_(param_3,IVar7,1);
+    uVar8 = PTPWrappedBytes::length(IVar7);
+    if (uVar8 == *(uint *)(param_1 + lVar17)) {
+      lVar16 = 0;
+      do {
+        iVar4 = writeBulkData_(param_1,IVar7);
+        if (iVar4 != 0) goto LAB_100007204;
+        lVar16 = IVar6 + lVar16;
+        ___ICOSLogCreate();
+        puVar1 = PTR__OBJC_CLASS___NSString_100059700;
+        lVar18 = extraout_x1;
+        IVar6 = NSString::stringWithFormat_
+                          ((ID)PTR__OBJC_CLASS___NSString_100059700,&cf____8lld_of__8lld_);
+        IVar9 = NSString::stringWithFormat_((ID)puVar1,&cf___);
+        lVar10 = ___ICLogTypeEnabled(4);
+        uVar11 = __gICOSLog;
+        if ((lVar10 != 0) && (iVar5 = _os_log_type_enabled(__gICOSLog,0), iVar5 != 0)) {
+          local_80 = 0x8420102;
+          local_7c = IVar9;
+          __os_log_impl(0x100000000,uVar11,0,"%{public}@",&local_80,0xc,in_x6,in_x7,IVar6,lVar18);
+        }
+        uVar3 = transactionCanceled_(param_1,uVar13);
+        bVar2 = uVar3 == 0;
+        if ((*(char *)(param_1 + lVar15) == '\0') || (uVar13 != 0 && !bVar2)) {
+          iVar4 = 0;
+          goto joined_r0x000100007218;
+        }
+        IVar6 = objc_stub::copyToWrappedBytes_forTransport_(param_3,IVar7,1);
+        uVar8 = PTPWrappedBytes::length(IVar7);
+      } while (uVar8 == *(uint *)(param_1 + lVar17));
+      iVar4 = 0;
+    }
+    else {
+      lVar16 = 0;
+      iVar4 = 0xe00002bc;
+    }
+    if (uVar8 != 0) {
+      iVar4 = writeBulkData_(param_1,IVar7);
+      if (iVar4 != 0) {
+LAB_100007204:
+        if (bVar2) goto LAB_10000730c;
+        goto LAB_10000721c;
+      }
+      lVar16 = IVar6 + lVar16;
+      ___ICOSLogCreate();
+      puVar1 = PTR__OBJC_CLASS___NSString_100059700;
+      lVar15 = extraout_x1;
+      IVar6 = NSString::stringWithFormat_
+                        ((ID)PTR__OBJC_CLASS___NSString_100059700,&cf____8lld_of__8lld_);
+      IVar9 = NSString::stringWithFormat_((ID)puVar1,&cf___);
+      lVar17 = ___ICLogTypeEnabled(4);
+      uVar11 = __gICOSLog;
+      if ((lVar17 != 0) && (iVar5 = _os_log_type_enabled(__gICOSLog,0), iVar5 != 0)) {
+        local_80 = 0x8420102;
+        local_7c = IVar9;
+        __os_log_impl(0x100000000,uVar11,0,"%{public}@",&local_80,0xc,in_x6,in_x7,IVar6,lVar15);
+      }
+      iVar4 = 0;
+    }
+    lVar17 = (long)*(int *)(param_1 + (long)_maxPacketSizeBulkIn);
+    lVar15 = 0;
+    if (lVar17 != 0) {
+      lVar15 = (long)uVar8 / lVar17;
+    }
+    if (uVar8 == lVar15 * lVar17) {
+      PTPWrappedBytes::setLength_(IVar7,0);
+      iVar4 = writeBulkData_(param_1,IVar7);
+      if (iVar4 != 0) {
+        if (bVar2) goto LAB_10000730c;
+        goto LAB_10000721c;
+      }
+      ___ICOSLogCreate();
+      puVar1 = PTR__OBJC_CLASS___NSString_100059700;
+      lVar15 = extraout_x1;
+      IVar6 = NSString::stringWithFormat_
+                        ((ID)PTR__OBJC_CLASS___NSString_100059700,&cf_Z__8lld_of__8lld_);
+      IVar9 = NSString::stringWithFormat_((ID)puVar1,&cf___);
+      lVar17 = ___ICLogTypeEnabled(4);
+      uVar11 = __gICOSLog;
+      if (lVar17 != 0) {
+        iVar5 = _os_log_type_enabled(__gICOSLog,0);
+        iVar4 = 0;
+        if (iVar5 == 0) goto LAB_1000072fc;
+        local_80 = 0x8420102;
+        local_7c = IVar9;
+        __os_log_impl(0x100000000,uVar11,0,"%{public}@",&local_80,0xc,in_x6,in_x7,IVar6,lVar15);
+      }
+      iVar4 = 0;
+    }
+LAB_1000072fc:
+    objc_stub::setBytesTransferred_(param_3,lVar16);
+joined_r0x000100007218:
+    if (bVar2) goto LAB_10000730c;
+LAB_10000721c:
+    PTPWrappedBytes::setLength_(IVar7,0);
+    iVar4 = writeBulkData_(param_1,IVar7);
+    bVar2 = true;
+  }
+  else {
+    lVar16 = 0;
+    iVar4 = 0xe00002bc;
+    if (!bVar2) goto LAB_10000721c;
+LAB_10000730c:
+    bVar2 = false;
+  }
+  uVar11 = _NSSelectorFromString(&cf_sentData_responseCode_);
+  lVar15 = (long)PTPTransport::_delegate;
+  if ((*(long *)(param_1 + lVar15) != 0) &&
+     (uVar12 = _objc_opt_respondsToSelector(*(long *)(param_1 + lVar15),uVar11), (uVar12 & 1) != 0))
+  {
+    if (lVar16 == extraout_x1 && !bVar2) {
+      IVar6 = *(ID *)(param_1 + lVar15);
+      uVar14 = 0x2001;
+    }
+    else {
+      if (iVar4 == 0xe00002d6) {
+        ___ICOSLogCreate();
+        self = &cf___;
+        IVar6 = objc_stub::length(0x100044d58);
+        if (0x14 < IVar6) {
+          IVar6 = objc_stub::substringWithRange_(0x100044d58,0,0x12);
+          self = (cfstringStruct *)objc_stub::stringByAppendingString_(IVar6,&cf___);
+        }
+        IVar6 = NSString::stringWithFormat_
+                          ((ID)PTR__OBJC_CLASS___NSString_100059700,
+                           &cf__TERM_NodevicetoreadBulkIn_DoNotSendResponse);
+        uVar11 = __gICOSLog;
+        iVar5 = _os_log_type_enabled(__gICOSLog,0);
+        if (iVar5 != 0) {
+          local_7c = objc_stub::UTF8String((ID)self);
+          local_80 = 0x8220202;
+          local_74 = 0x842;
+          local_72 = IVar6;
+          __os_log_impl(0x100000000,uVar11,0,"%{public}20s | %{public}@",&local_80,0x16);
+        }
+        goto code_r0x000100007470;
+      }
+      IVar6 = *(ID *)(param_1 + lVar15);
+      uVar14 = 0x2007;
+    }
+    IVar7 = NSNumber::numberWithUnsignedShort_((ID)PTR__OBJC_CLASS___NSNumber_100059740,uVar14);
+    objc_stub::performSelector_withObject_withObject_(IVar6,uVar11,param_3,IVar7);
+  }
+code_r0x000100007470:
+  *(undefined1 *)(param_1 + (long)PTPTransport::_busy) = 0;
+  if (*(long *)PTR____stack_chk_guard_100044518 != local_68) {
+                    /* WARNING: Subroutine does not return */
+    ___stack_chk_fail();
+  }
+  return;
+}

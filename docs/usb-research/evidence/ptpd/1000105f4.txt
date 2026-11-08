@@ -1,0 +1,130 @@
+===== 1000105f4 PTPVirtualCamera::storageWithID: =====
+XREF 10005d7ca DATA null
+XREF 1000333dc DATA null
+XREF 10000e264 CALL_OVERRIDE_UNCONDITIONAL PTPVirtualCamera::sendEventRemoveStorageWithID:
+XREF 10000e02c CALL_OVERRIDE_UNCONDITIONAL PTPVirtualCamera::removeStorageWithID:
+1000105f4 pacibsp
+1000105f8 sub sp,sp,#0x120
+1000105fc stp x28,x27,[sp, #0xd0]
+100010600 stp x24,x23,[sp, #0xe0]
+100010604 stp x22,x21,[sp, #0xf0]
+100010608 stp x20,x19,[sp, #0x100]
+10001060c stp x29,x30,[sp, #0x110]
+100010610 add x29,sp,#0x110
+100010614 mov x19,x2
+100010618 nop
+10001061c ldr x8,0x100044518
+100010620 ldr x8,[x8]
+100010624 stur x8,[x29, #-0x48]
+100010628 ldr x0,[x0, #0x30]
+10001062c bl 0x10002efa0
+100010630 mov x20,x0
+100010634 movi v0.2D,#0x0
+100010638 stp q0,q0,[sp]
+10001063c stp q0,q0,[sp, #0x20]
+100010640 mov x2,sp
+100010644 add x3,sp,#0x48
+100010648 mov w4,#0x10
+10001064c bl 0x10002f640
+100010650 cbz x0,0x1000106bc
+100010654 mov x21,x0
+100010658 ldr x8,[sp, #0x10]
+10001065c ldr x23,[x8]
+100010660 mov x24,#0x0
+100010664 ldr x8,[sp, #0x10]
+100010668 ldr x8,[x8]
+10001066c cmp x8,x23
+100010670 b.eq 0x10001067c
+100010674 mov x0,x20
+100010678 bl 0x10002e9a0
+10001067c ldr x8,[sp, #0x8]
+100010680 ldr x22,[x8, x24, LSL #0x3]
+100010684 mov x0,x22
+100010688 bl 0x100030f40
+10001068c cmp w0,w19
+100010690 b.eq 0x1000106c0
+100010694 add x24,x24,#0x1
+100010698 cmp x21,x24
+10001069c b.ne 0x100010664
+1000106a0 mov x2,sp
+1000106a4 add x3,sp,#0x48
+1000106a8 mov x0,x20
+1000106ac mov w4,#0x10
+1000106b0 bl 0x10002f640
+1000106b4 mov x21,x0
+1000106b8 cbnz x0,0x100010660
+1000106bc mov x22,#0x0
+1000106c0 ldur x8,[x29, #-0x48]
+1000106c4 nop
+1000106c8 ldr x9,0x100044518
+1000106cc ldr x9,[x9]
+1000106d0 cmp x9,x8
+1000106d4 b.ne 0x1000106f8
+1000106d8 mov x0,x22
+1000106dc ldp x29,x30,[sp, #0x110]
+1000106e0 ldp x20,x19,[sp, #0x100]
+1000106e4 ldp x22,x21,[sp, #0xf0]
+1000106e8 ldp x24,x23,[sp, #0xe0]
+1000106ec ldp x28,x27,[sp, #0xd0]
+1000106f0 add sp,sp,#0x120
+1000106f4 retab
+1000106f8 bl 0x10002e690
+
+/* Function Stack Size: 0x14 bytes */
+
+ID PTPVirtualCamera::storageWithID_(ID param_1,SEL param_2,unsigned_int param_3)
+
+{
+  ID self;
+  ID IVar1;
+  ID IVar2;
+  ID self_00;
+  long lVar3;
+  ID IVar4;
+  undefined8 local_120;
+  long lStack_118;
+  long *local_110;
+  undefined8 uStack_108;
+  undefined8 local_100;
+  undefined8 uStack_f8;
+  undefined8 uStack_f0;
+  undefined8 uStack_e8;
+  undefined1 auStack_d8 [128];
+  long local_58;
+
+  local_58 = *(long *)PTR____stack_chk_guard_100044518;
+  self = objc_stub::allValues(*(ID *)(param_1 + 0x30));
+  lStack_118 = 0;
+  local_120 = 0;
+  uStack_108 = 0;
+  local_110 = (long *)0x0;
+  uStack_f8 = 0;
+  local_100 = 0;
+  uStack_e8 = 0;
+  uStack_f0 = 0;
+  IVar1 = objc_stub::countByEnumeratingWithState_objects_count_(self,&local_120,auStack_d8,0x10);
+  if (IVar1 != 0) {
+    lVar3 = *local_110;
+    do {
+      IVar4 = 0;
+      do {
+        if (*local_110 != lVar3) {
+          _objc_enumerationMutation(self);
+        }
+        self_00 = *(ID *)(lStack_118 + IVar4 * 8);
+        IVar2 = objc_stub::objectHandle(self_00);
+        if ((unsigned_int)IVar2 == param_3) goto LAB_1000106c0;
+        IVar4 = IVar4 + 1;
+      } while (IVar1 != IVar4);
+      IVar1 = objc_stub::countByEnumeratingWithState_objects_count_(self,&local_120,auStack_d8,0x10)
+      ;
+    } while (IVar1 != 0);
+  }
+  self_00 = 0;
+LAB_1000106c0:
+  if (*(long *)PTR____stack_chk_guard_100044518 == local_58) {
+    return self_00;
+  }
+                    /* WARNING: Subroutine does not return */
+  ___stack_chk_fail();
+}

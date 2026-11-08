@@ -1,0 +1,236 @@
+===== 10000906c FUN_10000906c =====
+XREF 10005d756 DATA null
+XREF 100008ff0 PARAM PTPDeviceUSBTransport::readBulkData
+10000906c pacibsp
+100009070 sub sp,sp,#0x70
+100009074 stp x24,x23,[sp, #0x30]
+100009078 stp x22,x21,[sp, #0x40]
+10000907c stp x20,x19,[sp, #0x50]
+100009080 stp x29,x30,[sp, #0x60]
+100009084 add x29,sp,#0x60
+100009088 mov x22,x2
+10000908c mov x21,x1
+100009090 mov x19,x0
+100009094 nop
+100009098 ldr x8,0x100044518
+10000909c ldr x8,[x8]
+1000090a0 str x8,[sp, #0x28]
+1000090a4 nop
+1000090a8 ldr x0,0x100059748
+1000090ac bl 0x10002e930
+1000090b0 mov x20,x0
+1000090b4 adrp x8,0x10005a000
+1000090b8 strb wzr,[x8, #0x988]
+1000090bc cbz x19,0x10000927c
+1000090c0 cbz w21,0x1000090ec
+1000090c4 mov w22,#0x2d6
+1000090c8 movk w22,#0xe000, LSL #16
+1000090cc mov w8,#0x2ec
+1000090d0 movk w8,#0xe000, LSL #16
+1000090d4 cmp w21,w8
+1000090d8 b.gt 0x10000910c
+1000090dc cmp w21,w22
+1000090e0 b.eq 0x100009218
+1000090e4 mov w8,#0x2eb
+1000090e8 b 0x100009120
+1000090ec mov x0,x19
+1000090f0 mov x2,x22
+1000090f4 mov w3,#0x0
+1000090f8 bl 0x100030060
+1000090fc cbz w0,0x100009278
+100009100 mov x0,x19
+100009104 bl 0x100031740
+100009108 b 0x100009278
+10000910c mov w8,#0x404f
+100009110 movk w8,#0xe000, LSL #16
+100009114 cmp w21,w8
+100009118 b.eq 0x100009218
+10000911c mov w8,#0x2ed
+100009120 movk w8,#0xe000, LSL #16
+100009124 cmp w21,w8
+100009128 b.ne 0x100009278
+10000912c add w23,w22,#0x15
+100009130 bl 0x100028978
+100009134 adr x22,0x100044d58
+100009138 nop
+10000913c mov x0,x22
+100009140 bl 0x100030b20
+100009144 cmp x0,#0x15
+100009148 b.cc 0x100009170
+10000914c adr x0,0x100044d58
+100009150 nop
+100009154 mov x2,#0x0
+100009158 mov w3,#0x12
+10000915c bl 0x100032ac0
+100009160 adr x2,0x100044d78
+100009164 nop
+100009168 bl 0x1000329e0
+10000916c mov x22,x0
+100009170 nop
+100009174 ldr x0,0x100059700
+100009178 adr x8,0x1000360fb
+10000917c nop
+100009180 adr x9,0x1000360f3
+100009184 nop
+100009188 cmp w21,w23
+10000918c csel x8,x9,x8,eq
+100009190 str x8,[sp]
+100009194 adr x2,0x100045c38
+100009198 nop
+10000919c bl 0x100032a40
+1000091a0 mov x23,x0
+1000091a4 nop
+1000091a8 nop
+1000091ac ldr x21,0x10005a970
+1000091b0 mov x0,x21
+1000091b4 mov w1,#0x0
+1000091b8 bl 0x10002eba0
+1000091bc cbz w0,0x100009208
+1000091c0 mov x0,x22
+1000091c4 bl 0x10002ed20
+1000091c8 mov w8,#0x202
+1000091cc movk w8,#0x822, LSL #16
+1000091d0 str w8,[sp, #0x10]
+1000091d4 stur x0,[sp, #0x14]
+1000091d8 mov w8,#0x842
+1000091dc strh w8,[sp, #0x1c]
+1000091e0 stur x23,[sp, #0x1e]
+1000091e4 adr x0,0x100000000
+1000091e8 nop
+1000091ec adr x3,0x10003c434
+1000091f0 nop
+1000091f4 add x4,sp,#0x10
+1000091f8 mov x1,x21
+1000091fc mov w2,#0x0
+100009200 mov w5,#0x16
+100009204 bl 0x10002e6d0
+100009208 mov x0,x19
+10000920c mov w2,#0x0
+100009210 bl 0x100031ca0
+100009214 b 0x100009278
+100009218 bl 0x100028978
+10000921c nop
+100009220 ldr x0,0x100059700
+100009224 adr x8,0x100036113
+100009228 nop
+10000922c adr x9,0x10003610a
+100009230 nop
+100009234 cmp w21,w22
+100009238 csel x8,x9,x8,eq
+10000923c str x8,[sp]
+100009240 adr x2,0x100045c38
+100009244 nop
+100009248 bl 0x100032a40
+10000924c mov x21,x0
+100009250 nop
+100009254 nop
+100009258 ldr x22,0x10005a970
+10000925c mov x0,x22
+100009260 mov w1,#0x10
+100009264 bl 0x10002eba0
+100009268 cbnz w0,0x1000092b0
+10000926c mov x0,x19
+100009270 mov w2,#0x1
+100009274 bl 0x100032600
+100009278 bl 0x10002ea40
+10000927c bl 0x10002ea50
+100009280 ldr x8,[sp, #0x28]
+100009284 nop
+100009288 ldr x9,0x100044518
+10000928c ldr x9,[x9]
+100009290 cmp x9,x8
+100009294 b.ne 0x1000092c0
+100009298 ldp x29,x30,[sp, #0x60]
+10000929c ldp x20,x19,[sp, #0x50]
+1000092a0 ldp x22,x21,[sp, #0x40]
+1000092a4 ldp x24,x23,[sp, #0x30]
+1000092a8 add sp,sp,#0x70
+1000092ac retab
+1000092b0 mov x0,x21
+1000092b4 mov x1,x22
+1000092b8 bl 0x10002d970
+1000092bc b 0x10000926c
+1000092c0 bl 0x10002e690
+
+/* WARNING: Function: _objc_release_x19 replaced with injection: _objc_release_fixup */
+/* WARNING: Function: _objc_release_x20 replaced with injection: _objc_release_fixup */
+
+void FUN_10000906c(ID param_1,uint param_2,undefined8 param_3)
+
+{
+  undefined8 uVar1;
+  int iVar2;
+  ID IVar3;
+  undefined8 in_x6;
+  undefined8 in_x7;
+  uint uVar4;
+  cfstringStruct *self;
+  char *pcVar5;
+  undefined4 local_60;
+  ID local_5c;
+  undefined2 local_54;
+  ID local_52;
+  long local_48;
+
+  local_48 = *(long *)PTR____stack_chk_guard_100044518;
+  _objc_alloc_init(PTR__OBJC_CLASS___NSAutoreleasePool_100059748);
+  DAT_10005a988 = 0;
+  if (param_1 == 0) goto LAB_10000927c;
+  if (param_2 == 0) {
+    IVar3 = objc_stub::handleBulkData_result_(param_1,param_3,0);
+    if ((int)IVar3 != 0) {
+      objc_stub::readBulkData(param_1);
+    }
+    goto LAB_10000927c;
+  }
+  if ((int)param_2 < -0x1ffffd13) {
+    if (param_2 == 0xe00002d6) {
+LAB_100009218:
+      ___ICOSLogCreate();
+      IVar3 = NSString::stringWithFormat_((ID)PTR__OBJC_CLASS___NSString_100059700,&cf_IOReturn__s);
+      uVar1 = __gICOSLog;
+      iVar2 = _os_log_type_enabled(__gICOSLog,0x10);
+      if (iVar2 != 0) {
+        FUN_10002d970(IVar3,uVar1);
+      }
+      objc_stub::setTimedOut_(param_1,1);
+      goto LAB_10000927c;
+    }
+    uVar4 = 0x2eb;
+  }
+  else {
+    if (param_2 == 0xe000404f) goto LAB_100009218;
+    uVar4 = 0x2ed;
+  }
+  if (param_2 == (uVar4 | 0xe0000000)) {
+    ___ICOSLogCreate();
+    self = &cf___;
+    IVar3 = objc_stub::length(0x100044d58);
+    if (0x14 < IVar3) {
+      IVar3 = objc_stub::substringWithRange_(0x100044d58,0,0x12);
+      self = (cfstringStruct *)objc_stub::stringByAppendingString_(IVar3,&cf___);
+    }
+    pcVar5 = "Aborted";
+    if (param_2 != 0xe00002eb) {
+      pcVar5 = "Not Responding";
+    }
+    IVar3 = NSString::stringWithFormat_((ID)PTR__OBJC_CLASS___NSString_100059700,&cf_IOReturn__s);
+    uVar1 = __gICOSLog;
+    iVar2 = _os_log_type_enabled(__gICOSLog,0);
+    if (iVar2 != 0) {
+      local_5c = objc_stub::UTF8String((ID)self);
+      local_60 = 0x8220202;
+      local_54 = 0x842;
+      local_52 = IVar3;
+      __os_log_impl(0x100000000,uVar1,0,"%{public}20s | %{public}@",&local_60,0x16,in_x6,in_x7,
+                    pcVar5);
+    }
+    objc_stub::setConnected_(param_1,0);
+  }
+LAB_10000927c:
+  if (*(long *)PTR____stack_chk_guard_100044518 == local_48) {
+    return;
+  }
+                    /* WARNING: Subroutine does not return */
+  ___stack_chk_fail(0);
+}

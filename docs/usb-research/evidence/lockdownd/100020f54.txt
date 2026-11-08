@@ -1,0 +1,499 @@
+===== 100020f54 FUN_100020f54 =====
+XREF 100125c9f DATA null
+XREF 100028650 UNCONDITIONAL_CALL FUN_1000281c4
+100020f54 pacibsp
+100020f58 sub sp,sp,#0x90
+100020f5c stp d9,d8,[sp, #0x20]
+100020f60 stp x28,x27,[sp, #0x30]
+100020f64 stp x26,x25,[sp, #0x40]
+100020f68 stp x24,x23,[sp, #0x50]
+100020f6c stp x22,x21,[sp, #0x60]
+100020f70 stp x20,x19,[sp, #0x70]
+100020f74 stp x29,x30,[sp, #0x80]
+100020f78 add x29,sp,#0x80
+100020f7c stp xzr,xzr,[sp, #0x10]
+100020f80 cbz x0,0x100021020
+100020f84 mov x21,x1
+100020f88 cbz x1,0x100021020
+100020f8c mov x19,x0
+100020f90 adr x0,0x10010c318
+100020f94 nop
+100020f98 bl 0x1000058dc
+100020f9c cbz x0,0x100021038
+100020fa0 mov x22,x0
+100020fa4 ldr x8,[x19, #0x20]
+100020fa8 cbz x8,0x10002107c
+100020fac adr x21,0x1000fefc0
+100020fb0 nop
+100020fb4 adr x2,0x10010cb38
+100020fb8 nop
+100020fbc adr x20,0x1000b2050
+100020fc0 nop
+100020fc4 mov w0,#0x0
+100020fc8 mov x1,x20
+100020fcc bl 0x10001d088
+100020fd0 ldr x3,[x21]
+100020fd4 mov w0,#0x1
+100020fd8 mov x1,x20
+100020fdc mov x2,x22
+100020fe0 bl 0x100005938
+100020fe4 ldr x0,[x19, #0x18]
+100020fe8 mov x1,x22
+100020fec ldp x29,x30,[sp, #0x80]
+100020ff0 ldp x20,x19,[sp, #0x70]
+100020ff4 ldp x22,x21,[sp, #0x60]
+100020ff8 ldp x24,x23,[sp, #0x50]
+100020ffc ldp x26,x25,[sp, #0x40]
+100021000 ldp x28,x27,[sp, #0x30]
+100021004 ldp d9,d8,[sp, #0x20]
+100021008 add sp,sp,#0x90
+10002100c autibsp
+100021010 eor x16,x30,x30, LSL #0x1
+100021014 tbz x16,#0x3e,0x10002101c
+100021018 brk #0xc471
+10002101c b 0x10000576c
+100021020 adr x1,0x1000b2050
+100021024 nop
+100021028 adr x2,0x100105698
+10002102c nop
+100021030 mov w0,#0x0
+100021034 b 0x100021048
+100021038 adr x1,0x1000b2050
+10002103c nop
+100021040 adr x2,0x10010cb18
+100021044 nop
+100021048 ldp x29,x30,[sp, #0x80]
+10002104c ldp x20,x19,[sp, #0x70]
+100021050 ldp x22,x21,[sp, #0x60]
+100021054 ldp x24,x23,[sp, #0x50]
+100021058 ldp x26,x25,[sp, #0x40]
+10002105c ldp x28,x27,[sp, #0x30]
+100021060 ldp d9,d8,[sp, #0x20]
+100021064 add sp,sp,#0x90
+100021068 autibsp
+10002106c eor x16,x30,x30, LSL #0x1
+100021070 tbz x16,#0x3e,0x100021078
+100021074 brk #0xc471
+100021078 b 0x10001d088
+10002107c bl 0x10000a31c
+100021080 cbz x0,0x1000210d4
+100021084 mov x20,x0
+100021088 add x2,sp,#0x10
+10002108c mov w1,#0xd
+100021090 bl 0x1000a38a0
+100021094 cbz w0,0x1000210e8
+100021098 mov x0,x21
+10002109c bl 0x100012ba0
+1000210a0 cbz x0,0x10002110c
+1000210a4 ldr x8,[x19, #0x30]
+1000210a8 cbz x8,0x100021188
+1000210ac adr x1,0x1000b2050
+1000210b0 nop
+1000210b4 adr x2,0x10010cb98
+1000210b8 nop
+1000210bc mov w0,#0x0
+1000210c0 bl 0x10001d088
+1000210c4 mov x21,#0x0
+1000210c8 adr x8,0x1000fef18
+1000210cc nop
+1000210d0 b 0x10002112c
+1000210d4 adr x21,0x1000fee88
+1000210d8 nop
+1000210dc adr x2,0x10010cb58
+1000210e0 nop
+1000210e4 b 0x100020fbc
+1000210e8 adr x1,0x1000b2050
+1000210ec nop
+1000210f0 adr x2,0x10010cb78
+1000210f4 nop
+1000210f8 bl 0x10001d088
+1000210fc mov x21,#0x0
+100021100 adr x8,0x1000fee88
+100021104 nop
+100021108 b 0x10002112c
+10002110c adr x1,0x1000b2050
+100021110 nop
+100021114 adr x2,0x10010c6f8
+100021118 nop
+10002111c bl 0x10001d088
+100021120 mov x21,#0x0
+100021124 adr x8,0x1000fef10
+100021128 nop
+10002112c ldr x3,[x8]
+100021130 adr x1,0x1000b2050
+100021134 nop
+100021138 mov w0,#0x1
+10002113c mov x2,x22
+100021140 bl 0x100005938
+100021144 ldr x0,[x19, #0x18]
+100021148 mov x1,x22
+10002114c bl 0x10000576c
+100021150 mov x0,x20
+100021154 bl 0x1000a3960
+100021158 cbz x21,0x100021164
+10002115c mov x0,x21
+100021160 bl 0x1000a3960
+100021164 ldp x29,x30,[sp, #0x80]
+100021168 ldp x20,x19,[sp, #0x70]
+10002116c ldp x22,x21,[sp, #0x60]
+100021170 ldp x24,x23,[sp, #0x50]
+100021174 ldp x26,x25,[sp, #0x40]
+100021178 ldp x28,x27,[sp, #0x30]
+10002117c ldp d9,d8,[sp, #0x20]
+100021180 add sp,sp,#0x90
+100021184 retab
+100021188 adr x1,0x100105558
+10002118c nop
+100021190 mov x0,x21
+100021194 bl 0x1000a3750
+100021198 bl 0x100012c18
+10002119c cbz x0,0x100021204
+1000211a0 mov x24,x0
+1000211a4 bl 0x100017f6c
+1000211a8 mov x21,x0
+1000211ac cbz x0,0x1000212fc
+1000211b0 add x1,sp,#0x18
+1000211b4 mov x0,x24
+1000211b8 bl 0x100006f8c
+1000211bc mov x25,x0
+1000211c0 cbz w0,0x100021228
+1000211c4 ldp d8,d9,[sp, #0x10]
+1000211c8 bl 0x1000072a4
+1000211cc ucvtf d0,w0
+1000211d0 fadd d0,d9,d0
+1000211d4 fcmp d8,d0
+1000211d8 b.le 0x100021228
+1000211dc adr x1,0x1000b2050
+1000211e0 nop
+1000211e4 str x24,[sp]
+1000211e8 adr x2,0x10010cbf8
+1000211ec nop
+1000211f0 mov w0,#0x0
+1000211f4 bl 0x10001d088
+1000211f8 mov x0,x24
+1000211fc bl 0x1000070d4
+100021200 b 0x100021124
+100021204 adr x1,0x1000b2050
+100021208 nop
+10002120c adr x2,0x10010cbb8
+100021210 nop
+100021214 bl 0x10001d088
+100021218 mov x21,#0x0
+10002121c adr x8,0x1000fef08
+100021220 nop
+100021224 b 0x10002112c
+100021228 bl 0x1000131d0
+10002122c cbz x0,0x100021318
+100021230 mov x23,x0
+100021234 adr x1,0x10010cc38
+100021238 nop
+10002123c mov x0,x22
+100021240 mov x2,x23
+100021244 bl 0x1000a3770
+100021248 nop
+10002124c ldr x8,0x1000fd218
+100021250 ldr x2,[x8]
+100021254 adr x1,0x10010cc58
+100021258 nop
+10002125c mov x0,x22
+100021260 bl 0x1000a3770
+100021264 ldr x0,[x19, #0x18]
+100021268 mov x1,x22
+10002126c bl 0x10000576c
+100021270 adr x1,0x10010cc78
+100021274 nop
+100021278 mov x0,x21
+10002127c bl 0x1000a3750
+100021280 bl 0x100012c54
+100021284 cbz x0,0x100021330
+100021288 mov x26,x0
+10002128c ldr x0,[x19]
+100021290 nop
+100021294 nop
+100021298 ldr x2,0x1000fe790
+10002129c mov x1,#0x0
+1000212a0 bl 0x100010c54
+1000212a4 mov x22,x0
+1000212a8 cbz x0,0x100021340
+1000212ac adr x1,0x10010b3b8
+1000212b0 nop
+1000212b4 mov x0,x21
+1000212b8 bl 0x1000a3750
+1000212bc bl 0x100012c54
+1000212c0 cbz x0,0x10002134c
+1000212c4 mov x27,x0
+1000212c8 ldr x28,[x19, #0x18]
+1000212cc mov x0,x22
+1000212d0 bl 0x100012c54
+1000212d4 mov x2,x0
+1000212d8 mov x0,x28
+1000212dc mov x1,x26
+1000212e0 mov x3,x27
+1000212e4 mov w4,#0x0
+1000212e8 bl 0x100005e50
+1000212ec cbz w0,0x100021390
+1000212f0 adr x2,0x10010ccf8
+1000212f4 nop
+1000212f8 b 0x100021354
+1000212fc adr x1,0x1000b2050
+100021300 nop
+100021304 str x24,[sp]
+100021308 adr x2,0x10010cbd8
+10002130c nop
+100021310 bl 0x10001d088
+100021314 b 0x100021124
+100021318 adr x1,0x1000b2050
+10002131c nop
+100021320 adr x2,0x10010cc18
+100021324 nop
+100021328 bl 0x10001d088
+10002132c b 0x100021100
+100021330 mov x22,#0x0
+100021334 adr x2,0x10010cc98
+100021338 nop
+10002133c b 0x100021354
+100021340 adr x2,0x10010ccb8
+100021344 nop
+100021348 b 0x100021354
+10002134c adr x2,0x10010ccd8
+100021350 nop
+100021354 adr x1,0x1000b2050
+100021358 nop
+10002135c mov w0,#0x0
+100021360 bl 0x10001d088
+100021364 ldr x0,[x19, #0x18]
+100021368 bl 0x100005db4
+10002136c mov x0,x20
+100021370 bl 0x1000a3960
+100021374 mov x0,x21
+100021378 bl 0x1000a3960
+10002137c cbz x22,0x100021388
+100021380 mov x0,x22
+100021384 bl 0x1000a3960
+100021388 mov x0,x23
+10002138c b 0x100021160
+100021390 cbz w25,0x1000213c8
+100021394 ldp d0,d1,[sp, #0x10]
+100021398 nop
+10002139c ldr d2,0x1000e4538
+1000213a0 fadd d1,d1,d2
+1000213a4 fcmp d0,d1
+1000213a8 b.le 0x1000213d8
+1000213ac mov x0,x24
+1000213b0 mov x1,x20
+1000213b4 bl 0x100006cb0
+1000213b8 tbnz w0,#0x0,0x1000213d8
+1000213bc adr x2,0x10010cd18
+1000213c0 nop
+1000213c4 b 0x100021354
+1000213c8 mov x0,x24
+1000213cc mov x1,x20
+1000213d0 bl 0x100006cb0
+1000213d4 cbz w0,0x1000213bc
+1000213d8 mov x0,x21
+1000213dc bl 0x1000a3970
+1000213e0 str x0,[x19, #0x28]
+1000213e4 mov x0,x23
+1000213e8 bl 0x1000a3970
+1000213ec str x0,[x19, #0x30]
+1000213f0 ldr x0,[x19, #0x18]
+1000213f4 bl 0x100005e20
+1000213f8 cmp w0,#0x1
+1000213fc b.eq 0x100021410
+100021400 ldr x0,[x19, #0x18]
+100021404 bl 0x100005e20
+100021408 cmp w0,#0x2
+10002140c b.ne 0x10002136c
+100021410 ldr x0,[x19]
+100021414 mov w1,#0x1
+100021418 bl 0x100020c6c
+10002141c ldr x0,[x19, #0x28]
+100021420 bl 0x10001972c
+100021424 b 0x10002136c
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+void FUN_100020f54(undefined8 *param_1,long param_2)
+
+{
+  double dVar1;
+  double dVar2;
+  code *pcVar3;
+  int iVar4;
+  uint uVar5;
+  int iVar6;
+  long lVar7;
+  long lVar8;
+  undefined8 uVar9;
+  long lVar10;
+  long lVar11;
+  long lVar12;
+  long lVar13;
+  long lVar14;
+  ulong uVar15;
+  cfstringStruct *pcVar16;
+  undefined **ppuVar17;
+  undefined8 uVar18;
+  ulong unaff_x30;
+  double local_80;
+  double dStack_78;
+
+  local_80 = 0.0;
+  dStack_78 = 0.0;
+  if ((param_1 == (undefined8 *)0x0) || (param_2 == 0)) {
+    pcVar16 = &cf_Invalidinput_;
+LAB_100021048:
+    if (((unaff_x30 ^ unaff_x30 << 1) >> 0x3e & 1) == 0) {
+      FUN_10001d088(0,"handle_start_session",pcVar16);
+      return;
+    }
+                    /* WARNING: Does not return */
+    pcVar3 = (code *)SoftwareBreakpoint(0xc471,0x100021078);
+    (*pcVar3)();
+  }
+  lVar7 = FUN_1000058dc(&cf_StartSession);
+  if (lVar7 == 0) {
+    pcVar16 = &cf_Failedtocreateresponse;
+    goto LAB_100021048;
+  }
+  if (param_1[4] != 0) {
+    ppuVar17 = &PTR_cf_InvalidConnection_1000fefc0;
+    pcVar16 = &cf_Lockdownsessionsnotsupportedoverremoteserviceinterface_;
+LAB_100020fbc:
+    FUN_10001d088(0,"handle_start_session",pcVar16);
+    FUN_100005938(1,"handle_start_session",lVar7,*ppuVar17);
+    if (((unaff_x30 ^ unaff_x30 << 1) >> 0x3e & 1) == 0) {
+      FUN_10000576c(param_1[3],lVar7);
+      return;
+    }
+                    /* WARNING: Does not return */
+    pcVar3 = (code *)SoftwareBreakpoint(0xc471,0x10002101c);
+    (*pcVar3)();
+  }
+  lVar8 = FUN_10000a31c();
+  if (lVar8 == 0) {
+    ppuVar17 = &PTR_cf_InvalidResponse_1000fee88;
+    pcVar16 = &cf_Failedtoretrievecurrenttime_;
+    goto LAB_100020fbc;
+  }
+  uVar9 = _CFNumberGetValue(lVar8,0xd,&local_80);
+  if ((int)uVar9 == 0) {
+    FUN_10001d088(uVar9,"handle_start_session",&cf_Failedtoconvertcurrenttime_);
+    lVar10 = 0;
+LAB_100021100:
+    ppuVar17 = &PTR_cf_InvalidResponse_1000fee88;
+    goto LAB_10002112c;
+  }
+  lVar10 = FUN_100012ba0(param_2);
+  if (lVar10 == 0) {
+    FUN_10001d088(0,"handle_start_session",&cf_Invalidmessage_);
+    lVar10 = 0;
+    goto LAB_100021124;
+  }
+  if (param_1[6] == 0) {
+    _CFDictionaryGetValue(param_2,&cf_HostID);
+    lVar11 = FUN_100012c18();
+    if (lVar11 == 0) {
+      FUN_10001d088(0,"handle_start_session",&cf_Invalidhostid_);
+      lVar10 = 0;
+      ppuVar17 = &PTR_cf_MissingHostID_1000fef08;
+    }
+    else {
+      lVar12 = FUN_100017f6c();
+      lVar10 = lVar12;
+      if (lVar12 == 0) {
+        FUN_10001d088(0,"handle_start_session",&cf_Nopairingrecordfor___);
+      }
+      else {
+        iVar4 = FUN_100006f8c(lVar11,&dStack_78);
+        dVar2 = dStack_78;
+        dVar1 = local_80;
+        if ((iVar4 == 0) || (uVar5 = FUN_1000072a4(), dVar1 <= dVar2 + (double)uVar5)) {
+          lVar10 = FUN_1000131d0();
+          if (lVar10 == 0) {
+            FUN_10001d088(0,"handle_start_session",&cf_Failedtogenerateduuid_);
+            lVar10 = lVar12;
+            goto LAB_100021100;
+          }
+          _CFDictionarySetValue(lVar7,&cf_SessionID,lVar10);
+          _CFDictionarySetValue
+                    (lVar7,&cf_EnableSessionSSL,*(undefined8 *)PTR__kCFBooleanTrue_1000fd218);
+          FUN_10000576c(param_1[3],lVar7);
+          _CFDictionaryGetValue(lVar12,&cf_DeviceCertificate);
+          lVar7 = FUN_100012c54();
+          if (lVar7 == 0) {
+            lVar13 = 0;
+            pcVar16 = &cf_Invalidcertificate_;
+LAB_100021354:
+            FUN_10001d088(0,"handle_start_session",pcVar16);
+            FUN_100005db4(param_1[3]);
+          }
+          else {
+            lVar13 = FUN_100010c54(*param_1,0,PTR_cf_DevicePrivateKey_1000fe790);
+            if (lVar13 == 0) {
+              pcVar16 = &cf_Invalidprivatekey_;
+              goto LAB_100021354;
+            }
+            _CFDictionaryGetValue(lVar12,&cf_RootCertificate);
+            lVar14 = FUN_100012c54();
+            if (lVar14 == 0) {
+              pcVar16 = &cf_Invalidrootcertificate_;
+              goto LAB_100021354;
+            }
+            uVar18 = param_1[3];
+            uVar9 = FUN_100012c54(lVar13);
+            iVar6 = FUN_100005e50(uVar18,lVar7,uVar9,lVar14,0);
+            if (iVar6 != 0) {
+              pcVar16 = &cf_FailedtoenableSSL_;
+              goto LAB_100021354;
+            }
+            if (iVar4 == 0) {
+              iVar4 = FUN_100006cb0(lVar11,lVar8);
+              if (iVar4 == 0) goto LAB_1000213bc;
+            }
+            else if ((dStack_78 + _DAT_1000e4538 < local_80) &&
+                    (uVar15 = FUN_100006cb0(lVar11,lVar8), (uVar15 & 1) == 0)) {
+LAB_1000213bc:
+              pcVar16 = &cf_Failedtoupdatepairrecordtimestamp_;
+              goto LAB_100021354;
+            }
+            uVar9 = _CFRetain(lVar12);
+            param_1[5] = uVar9;
+            uVar9 = _CFRetain(lVar10);
+            param_1[6] = uVar9;
+            iVar4 = FUN_100005e20(param_1[3]);
+            if ((iVar4 == 1) || (iVar4 = FUN_100005e20(param_1[3]), iVar4 == 2)) {
+              FUN_100020c6c(*param_1,1);
+              FUN_10001972c(param_1[5]);
+            }
+          }
+          _CFRelease(lVar8);
+          _CFRelease(lVar12);
+          if (lVar13 != 0) {
+            _CFRelease(lVar13);
+          }
+          goto LAB_100021160;
+        }
+        FUN_10001d088(0,"handle_start_session",&cf_Expiredpairingrecordfor___);
+        FUN_1000070d4(lVar11);
+      }
+LAB_100021124:
+      ppuVar17 = &PTR_cf_InvalidHostID_1000fef10;
+    }
+  }
+  else {
+    FUN_10001d088(0,"handle_start_session",&cf_Sessionalreadyactive_);
+    lVar10 = 0;
+    ppuVar17 = &PTR_cf_SessionActive_1000fef18;
+  }
+LAB_10002112c:
+  FUN_100005938(1,"handle_start_session",lVar7,*ppuVar17);
+  FUN_10000576c(param_1[3],lVar7);
+  _CFRelease(lVar8);
+  if (lVar10 == 0) {
+    return;
+  }
+LAB_100021160:
+  _CFRelease(lVar10);
+  return;
+}

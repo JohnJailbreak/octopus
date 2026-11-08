@@ -1,0 +1,49 @@
+===== 100003d6c PTPHostUSBTransport::sendRequest: =====
+XREF 100059bd1 DATA null
+XREF 10002e5fc DATA null
+XREF 100003cf4 CALL_OVERRIDE_UNCONDITIONAL PTPHostUSBTransport::sendTransaction:timeout:
+100003d6c pacibsp
+100003d70 stp x20,x19,[sp, #-0x20]!
+100003d74 stp x29,x30,[sp, #0x10]
+100003d78 add x29,sp,#0x10
+100003d7c mov x8,x2
+100003d80 mov x19,x0
+100003d84 nop
+100003d88 ldrsw x9,0x100056740
+100003d8c ldr x2,[x0, x9#0x0]
+100003d90 nop
+100003d94 ldrsw x9,0x100056738
+100003d98 ldr w3,[x0, x9#0x0]
+100003d9c mov x0,x8
+100003da0 bl 0x10002ace0
+100003da4 mov x2,x0
+100003da8 mov x0,x19
+100003dac ldp x29,x30,[sp, #0x10]
+100003db0 ldp x20,x19,[sp], #0x20
+100003db4 autibsp
+100003db8 eor x16,x30,x30, LSL #0x1
+100003dbc tbz x16,#0x3e,0x100003dc4
+100003dc0 brk #0xc471
+100003dc4 b 0x10002e3a0
+
+/* Function Stack Size: 0x18 bytes */
+
+bool PTPHostUSBTransport::sendRequest_(ID param_1,SEL param_2,ID param_3)
+
+{
+  code *pcVar1;
+  bool bVar2;
+  ID IVar3;
+  ulong unaff_x30;
+
+  IVar3 = objc_stub::contentForUSBUsingBuffer_capacity_
+                    (param_3,*(undefined8 *)(param_1 + (long)_writeBuffer),
+                     (ulong)*(uint *)(param_1 + (long)_writeBufferSize));
+  if (((unaff_x30 ^ unaff_x30 << 1) >> 0x3e & 1) != 0) {
+                    /* WARNING: Does not return */
+    pcVar1 = (code *)SoftwareBreakpoint(0xc471,0x100003dc4);
+    (*pcVar1)();
+  }
+  bVar2 = writeBulkData_(param_1,IVar3);
+  return bVar2;
+}

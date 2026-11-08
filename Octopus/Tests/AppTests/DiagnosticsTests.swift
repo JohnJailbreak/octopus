@@ -20,7 +20,7 @@ final class DiagnosticsTests: XCTestCase {
 
     func testTheCoreChecksPassAndSayWhichAreSimulated() {
         let core = CoreDiagnostics()
-        XCTAssertEqual(core.count, 17)
+        XCTAssertEqual(core.count, 18)
         for index in 0..<core.count {
             let result = core.run(index)
             XCTAssertEqual(result.status, .pass, "\(result.id): \(result.detail)")
@@ -129,7 +129,7 @@ final class DiagnosticsTests: XCTestCase {
                                                                 folder.appendingPathComponent("fallback").path])
         let archive = try XCTUnwrap(runner.archive, "the archive makes Export Diagnostics available")
         XCTAssertNil(runner.exportProblem)
-        XCTAssertEqual(verify(archive), 7 + DebugLog.files().count) // seven files and the logs
+        XCTAssertEqual(verify(archive), 9 + DebugLog.files().count) // nine files and the logs
     }
 
     func testTheDebugLogExportFallsBackToo() throws {
@@ -155,7 +155,7 @@ final class DiagnosticsTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: url) }
         let entries = try zipEntries(url)
         for name in ["README.txt", "results.json", "results.txt", "failures.txt", "build.json", "settings.json",
-                     "connectivity.txt"] {
+                     "connectivity.txt", "device-observations.json", "connection-timeline.txt"] {
             XCTAssertNotNil(entries[name], name)
         }
         XCTAssertTrue(entries.keys.contains { $0.hasPrefix("logs/octopus-debug") })
@@ -182,6 +182,14 @@ final class DiagnosticsTests: XCTestCase {
         XCTAssertEqual(Diagnostics.redact("/var/containers/Bundle/Application/0A1B2C3D-4E5F-6071-8293-A4B5C6D7E8F9/Octopus.app"),
                        "/var/containers/Bundle/Application/<app-container>/Octopus.app")
         XCTAssertEqual(Diagnostics.redact("/var/mobile/Library/Caches/Octopus"), "/var/mobile/Library/Caches/Octopus")
+    }
+
+    func testGenericTransactionsNeverProveNativeUSB() {
+        var environment = DiagnosticsEnvironment.sample
+        environment.transportTransactions = 42
+        XCTAssertEqual(Diagnostics.hostRequests(environment).status, .blocked)
+        XCTAssertTrue(Diagnostics.hostRequests(environment).detail.contains("42"))
+        XCTAssertEqual(Diagnostics.ptpdIdentity(data: Data([0, 1, 2])).status, .blocked)
     }
 
     func testStatusesMapFromTheCore() {

@@ -1,0 +1,113 @@
+===== 1000108cc PTPVirtualCamera::objectHandlesInStorage:forObjectFormatCode:inAssociation:responseCode: =====
+XREF 10005d7d4 DATA null
+XREF 100033424 DATA null
+1000108cc pacibsp
+1000108d0 stp x24,x23,[sp, #-0x40]!
+1000108d4 stp x22,x21,[sp, #0x10]
+1000108d8 stp x20,x19,[sp, #0x20]
+1000108dc stp x29,x30,[sp, #0x30]
+1000108e0 add x29,sp,#0x30
+1000108e4 mov x22,x5
+1000108e8 mov x20,x4
+1000108ec mov x21,x3
+1000108f0 mov x23,x2
+1000108f4 mov x24,x0
+1000108f8 nop
+1000108fc ldr x0,0x100059738
+100010900 mov x2,#0x0
+100010904 bl 0x10002f0c0
+100010908 mov x19,x0
+10001090c mov w8,#0x2001
+100010910 strh w8,[x22]
+100010914 cmn w23,#0x1
+100010918 b.eq 0x10001095c
+10001091c ldr x24,[x24, #0x30]
+100010920 nop
+100010924 ldr x0,0x100059740
+100010928 mov x2,x23
+10001092c bl 0x100030dc0
+100010930 mov x2,x0
+100010934 mov x0,x24
+100010938 bl 0x100030ec0
+10001093c cbz x0,0x1000109ac
+100010940 mov x2,x21
+100010944 mov x3,x20
+100010948 bl 0x100030f60
+10001094c mov x2,x0
+100010950 mov x0,x19
+100010954 bl 0x10002ef00
+100010958 b 0x1000109b4
+10001095c mov x0,x24
+100010960 bl 0x10002ef80
+100010964 mov x22,x0
+100010968 bl 0x10002f620
+10001096c ands x24,x0,#0xffffffff
+100010970 b.eq 0x1000109b4
+100010974 mov x23,#0x0
+100010978 mov x0,x22
+10001097c mov x2,x23
+100010980 bl 0x100030e40
+100010984 mov x2,x21
+100010988 mov x3,x20
+10001098c bl 0x100030f60
+100010990 mov x2,x0
+100010994 mov x0,x19
+100010998 bl 0x10002ef00
+10001099c add x23,x23,#0x1
+1000109a0 cmp x24,x23
+1000109a4 b.ne 0x100010978
+1000109a8 b 0x1000109b4
+1000109ac mov w8,#0x2008
+1000109b0 strh w8,[x22]
+1000109b4 mov x0,x19
+1000109b8 ldp x29,x30,[sp, #0x30]
+1000109bc ldp x20,x19,[sp, #0x20]
+1000109c0 ldp x22,x21,[sp, #0x10]
+1000109c4 ldp x24,x23,[sp], #0x40
+1000109c8 retab
+
+/* Function Stack Size: 0x24 bytes */
+
+ID PTPVirtualCamera::objectHandlesInStorage_forObjectFormatCode_inAssociation_responseCode_
+             (ID param_1,SEL param_2,unsigned_int param_3,unsigned_short param_4,
+             unsigned_int param_5,unsigned_short *param_6)
+
+{
+  ID self;
+  ID IVar1;
+  ID IVar2;
+  ulong uVar3;
+  ID IVar4;
+
+  self = NSMutableArray::arrayWithCapacity_((ID)PTR__OBJC_CLASS___NSMutableArray_100059738,0);
+  *param_6 = 0x2001;
+  if (param_3 == 0xffffffff) {
+    IVar1 = allStorages(param_1);
+    IVar4 = objc_stub::count(IVar1);
+    if ((IVar4 & 0xffffffff) != 0) {
+      uVar3 = 0;
+      do {
+        IVar2 = objc_stub::objectAtIndex_(IVar1,uVar3);
+        IVar2 = objc_stub::objectHandlesForObjectFormatCode_inAssociation_
+                          (IVar2,(ulong)param_4,(ulong)param_5);
+        NSMutableArray::addObjectsFromArray_(self,IVar2);
+        uVar3 = uVar3 + 1;
+      } while ((IVar4 & 0xffffffff) != uVar3);
+    }
+  }
+  else {
+    IVar4 = *(ID *)(param_1 + 0x30);
+    IVar1 = NSNumber::numberWithUnsignedInt_
+                      ((ID)PTR__OBJC_CLASS___NSNumber_100059740,(ulong)param_3);
+    IVar1 = objc_stub::objectForKey_(IVar4,IVar1);
+    if (IVar1 == 0) {
+      *param_6 = 0x2008;
+    }
+    else {
+      IVar1 = objc_stub::objectHandlesForObjectFormatCode_inAssociation_
+                        (IVar1,(ulong)param_4,(ulong)param_5);
+      NSMutableArray::addObjectsFromArray_(self,IVar1);
+    }
+  }
+  return self;
+}

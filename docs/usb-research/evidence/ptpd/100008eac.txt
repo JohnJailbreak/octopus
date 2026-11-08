@@ -1,0 +1,191 @@
+===== 100008eac PTPDeviceUSBTransport::readBulkData =====
+XREF 10005d754 DATA null
+XREF 100033194 DATA null
+XREF 10000649c CALL_OVERRIDE_UNCONDITIONAL PTPDeviceUSBTransport::activate:
+100008eac pacibsp
+100008eb0 sub sp,sp,#0x70
+100008eb4 stp x24,x23,[sp, #0x30]
+100008eb8 stp x22,x21,[sp, #0x40]
+100008ebc stp x20,x19,[sp, #0x50]
+100008ec0 stp x29,x30,[sp, #0x60]
+100008ec4 add x29,sp,#0x60
+100008ec8 nop
+100008ecc ldr x8,0x100044518
+100008ed0 ldr x8,[x8]
+100008ed4 str x8,[sp, #0x28]
+100008ed8 mov w23,#0x2c0
+100008edc movk w23,#0xe000, LSL #16
+100008ee0 nop
+100008ee4 ldrsw x8,0x1000599b4
+100008ee8 ldrb w8,[x0, x8]
+100008eec cbz w8,0x100008fa0
+100008ef0 mov x19,x0
+100008ef4 bl 0x100028978
+100008ef8 nop
+100008efc ldr x0,0x100059700
+100008f00 adrp x22,0x10005a000
+100008f04 ldrb w8,[x22, #0x988]
+100008f08 adr x9,0x1000358c5
+100008f0c nop
+100008f10 adr x10,0x1000358c1
+100008f14 nop
+100008f18 cmp w8,#0x0
+100008f1c csel x8,x10,x9,ne
+100008f20 str x8,[sp]
+100008f24 adr x2,0x100045618
+100008f28 nop
+100008f2c bl 0x100032a40
+100008f30 mov x20,x0
+100008f34 mov w0,#0x4
+100008f38 bl 0x100028b30
+100008f3c cbz x0,0x100008f90
+100008f40 nop
+100008f44 nop
+100008f48 ldr x21,0x10005a970
+100008f4c mov x0,x21
+100008f50 mov w1,#0x0
+100008f54 bl 0x10002eba0
+100008f58 cbz w0,0x100008f90
+100008f5c mov w8,#0x102
+100008f60 movk w8,#0x842, LSL #16
+100008f64 str w8,[sp, #0x10]
+100008f68 stur x20,[sp, #0x14]
+100008f6c adr x0,0x100000000
+100008f70 nop
+100008f74 adr x3,0x10003c44e
+100008f78 nop
+100008f7c add x4,sp,#0x10
+100008f80 mov x1,x21
+100008f84 mov w2,#0x0
+100008f88 mov w5,#0xc
+100008f8c bl 0x10002e6d0
+100008f90 ldrb w8,[x22, #0x988]
+100008f94 tbz w8,#0x0,0x100008fac
+100008f98 add w0,w23,#0x18
+100008f9c b 0x100009038
+100008fa0 mov w8,#0x19
+100008fa4 orr w0,w23,w8
+100008fa8 b 0x100009038
+100008fac nop
+100008fb0 ldrsw x8,0x10005998c
+100008fb4 ldr x0,[x19, x8#0x0]
+100008fb8 ldr x8,[x0]
+100008fbc ldr x8,[x8, #0xa0]
+100008fc0 nop
+100008fc4 ldrsw x9,0x1000599c0
+100008fc8 ldr x1,[x19, x9#0x0]
+100008fcc nop
+100008fd0 ldrsw x9,0x100059974
+100008fd4 ldr x2,[x19, x9#0x0]
+100008fd8 nop
+100008fdc ldrsw x9,0x100059968
+100008fe0 ldr w3,[x19, x9#0x0]
+100008fe4 adr x16,0x10000906c
+100008fe8 nop
+100008fec paciza x16
+100008ff0 mov x4,x16
+100008ff4 mov x5,x19
+100008ff8 blraaz x8
+100008ffc mov w8,#0x2c0
+100009000 movk w8,#0xe000, LSL #16
+100009004 cmp w0,w8
+100009008 b.eq 0x100009024
+10000900c cbnz w0,0x100009038
+100009010 mov w8,#0x1
+100009014 strb w8,[x22, #0x988]
+100009018 bl 0x10002ead0
+10000901c mov w0,#0x0
+100009020 b 0x100009038
+100009024 mov x0,x19
+100009028 mov w2,#0x0
+10000902c bl 0x100031ca0
+100009030 mov w0,#0x2c0
+100009034 movk w0,#0xe000, LSL #16
+100009038 ldr x8,[sp, #0x28]
+10000903c nop
+100009040 ldr x9,0x100044518
+100009044 ldr x9,[x9]
+100009048 cmp x9,x8
+10000904c b.ne 0x100009068
+100009050 ldp x29,x30,[sp, #0x60]
+100009054 ldp x20,x19,[sp, #0x50]
+100009058 ldp x22,x21,[sp, #0x40]
+10000905c ldp x24,x23,[sp, #0x30]
+100009060 add sp,sp,#0x70
+100009064 retab
+100009068 bl 0x10002e690
+
+/* WARNING: Function: _objc_retain_x19 replaced with injection: _objc_retain_fixup */
+/* Function Stack Size: 0x10 bytes */
+
+int PTPDeviceUSBTransport::readBulkData(ID param_1,SEL param_2)
+
+{
+  int iVar1;
+  ID IVar2;
+  undefined8 uVar3;
+  SEL extraout_x1;
+  SEL extraout_x1_00;
+  SEL extraout_x1_01;
+  undefined8 in_x6;
+  undefined8 in_x7;
+  undefined1 auVar4 [16];
+  char *pcVar5;
+  undefined4 local_60;
+  ID local_5c;
+  long local_48;
+
+  local_48 = *(long *)PTR____stack_chk_guard_100044518;
+  if (*(char *)(param_1 + (long)_connected) == '\0') {
+    uVar3 = 0xe00002d9;
+  }
+  else {
+    ___ICOSLogCreate();
+    pcVar5 = "YES";
+    if (DAT_10005a988 == 0) {
+      pcVar5 = "NO";
+    }
+    IVar2 = NSString::stringWithFormat_
+                      ((ID)PTR__OBJC_CLASS___NSString_100059700,
+                       &cf___bulkPipeOut__>readPipeAsync_ReadInProgress__s);
+    auVar4 = ___ICLogTypeEnabled(4);
+    uVar3 = __gICOSLog;
+    param_2 = auVar4._8_8_;
+    if (auVar4._0_8_ != 0) {
+      iVar1 = _os_log_type_enabled(__gICOSLog,0);
+      param_2 = extraout_x1;
+      if (iVar1 != 0) {
+        local_60 = 0x8420102;
+        local_5c = IVar2;
+        __os_log_impl(0x100000000,uVar3,0,"%{public}@",&local_60,0xc,in_x6,in_x7,pcVar5);
+        param_2 = extraout_x1_00;
+      }
+    }
+    if ((DAT_10005a988 & 1) == 0) {
+      auVar4 = (**(code **)(**(long **)(param_1 + (long)_usbCore) + 0xa0))
+                         (*(long **)(param_1 + (long)_usbCore),
+                          *(undefined8 *)(param_1 + (long)_bulkPipeOut),
+                          *(undefined8 *)(param_1 + (long)_readDataRef),
+                          *(undefined4 *)(param_1 + (long)_readBufferSize),FUN_10000906c,param_1);
+      param_2 = auVar4._8_8_;
+      uVar3 = auVar4._0_8_;
+      if (auVar4._0_4_ == -0x1ffffd40) {
+        setConnected_(param_1,0);
+        uVar3 = 0xe00002c0;
+        param_2 = extraout_x1_01;
+      }
+      else if (auVar4._0_4_ == 0) {
+        DAT_10005a988 = 1;
+        uVar3 = 0;
+      }
+    }
+    else {
+      uVar3 = 0xe00002d8;
+    }
+  }
+  if (*(long *)PTR____stack_chk_guard_100044518 == local_48) {
+    return (int)uVar3;
+  }
+                    /* WARNING: Subroutine does not return */
+  ___stack_chk_fail(uVar3,param_2);
+}

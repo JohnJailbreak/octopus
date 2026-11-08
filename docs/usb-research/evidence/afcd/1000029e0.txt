@@ -1,0 +1,86 @@
+===== 1000029e0 FUN_1000029e0 =====
+XREF 10000c982 DATA null
+XREF 1000029cc UNCONDITIONAL_CALL entry
+1000029e0 pacibsp
+1000029e4 sub sp,sp,#0x60
+1000029e8 stp x22,x21,[sp, #0x30]
+1000029ec stp x20,x19,[sp, #0x40]
+1000029f0 stp x29,x30,[sp, #0x50]
+1000029f4 add x29,sp,#0x50
+1000029f8 adrp x21,0x100008000
+1000029fc ldr x8,[x21, #0x60]
+100002a00 cbnz x8,0x100002a90
+100002a04 mov x19,x1
+100002a08 mov x20,x0
+100002a0c str x0,[sp]
+100002a10 adr x1,0x100003965
+100002a14 nop
+100002a18 mov w0,#0x4
+100002a1c bl 0x100003248
+100002a20 mov x0,x20
+100002a24 mov x1,x19
+100002a28 mov w2,#0x1
+100002a2c bl 0x1000035b8
+100002a30 str x0,[x21, #0x60]
+100002a34 cbz x0,0x100002aa4
+100002a38 add x8,sp,#0x8
+100002a3c nop
+100002a40 ldr x16,0x100004240
+100002a44 mov x17,x8
+100002a48 movk x17,#0x6ae1, LSL #48
+100002a4c pacda x16,x17
+100002a50 str x16,[sp, #0x8]
+100002a54 nop
+100002a58 ldr d0,0x100003658
+100002a5c str d0,[sp, #0x10]
+100002a60 add x8,x8,#0x10
+100002a64 adr x16,0x100002abc
+100002a68 nop
+100002a6c pacia x16,x8
+100002a70 adr x8,0x1000042c0
+100002a74 nop
+100002a78 stp x16,x8,[sp, #0x18]
+100002a7c strb wzr,[sp, #0x28]
+100002a80 add x1,sp,#0x8
+100002a84 bl 0x1000035d8
+100002a88 ldr x0,[x21, #0x60]
+100002a8c bl 0x1000035c8
+100002a90 ldp x29,x30,[sp, #0x50]
+100002a94 ldp x20,x19,[sp, #0x40]
+100002a98 ldp x22,x21,[sp, #0x30]
+100002a9c add sp,sp,#0x60
+100002aa0 retab
+100002aa4 adr x1,0x10000397d
+100002aa8 nop
+100002aac mov w0,#0x1
+100002ab0 bl 0x100003248
+100002ab4 mov w0,#0x1
+100002ab8 bl 0x100003448
+
+void FUN_1000029e0(undefined8 param_1,undefined8 param_2)
+
+{
+  undefined *local_58;
+  undefined8 local_50;
+  code *local_48;
+  undefined *puStack_40;
+  undefined1 local_38;
+
+  if (DAT_100008060 == 0) {
+    _AFCLog(4,"Creating XPC service %s");
+    DAT_100008060 = _xpc_connection_create_mach_service(param_1,param_2,1);
+    if (DAT_100008060 == 0) {
+      _AFCLog(1,"Could not create XPC listener.");
+                    /* WARNING: Subroutine does not return */
+      _exit(1);
+    }
+    local_58 = PTR___NSConcreteStackBlock_100004240;
+    local_50 = DAT_100003658;
+    local_48 = FUN_100002abc;
+    puStack_40 = &DAT_1000042c0;
+    local_38 = 0;
+    _xpc_connection_set_event_handler(DAT_100008060,&local_58);
+    _xpc_connection_resume(DAT_100008060);
+  }
+  return;
+}

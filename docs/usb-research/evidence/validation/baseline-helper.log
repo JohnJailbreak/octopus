@@ -1,0 +1,32 @@
+test_files_outside_the_download_folders_are_refused (__main__.HelperTests.test_files_outside_the_download_folders_are_refused) ... ok
+test_installer_that_cannot_start_or_fails (__main__.HelperTests.test_installer_that_cannot_start_or_fails) ... ok
+test_installs_with_trollstore_and_removes_the_download (__main__.HelperTests.test_installs_with_trollstore_and_removes_the_download) ... ok
+test_links_are_refused (__main__.HelperTests.test_links_are_refused) ... FAIL
+test_the_fallback_download_folder_and_ipa_are_accepted (__main__.HelperTests.test_the_fallback_download_folder_and_ipa_are_accepted) ... ok
+test_usage_errors (__main__.HelperTests.test_usage_errors) ... ok
+test_version (__main__.HelperTests.test_version) ... ok
+test_without_trollstore (__main__.HelperTests.test_without_trollstore) ... ok
+test_a_program_killed_by_a_signal (__main__.SpawnTests.test_a_program_killed_by_a_signal) ... ok
+test_a_program_that_cannot_start (__main__.SpawnTests.test_a_program_that_cannot_start) ... ok
+test_collects_stdout_and_stderr_and_the_exit_code (__main__.SpawnTests.test_collects_stdout_and_stderr_and_the_exit_code) ... ok
+test_output_is_capped (__main__.SpawnTests.test_output_is_capped) ... ok
+test_root_needs_persona_spawn (__main__.SpawnTests.test_root_needs_persona_spawn) ... skipped 'Linux has no persona spawn; macOS has one, for root only'
+test_the_child_gets_a_minimal_environment (__main__.SpawnTests.test_the_child_gets_a_minimal_environment) ... ok
+test_every_refusal_is_reported_when_no_folder_works (__main__.ZipTests.test_every_refusal_is_reported_when_no_folder_works) ... ok
+test_python_reads_every_entry (__main__.ZipTests.test_python_reads_every_entry) ... ok
+test_the_archive_falls_back_when_the_preferred_folder_fails (__main__.ZipTests.test_the_archive_falls_back_when_the_preferred_folder_fails)
+The iPhone's case: the app's temporary folder can't be created; the Octopus cache folder works. ... ok
+
+======================================================================
+FAIL: test_links_are_refused (__main__.HelperTests.test_links_are_refused)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "WORKSPACE/work/baseline/Octopus/Tests/HelperTests/test_helper.py", line 121, in test_links_are_refused
+    self.assertEqual(self.run_helper('install-update', '--tipa', link)[0], 4)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 0 != 4
+
+----------------------------------------------------------------------
+Ran 17 tests in 6.043s
+
+FAILED (failures=1, skipped=1)

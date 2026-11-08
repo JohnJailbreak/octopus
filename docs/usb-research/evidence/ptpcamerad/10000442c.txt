@@ -1,0 +1,240 @@
+===== 10000442c PTPHostUSBTransport::deviceStatus =====
+XREF 100059bd8 DATA null
+XREF 10002e638 DATA null
+10000442c pacibsp
+100004430 sub sp,sp,#0x90
+100004434 stp x24,x23,[sp, #0x50]
+100004438 stp x22,x21,[sp, #0x60]
+10000443c stp x20,x19,[sp, #0x70]
+100004440 stp x29,x30,[sp, #0x80]
+100004444 add x29,sp,#0x80
+100004448 mov x19,x0
+10000444c nop
+100004450 ldr x8,0x100040570
+100004454 ldr x8,[x8]
+100004458 stur x8,[x29, #-0x38]
+10000445c stp xzr,xzr,[sp, #0x18]
+100004460 str xzr,[sp, #0x28]
+100004464 str wzr,[sp, #0x14]
+100004468 strb wzr,[sp, #0x13]
+10000446c nop
+100004470 ldrsw x20,0x100056758
+100004474 ldr x0,[x0, x20#0x0]
+100004478 ldr x8,[x0]
+10000447c ldr x8,[x8, #0x88]
+100004480 add x1,sp,#0x13
+100004484 blraaz x8
+100004488 mov w8,#0x67a1
+10000448c strh w8,[sp, #0x18]
+100004490 ldrb w8,[sp, #0x13]
+100004494 strh w8,[sp, #0x1c]
+100004498 mov w8,#0x4
+10000449c strh w8,[sp, #0x1e]
+1000044a0 add x8,sp,#0x14
+1000044a4 str x8,[sp, #0x20]
+1000044a8 ldr x0,[x19, x20#0x0]
+1000044ac ldr x8,[x0]
+1000044b0 ldr x8,[x8, #0xc0]
+1000044b4 add x2,sp,#0x18
+1000044b8 mov w1,#0x0
+1000044bc blraaz x8
+1000044c0 mov x19,x0
+1000044c4 bl 0x100001954
+1000044c8 adr x20,0x1000410c8
+1000044cc nop
+1000044d0 mov x0,x20
+1000044d4 bl 0x10002c020
+1000044d8 cmp x0,#0x15
+1000044dc b.cc 0x100004504
+1000044e0 adr x0,0x1000410c8
+1000044e4 nop
+1000044e8 mov x2,#0x0
+1000044ec mov w3,#0x12
+1000044f0 bl 0x10002dec0
+1000044f4 adr x2,0x100040f88
+1000044f8 nop
+1000044fc bl 0x10002dde0
+100004500 mov x20,x0
+100004504 adrp x23,0x100056000
+100004508 ldr x0,[x23, #0x420]
+10000450c str x19,[sp]
+100004510 adr x2,0x1000412c8
+100004514 nop
+100004518 bl 0x10002de20
+10000451c mov x22,x0
+100004520 adr x24,0x100057958
+100004524 nop
+100004528 ldr x21,[x24]
+10000452c mov x0,x21
+100004530 mov w1,#0x0
+100004534 bl 0x10002a140
+100004538 cbz w0,0x100004584
+10000453c mov x0,x20
+100004540 bl 0x10002a2c0
+100004544 mov w8,#0x202
+100004548 movk w8,#0x822, LSL #16
+10000454c str w8,[sp, #0x30]
+100004550 stur x0,[sp, #0x34]
+100004554 mov w8,#0x842
+100004558 strh w8,[sp, #0x3c]
+10000455c stur x22,[sp, #0x3e]
+100004560 adr x0,0x100000000
+100004564 nop
+100004568 adr x3,0x10003f12c
+10000456c nop
+100004570 add x4,sp,#0x30
+100004574 mov x1,x21
+100004578 mov w2,#0x0
+10000457c mov w5,#0x16
+100004580 bl 0x100029c80
+100004584 cbnz w19,0x100004640
+100004588 bl 0x100001954
+10000458c adr x19,0x1000410c8
+100004590 nop
+100004594 mov x0,x19
+100004598 bl 0x10002c020
+10000459c cmp x0,#0x15
+1000045a0 b.cc 0x1000045c8
+1000045a4 adr x0,0x1000410c8
+1000045a8 nop
+1000045ac mov x2,#0x0
+1000045b0 mov w3,#0x12
+1000045b4 bl 0x10002dec0
+1000045b8 adr x2,0x100040f88
+1000045bc nop
+1000045c0 bl 0x10002dde0
+1000045c4 mov x19,x0
+1000045c8 ldr x0,[x23, #0x420]
+1000045cc ldrh w8,[sp, #0x1e]
+1000045d0 str x8,[sp]
+1000045d4 adr x2,0x1000412e8
+1000045d8 nop
+1000045dc bl 0x10002de20
+1000045e0 mov x21,x0
+1000045e4 ldr x20,[x24]
+1000045e8 mov x0,x20
+1000045ec mov w1,#0x0
+1000045f0 bl 0x10002a140
+1000045f4 cbz w0,0x100004640
+1000045f8 mov x0,x19
+1000045fc bl 0x10002a2c0
+100004600 mov w8,#0x202
+100004604 movk w8,#0x822, LSL #16
+100004608 str w8,[sp, #0x30]
+10000460c stur x0,[sp, #0x34]
+100004610 mov w8,#0x842
+100004614 strh w8,[sp, #0x3c]
+100004618 stur x21,[sp, #0x3e]
+10000461c adr x0,0x100000000
+100004620 nop
+100004624 adr x3,0x10003f12c
+100004628 nop
+10000462c add x4,sp,#0x30
+100004630 mov x1,x20
+100004634 mov w2,#0x0
+100004638 mov w5,#0x16
+10000463c bl 0x100029c80
+100004640 ldrh w0,[sp, #0x16]
+100004644 ldur x8,[x29, #-0x38]
+100004648 nop
+10000464c ldr x9,0x100040570
+100004650 ldr x9,[x9]
+100004654 cmp x9,x8
+100004658 b.ne 0x100004674
+10000465c ldp x29,x30,[sp, #0x80]
+100004660 ldp x20,x19,[sp, #0x70]
+100004664 ldp x22,x21,[sp, #0x60]
+100004668 ldp x24,x23,[sp, #0x50]
+10000466c add sp,sp,#0x90
+100004670 retab
+100004674 bl 0x100029c50
+
+/* Function Stack Size: 0x10 bytes */
+
+unsigned_short PTPHostUSBTransport::deviceStatus(ID param_1,SEL param_2)
+
+{
+  uint5 uVar1;
+  undefined8 uVar2;
+  int iVar3;
+  long *plVar4;
+  undefined8 uVar5;
+  ID IVar6;
+  undefined8 in_x6;
+  undefined8 in_x7;
+  long lVar7;
+  cfstringStruct *pcVar8;
+  undefined8 uVar9;
+  ulong uVar10;
+  undefined1 local_7d;
+  undefined4 local_7c;
+  undefined8 local_78;
+  undefined4 *local_70;
+  undefined8 local_68;
+  undefined4 local_60;
+  ID local_5c;
+  undefined2 local_54;
+  ID local_52;
+  long local_48;
+
+  local_48 = *(long *)PTR____stack_chk_guard_100040570;
+  local_78 = 0;
+  local_70 = (undefined4 *)0x0;
+  local_68 = 0;
+  local_7c = 0;
+  local_7d = 0;
+  lVar7 = (long)_interfaceInterfaceRef;
+  plVar4 = *(long **)(param_1 + lVar7);
+  (**(code **)(*plVar4 + 0x88))(plVar4,&local_7d);
+  local_78 = CONCAT62(local_78._2_6_,0x67a1);
+  uVar1 = CONCAT14(local_7d,(undefined4)local_78);
+  local_78 = CONCAT26(4,(uint6)uVar1);
+  local_70 = &local_7c;
+  plVar4 = *(long **)(param_1 + lVar7);
+  uVar5 = (**(code **)(*plVar4 + 0xc0))(plVar4,0,&local_78);
+  ___ICOSLogCreate();
+  pcVar8 = &cf_HostUSB;
+  IVar6 = objc_stub::length(0x1000410c8);
+  if (0x14 < IVar6) {
+    IVar6 = objc_stub::substringWithRange_(0x1000410c8,0,0x12);
+    pcVar8 = (cfstringStruct *)objc_stub::stringByAppendingString_(IVar6,&cf___);
+  }
+  uVar9 = uVar5;
+  IVar6 = NSString::stringWithFormat_
+                    ((ID)PTR__OBJC_CLASS___NSString_100056420,&cf__>ControlRequest___0x_08x);
+  uVar2 = __gICOSLog;
+  iVar3 = _os_log_type_enabled(__gICOSLog,0);
+  if (iVar3 != 0) {
+    local_5c = objc_stub::UTF8String((ID)pcVar8);
+    local_60 = 0x8220202;
+    local_54 = 0x842;
+    local_52 = IVar6;
+    __os_log_impl(0x100000000,uVar2,0,"%{public}20s | %{public}@",&local_60,0x16,in_x6,in_x7,uVar9);
+  }
+  if ((int)uVar5 == 0) {
+    ___ICOSLogCreate();
+    pcVar8 = &cf_HostUSB;
+    IVar6 = objc_stub::length(0x1000410c8);
+    if (0x14 < IVar6) {
+      IVar6 = objc_stub::substringWithRange_(0x1000410c8,0,0x12);
+      pcVar8 = (cfstringStruct *)objc_stub::stringByAppendingString_(IVar6,&cf___);
+    }
+    uVar10 = local_78 >> 0x30;
+    IVar6 = NSString::stringWithFormat_((ID)PTR__OBJC_CLASS___NSString_100056420,&cf_<_Datasize:_d);
+    uVar5 = __gICOSLog;
+    iVar3 = _os_log_type_enabled(__gICOSLog,0);
+    if (iVar3 != 0) {
+      local_5c = objc_stub::UTF8String((ID)pcVar8);
+      local_60 = 0x8220202;
+      local_54 = 0x842;
+      local_52 = IVar6;
+      __os_log_impl(0x100000000,uVar5,0,"%{public}20s | %{public}@",&local_60,0x16,in_x6,in_x7,
+                    uVar10);
+    }
+  }
+  if (*(long *)PTR____stack_chk_guard_100040570 == local_48) {
+    return local_7c._2_2_;
+  }
+                    /* WARNING: Subroutine does not return */
+  ___stack_chk_fail();
+}

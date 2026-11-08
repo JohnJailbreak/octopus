@@ -1,0 +1,33 @@
+cc -std=c11 -O1 -g -Wall -Wextra -Wpedantic -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -Wconversion -Wsign-conversion -c Octopus/Core/oct_backend_directory.c -o build/plain/Core/oct_backend_directory.o
+cc -std=c11 -O1 -g -Wall -Wextra -Wpedantic -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -Wconversion -Wsign-conversion -c Octopus/Core/oct_backend_memory.c -o build/plain/Core/oct_backend_memory.o
+cc -std=c11 -O1 -g -Wall -Wextra -Wpedantic -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -Wconversion -Wsign-conversion -c Octopus/Core/oct_compat.c -o build/plain/Core/oct_compat.o
+cc -std=c11 -O1 -g -Wall -Wextra -Wpedantic -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -Wconversion -Wsign-conversion -c Octopus/Core/oct_device.c -o build/plain/Core/oct_device.o
+cc -std=c11 -O1 -g -Wall -Wextra -Wpedantic -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -Wconversion -Wsign-conversion -c Octopus/Core/oct_diag.c -o build/plain/Core/oct_diag.o
+cc -std=c11 -O1 -g -Wall -Wextra -Wpedantic -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -Wconversion -Wsign-conversion -c Octopus/Core/oct_link.c -o build/plain/Core/oct_link.o
+cc -std=c11 -O1 -g -Wall -Wextra -Wpedantic -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -Wconversion -Wsign-conversion -c Octopus/Core/oct_log.c -o build/plain/Core/oct_log.o
+cc -std=c11 -O1 -g -Wall -Wextra -Wpedantic -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -Wconversion -Wsign-conversion -c Octopus/Core/oct_service.c -o build/plain/Core/oct_service.o
+cc -std=c11 -O1 -g -Wall -Wextra -Wpedantic -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -Wconversion -Wsign-conversion -c Octopus/Core/oct_sha256.c -o build/plain/Core/oct_sha256.o
+cc -std=c11 -O1 -g -Wall -Wextra -Wpedantic -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -Wconversion -Wsign-conversion -c Octopus/Core/oct_store.c -o build/plain/Core/oct_store.o
+cc -std=c11 -O1 -g -Wall -Wextra -Wpedantic -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -Wconversion -Wsign-conversion -c Octopus/Core/oct_usb.c -o build/plain/Core/oct_usb.o
+cc -std=c11 -O1 -g -Wall -Wextra -Wpedantic -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -Wconversion -Wsign-conversion -c Octopus/Core/oct_zip.c -o build/plain/Core/oct_zip.o
+cc -std=c11 -O1 -g -Wall -Wextra -Wpedantic -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -Wconversion -Wsign-conversion -c Octopus/Protocol/oct_ptp.c -o build/plain/Protocol/oct_ptp.o
+cc -std=c11 -O1 -g -Wall -Wextra -Wpedantic -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -Wconversion -Wsign-conversion -c Octopus/Protocol/oct_responder.c -o build/plain/Protocol/oct_responder.o
+cc -std=c11 -O1 -g -Wall -Wextra -Wpedantic -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror build/plain/Core/oct_backend_directory.o build/plain/Core/oct_backend_memory.o build/plain/Core/oct_compat.o build/plain/Core/oct_device.o build/plain/Core/oct_diag.o build/plain/Core/oct_link.o build/plain/Core/oct_log.o build/plain/Core/oct_service.o build/plain/Core/oct_sha256.o build/plain/Core/oct_store.o build/plain/Core/oct_usb.o build/plain/Core/oct_zip.o build/plain/Protocol/oct_ptp.o build/plain/Protocol/oct_responder.o Octopus/Tests/CoreTests/test_diag.c Octopus/Tests/CoreTests/test_link.c Octopus/Tests/CoreTests/test_log.c Octopus/Tests/CoreTests/test_main.c Octopus/Tests/CoreTests/test_protocol.c Octopus/Tests/CoreTests/test_responder.c Octopus/Tests/CoreTests/test_service.c Octopus/Tests/CoreTests/test_store.c Octopus/Tests/CoreTests/test_usb.c -lpthread -o build/core-tests
+TZ=UTC0 ./build/core-tests Octopus/Tests/CoreTests/fixtures
+Octopus/Tests/CoreTests/test_store.c:378: oct_directory_backend_create(alias, &backend) == OCT_E_INVALID_ARGUMENT failed: got 0 (0x0), expected 1 (0x1)
+Octopus/Tests/CoreTests/test_store.c:387: list.count == 1 failed: got 2 (0x2), expected 1 (0x1)
+Octopus/Tests/CoreTests/test_store.c:429: CHECK(oct_store_create(store, safe, "planted.txt", false, &outside) != OCT_OK) failed
+Octopus/Tests/CoreTests/test_diag.c:158: oct_zip_prepare_directory(unwritable, error, sizeof error) == OCT_E_IO failed: got 0 (0x0), expected 14 (0xE)
+Octopus/Tests/CoreTests/test_diag.c:159: CHECK(strstr(error, "Creating a file in") != NULL && strstr(error, unwritable) != NULL) failed
+Octopus/Tests/CoreTests/test_diag.c:169: written == "/tmp/octopus-export-zfQRqg/fallback/octopus-diagnostics.zip" failed: got "/tmp/octopus-export-zfQRqg/read-only/octopus-diagnostics.zip"
+Octopus/Tests/CoreTests/test_diag.c:171: CHECK(strstr(oct_zip_error(zip), unwritable) != NULL) failed
+log
+store
+protocol
+responder
+service
+link
+USB boundary
+diagnostics
+3350 checks, 7 failures
+make: *** [Makefile:55: test] Error 1

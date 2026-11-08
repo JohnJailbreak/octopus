@@ -448,3 +448,7 @@ Every release, newest first, is in [docs/CHANGELOG.md](docs/CHANGELOG.md).
   [license](Octopus/Resources/Fonts/Fonarto-License.txt).
 - Updates install through [**TrollStore**](https://github.com/opa334/TrollStore)'s installer. The app is built with
   [**XcodeGen**](https://github.com/yonaskolb/XcodeGen) and signed with [**ldid**](https://github.com/ProcursusTeam/ldid).
+
+## USB integration engineering
+
+See [verified binary findings, implementation status and next device experiment](docs/usb-research/README.md). The added USB boundary and read-only discovery do not yet expose synthetic storage in File Explorer.

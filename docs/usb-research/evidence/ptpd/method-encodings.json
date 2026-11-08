@@ -1,0 +1,3932 @@
+[
+  {
+    "address": "0x100004368",
+    "selector": "returnNSIntegerPrimitiveFromSelector:",
+    "encoding": "q24@0:8:16"
+  },
+  {
+    "address": "0x100004400",
+    "selector": "initWithInitiatorGUID:initiatorFriendlyName:",
+    "encoding": "@32@0:8*16@24"
+  },
+  {
+    "address": "0x100004494",
+    "selector": "initWithTCPBuffer:",
+    "encoding": "@24@0:8^v16"
+  },
+  {
+    "address": "0x10000451c",
+    "selector": "dealloc",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x100004568",
+    "selector": "contentForTCP",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x100004614",
+    "selector": "description",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x1000046f4",
+    "selector": "initiatorGUID",
+    "encoding": "r*16@0:8"
+  },
+  {
+    "address": "0x1000046fc",
+    "selector": "setInitiatorGUID:",
+    "encoding": "v24@0:8*16"
+  },
+  {
+    "address": "0x100004708",
+    "selector": "initiatorFriendlyName",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x100004710",
+    "selector": "setInitiatorFriendlyName:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x10000476c",
+    "selector": "initWithDelegate:",
+    "encoding": "@24@0:8@16"
+  },
+  {
+    "address": "0x100004980",
+    "selector": "dealloc",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x100004a24",
+    "selector": "locationID",
+    "encoding": "I16@0:8"
+  },
+  {
+    "address": "0x100004a34",
+    "selector": "vendorID",
+    "encoding": "S16@0:8"
+  },
+  {
+    "address": "0x100004a44",
+    "selector": "productID",
+    "encoding": "S16@0:8"
+  },
+  {
+    "address": "0x100004a54",
+    "selector": "usbSerialNumberString",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x100004a64",
+    "selector": "startResponder",
+    "encoding": "B16@0:8"
+  },
+  {
+    "address": "0x10000574c",
+    "selector": "stop",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x100005900",
+    "selector": "connected",
+    "encoding": "B16@0:8"
+  },
+  {
+    "address": "0x100005910",
+    "selector": "setConnected:",
+    "encoding": "v20@0:8B16"
+  },
+  {
+    "address": "0x100005a68",
+    "selector": "activate:",
+    "encoding": "v20@0:8I16"
+  },
+  {
+    "address": "0x100006558",
+    "selector": "deactivate",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x1000069c0",
+    "selector": "waitForHostConnection:",
+    "encoding": "v20@0:8B16"
+  },
+  {
+    "address": "0x100006ef4",
+    "selector": "description",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x100006f38",
+    "selector": "sendCancel:",
+    "encoding": "B24@0:8@16"
+  },
+  {
+    "address": "0x100006f40",
+    "selector": "sendRequest:needsData:",
+    "encoding": "B28@0:8@16B24"
+  },
+  {
+    "address": "0x100006fd0",
+    "selector": "sendDataPackets:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100007580",
+    "selector": "transactionCanceled:",
+    "encoding": "I20@0:8I16"
+  },
+  {
+    "address": "0x1000075f0",
+    "selector": "sendDataPacketsSplit:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100007ca8",
+    "selector": "sendData:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100007ebc",
+    "selector": "sendResponse:",
+    "encoding": "B24@0:8@16"
+  },
+  {
+    "address": "0x100008054",
+    "selector": "sendEvent:",
+    "encoding": "B24@0:8@16"
+  },
+  {
+    "address": "0x100008330",
+    "selector": "cancelTransaction:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100008368",
+    "selector": "deviceStatus",
+    "encoding": "S16@0:8"
+  },
+  {
+    "address": "0x100008370",
+    "selector": "abortPendingIO",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x100008414",
+    "selector": "writeBulkData:",
+    "encoding": "i24@0:8@16"
+  },
+  {
+    "address": "0x100008740",
+    "selector": "writeInterruptData:",
+    "encoding": "i24@0:8@16"
+  },
+  {
+    "address": "0x100008910",
+    "selector": "handleWriteInterruptDataCompletion:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100008ab8",
+    "selector": "checkInterruptWriteCompletion:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100008acc",
+    "selector": "abortInterruptWrite:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100008cd8",
+    "selector": "sendNextEvent",
+    "encoding": "B16@0:8"
+  },
+  {
+    "address": "0x100008eac",
+    "selector": "readBulkData",
+    "encoding": "i16@0:8"
+  },
+  {
+    "address": "0x1000092c4",
+    "selector": "readInterruptData",
+    "encoding": "i16@0:8"
+  },
+  {
+    "address": "0x1000093bc",
+    "selector": "handleBulkData:result:",
+    "encoding": "B28@0:8Q16i24"
+  },
+  {
+    "address": "0x100009c04",
+    "selector": "handleInterruptData:",
+    "encoding": "v24@0:8Q16"
+  },
+  {
+    "address": "0x100009d2c",
+    "selector": "deviceAdded:",
+    "encoding": "v20@0:8I16"
+  },
+  {
+    "address": "0x10000a0e0",
+    "selector": "processDeviceInterface:",
+    "encoding": "B20@0:8I16"
+  },
+  {
+    "address": "0x10000a8a8",
+    "selector": "setupDeviceInterface",
+    "encoding": "i16@0:8"
+  },
+  {
+    "address": "0x10000b6fc",
+    "selector": "clearDeviceInterface",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x10000b848",
+    "selector": "handleDeviceRequest:data:dataSize:status:",
+    "encoding": "i48@0:8^{?=CCSSS}16^^{__IOUSBDeviceData}24^Q32^i40"
+  },
+  {
+    "address": "0x10000be14",
+    "selector": "initWithTCPBuffer:",
+    "encoding": "@24@0:8^v16"
+  },
+  {
+    "address": "0x10000be64",
+    "selector": "contentForTCP",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10000becc",
+    "selector": "description",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10000bf70",
+    "selector": "initWithName:andPath:",
+    "encoding": "@32@0:8@16@24"
+  },
+  {
+    "address": "0x10000c480",
+    "selector": "dealloc",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x10000c7b4",
+    "selector": "setDelegate:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x10000c8e0",
+    "selector": "path",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10000c8e8",
+    "selector": "name",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10000c8f0",
+    "selector": "userAssignedName",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10000cadc",
+    "selector": "updateUserAssignedName",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x10000cb50",
+    "selector": "transferBehaviorUserPreference",
+    "encoding": "q16@0:8"
+  },
+  {
+    "address": "0x10000ccec",
+    "selector": "initializeMTPProperties",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x10000ce4c",
+    "selector": "vendPhotoStorage",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x10000d038",
+    "selector": "removePlaceholderStorage",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x10000d0a4",
+    "selector": "preparePhotoStorage",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x10000d768",
+    "selector": "resetPhotoStorage",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x10000d9ec",
+    "selector": "handleInternalSettingsChanged",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x10000da58",
+    "selector": "photoStorageAvailable",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10000da90",
+    "selector": "visibleStorage:",
+    "encoding": "B24@0:8@16"
+  },
+  {
+    "address": "0x10000daf0",
+    "selector": "addStorage:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x10000dea0",
+    "selector": "sendEventAddStorageWithID:",
+    "encoding": "v20@0:8I16"
+  },
+  {
+    "address": "0x10000dff8",
+    "selector": "removeStorageWithID:",
+    "encoding": "B20@0:8I16"
+  },
+  {
+    "address": "0x10000e230",
+    "selector": "sendEventRemoveStorageWithID:",
+    "encoding": "v20@0:8I16"
+  },
+  {
+    "address": "0x10000e390",
+    "selector": "removeStorages",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x10000e584",
+    "selector": "sendEventDeviceUnlocked",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x10000e5c8",
+    "selector": "overrideCapabilities",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10000eba8",
+    "selector": "willOverrideCapabilities",
+    "encoding": "B16@0:8"
+  },
+  {
+    "address": "0x10000ed5c",
+    "selector": "assignHostMediaCapabilities:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x10000ef34",
+    "selector": "assignHostSupportedFormats:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x10000f4c8",
+    "selector": "installSecurity",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x10000f524",
+    "selector": "removeSecurity",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x10000f664",
+    "selector": "openSession",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x10000f8cc",
+    "selector": "setupStorageAfterTimeout:",
+    "encoding": "v24@0:8@?16"
+  },
+  {
+    "address": "0x10000fa3c",
+    "selector": "closeSession",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x10000fb40",
+    "selector": "cleanupStorageAfterTimeout:cleanup:",
+    "encoding": "v32@0:8d16@?24"
+  },
+  {
+    "address": "0x10000fff4",
+    "selector": "startObservers",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x1000102ec",
+    "selector": "provokeSecurityCheck",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x100010410",
+    "selector": "stopObservers",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x1000105f4",
+    "selector": "storageWithID:",
+    "encoding": "@20@0:8I16"
+  },
+  {
+    "address": "0x1000106fc",
+    "selector": "objectForObjectHandle:",
+    "encoding": "@24@0:8@16"
+  },
+  {
+    "address": "0x100010798",
+    "selector": "setNameChangeToken:",
+    "encoding": "v20@0:8i16"
+  },
+  {
+    "address": "0x1000107a0",
+    "selector": "nameChangeToken",
+    "encoding": "i16@0:8"
+  },
+  {
+    "address": "0x1000107a8",
+    "selector": "allStorages",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x1000108c4",
+    "selector": "allStorageIDs",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x1000108cc",
+    "selector": "objectHandlesInStorage:forObjectFormatCode:inAssociation:responseCode:",
+    "encoding": "@36@0:8I16S20I24^S28"
+  },
+  {
+    "address": "0x1000109cc",
+    "selector": "objectInfoForObjectsInStorage:forObjectFormatCode:inAssociation:withContentType:responseCode:",
+    "encoding": "@40@0:8I16S20I24i28^S32"
+  },
+  {
+    "address": "0x100010aa8",
+    "selector": "objectInfoForNextObjectGroupInStorage:responseCode:",
+    "encoding": "@28@0:8I16^S20"
+  },
+  {
+    "address": "0x100011108",
+    "selector": "objectInfosForObjectsInGroup:forObjectFormatCode:inAssociation:withContentType:responseCode:",
+    "encoding": "@40@0:8I16S20I24i28^S32"
+  },
+  {
+    "address": "0x1000111e4",
+    "selector": "numDownloadableObjects",
+    "encoding": "I16@0:8"
+  },
+  {
+    "address": "0x100011220",
+    "selector": "numAllObjects",
+    "encoding": "I16@0:8"
+  },
+  {
+    "address": "0x100011240",
+    "selector": "deviceInfoDataset",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x100011248",
+    "selector": "hostIsWindows",
+    "encoding": "B16@0:8"
+  },
+  {
+    "address": "0x1000112bc",
+    "selector": "hostIsMacOS",
+    "encoding": "B16@0:8"
+  },
+  {
+    "address": "0x100011330",
+    "selector": "hostIsLegacyOS",
+    "encoding": "B16@0:8"
+  },
+  {
+    "address": "0x1000113a4",
+    "selector": "devicePropDescDatasetForProperty:",
+    "encoding": "@20@0:8S16"
+  },
+  {
+    "address": "0x100011584",
+    "selector": "devicePropValueForProperty:",
+    "encoding": "@20@0:8S16"
+  },
+  {
+    "address": "0x100011634",
+    "selector": "hostSupportsGroups",
+    "encoding": "B16@0:8"
+  },
+  {
+    "address": "0x10001163c",
+    "selector": "setHostSupportsGroups:",
+    "encoding": "v20@0:8B16"
+  },
+  {
+    "address": "0x100011690",
+    "selector": "storageInfoDatasetForStorageID:",
+    "encoding": "@20@0:8I16"
+  },
+  {
+    "address": "0x1000116d8",
+    "selector": "objectInfoDatasetForObjectHandle:",
+    "encoding": "@20@0:8I16"
+  },
+  {
+    "address": "0x100011720",
+    "selector": "orientationForObjectHandle:",
+    "encoding": "I20@0:8I16"
+  },
+  {
+    "address": "0x10001179c",
+    "selector": "dataSourceForObjectHandle:responseCode:size:",
+    "encoding": "@36@0:8I16^S20^I28"
+  },
+  {
+    "address": "0x100011838",
+    "selector": "embeddedMetadataForObjectHandle:responseCode:",
+    "encoding": "@28@0:8I16^S20"
+  },
+  {
+    "address": "0x100011bf0",
+    "selector": "thumbnailForObjectHandle:maxPixelSize:responseCode:",
+    "encoding": "@32@0:8I16I20^S24"
+  },
+  {
+    "address": "0x100011cf8",
+    "selector": "deleteObjectWithObjectHandle:responseCode:",
+    "encoding": "v28@0:8I16^S20"
+  },
+  {
+    "address": "0x100011f48",
+    "selector": "generatePTPEventsForAddedObjectHandles:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100011fb8",
+    "selector": "generatePTPEventsForDeletedObjectHandles:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100012028",
+    "selector": "generatePTPEventsForAddedObjectGroupInStorage:",
+    "encoding": "v20@0:8I16"
+  },
+  {
+    "address": "0x100012094",
+    "selector": "processAddedFiles:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100012460",
+    "selector": "processDeletedFiles:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x1000129b4",
+    "selector": "addedPhotoKeys:deletedPhotoKeys:changedPhotoKeys:changePendingPhotoKeys:",
+    "encoding": "v48@0:8@16@24@32@40"
+  },
+  {
+    "address": "0x100012c20",
+    "selector": "libraryDidBecomeAvailable",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x100012c2c",
+    "selector": "libraryDidBecomeUnavailable",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x100012c38",
+    "selector": "objectPropertiesSupportedForObjectFormatCode:responseCode:",
+    "encoding": "@28@0:8S16^S20"
+  },
+  {
+    "address": "0x100012d6c",
+    "selector": "objectPropValueForHandle:withObjectPropertyCode:responseCode:",
+    "encoding": "@32@0:8I16S20^S24"
+  },
+  {
+    "address": "0x100013308",
+    "selector": "objectPropDescForObjectPropertyCode:responseCode:",
+    "encoding": "@28@0:8S16^S20"
+  },
+  {
+    "address": "0x100013430",
+    "selector": "objectPropListForHandle:withObjectFormatCode:andPropertyCode:andPropertyGroup:andDepth:responseCode:",
+    "encoding": "@44@0:8I16I20I24I28I32^S36"
+  },
+  {
+    "address": "0x100013878",
+    "selector": "ptpSecurityModel",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x100013884",
+    "selector": "setPtpSecurityModel:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x10001388c",
+    "selector": "currentInternalSessionID",
+    "encoding": "I16@0:8"
+  },
+  {
+    "address": "0x100013894",
+    "selector": "setCurrentInternalSessionID:",
+    "encoding": "v20@0:8I16"
+  },
+  {
+    "address": "0x10001389c",
+    "selector": "hostMediaSupportedFormats",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x1000138a8",
+    "selector": "setHostMediaSupportedFormats:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x1000138b0",
+    "selector": "photoStorage",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x1000138b8",
+    "selector": "setPhotoStorage:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100013900",
+    "selector": "init",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10001396c",
+    "selector": "setContent:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100013a3c",
+    "selector": "initWithData:",
+    "encoding": "@24@0:8@16"
+  },
+  {
+    "address": "0x100013ac8",
+    "selector": "initWithMutableData:",
+    "encoding": "@24@0:8@16"
+  },
+  {
+    "address": "0x100013b44",
+    "selector": "dealloc",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x100013ba0",
+    "selector": "updateContent",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x100013c88",
+    "selector": "content",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x100013cb0",
+    "selector": "description",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x100013d60",
+    "selector": "storageType",
+    "encoding": "S16@0:8"
+  },
+  {
+    "address": "0x100013d68",
+    "selector": "setStorageType:",
+    "encoding": "v20@0:8S16"
+  },
+  {
+    "address": "0x100013d78",
+    "selector": "filesystemType",
+    "encoding": "S16@0:8"
+  },
+  {
+    "address": "0x100013d80",
+    "selector": "setFilesystemType:",
+    "encoding": "v20@0:8S16"
+  },
+  {
+    "address": "0x100013d90",
+    "selector": "accessCapability",
+    "encoding": "S16@0:8"
+  },
+  {
+    "address": "0x100013d98",
+    "selector": "setAccessCapability:",
+    "encoding": "v20@0:8S16"
+  },
+  {
+    "address": "0x100013da8",
+    "selector": "maxCapacity",
+    "encoding": "Q16@0:8"
+  },
+  {
+    "address": "0x100013db0",
+    "selector": "setMaxCapacity:",
+    "encoding": "v24@0:8Q16"
+  },
+  {
+    "address": "0x100013dc0",
+    "selector": "freeSpaceInBytes",
+    "encoding": "Q16@0:8"
+  },
+  {
+    "address": "0x100013dc8",
+    "selector": "setFreeSpaceInBytes:",
+    "encoding": "v24@0:8Q16"
+  },
+  {
+    "address": "0x100013dd8",
+    "selector": "freeSpaceInImages",
+    "encoding": "I16@0:8"
+  },
+  {
+    "address": "0x100013de0",
+    "selector": "setFreeSpaceInImages:",
+    "encoding": "v20@0:8I16"
+  },
+  {
+    "address": "0x100013df0",
+    "selector": "storageDescription",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x100013df8",
+    "selector": "setStorageDescription:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100013e3c",
+    "selector": "volumeLabel",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x100013e44",
+    "selector": "setVolumeLabel:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100013e88",
+    "selector": "initWithTCPBuffer:",
+    "encoding": "@24@0:8^v16"
+  },
+  {
+    "address": "0x100013ed8",
+    "selector": "contentForTCP",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x100013f40",
+    "selector": "description",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x100013f78",
+    "selector": "init",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x100013fe8",
+    "selector": "setContent:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100014118",
+    "selector": "initWithData:",
+    "encoding": "@24@0:8@16"
+  },
+  {
+    "address": "0x1000141a4",
+    "selector": "initWithMutableData:",
+    "encoding": "@24@0:8@16"
+  },
+  {
+    "address": "0x100014220",
+    "selector": "dealloc",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x1000142bc",
+    "selector": "updateContent",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x1000144d4",
+    "selector": "content",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x1000144fc",
+    "selector": "description",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x100014708",
+    "selector": "standardVersion",
+    "encoding": "S16@0:8"
+  },
+  {
+    "address": "0x100014710",
+    "selector": "setStandardVersion:",
+    "encoding": "v20@0:8S16"
+  },
+  {
+    "address": "0x100014720",
+    "selector": "vendorExtensionID",
+    "encoding": "I16@0:8"
+  },
+  {
+    "address": "0x100014728",
+    "selector": "setVendorExtensionID:",
+    "encoding": "v20@0:8I16"
+  },
+  {
+    "address": "0x100014738",
+    "selector": "vendorExtensionVersion",
+    "encoding": "S16@0:8"
+  },
+  {
+    "address": "0x100014740",
+    "selector": "setVendorExtensionVersion:",
+    "encoding": "v20@0:8S16"
+  },
+  {
+    "address": "0x100014750",
+    "selector": "vendorExtensionDescription",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x100014758",
+    "selector": "setVendorExtensionDescription:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x10001479c",
+    "selector": "functionalMode",
+    "encoding": "S16@0:8"
+  },
+  {
+    "address": "0x1000147a4",
+    "selector": "setFunctionalMode:",
+    "encoding": "v20@0:8S16"
+  },
+  {
+    "address": "0x1000147b4",
+    "selector": "operationsSupported",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x1000147bc",
+    "selector": "setOperationsSupported:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100014810",
+    "selector": "eventsSupported",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x100014818",
+    "selector": "setEventsSupported:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x10001486c",
+    "selector": "devicePropertiesSupported",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x100014874",
+    "selector": "setDevicePropertiesSupported:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x1000148c8",
+    "selector": "captureFormats",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x1000148d0",
+    "selector": "setCaptureFormats:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100014924",
+    "selector": "imageFormats",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10001492c",
+    "selector": "setImageFormats:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100014980",
+    "selector": "manufacturer",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x100014988",
+    "selector": "setManufacturer:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x1000149cc",
+    "selector": "model",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x1000149d4",
+    "selector": "setModel:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100014a18",
+    "selector": "deviceVersion",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x100014a20",
+    "selector": "setDeviceVersion:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100014a64",
+    "selector": "serialNumber",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x100014a6c",
+    "selector": "setSerialNumber:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100014ab0",
+    "selector": "canonicalManufacturer",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x100014bdc",
+    "selector": "hexRepresentationWithSpaces_AS:",
+    "encoding": "@20@0:8B16"
+  },
+  {
+    "address": "0x100014cd8",
+    "selector": "filepath",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x100014ce0",
+    "selector": "initWithOperationCode:transactionID:andData:",
+    "encoding": "@32@0:8S16I20@24"
+  },
+  {
+    "address": "0x100014d5c",
+    "selector": "initWithOperationCode:transactionID:andDataSource:",
+    "encoding": "@32@0:8S16I20@24"
+  },
+  {
+    "address": "0x100014dd8",
+    "selector": "initWithOperationCode:transactionID:andFilepath:",
+    "encoding": "@32@0:8S16I20@24"
+  },
+  {
+    "address": "0x100014ebc",
+    "selector": "initWithTCPBuffer:",
+    "encoding": "@24@0:8^v16"
+  },
+  {
+    "address": "0x100014f68",
+    "selector": "initWithUSBBuffer:",
+    "encoding": "@24@0:8^v16"
+  },
+  {
+    "address": "0x100015020",
+    "selector": "dealloc",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x100015094",
+    "selector": "contentForTCP",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10001522c",
+    "selector": "contentForUSB",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x1000153d4",
+    "selector": "contentForUSBUsingBuffer:capacity:",
+    "encoding": "@28@0:8^v16I24"
+  },
+  {
+    "address": "0x100015588",
+    "selector": "description",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x100015608",
+    "selector": "operationCode",
+    "encoding": "S16@0:8"
+  },
+  {
+    "address": "0x100015610",
+    "selector": "setOperationCode:",
+    "encoding": "v20@0:8S16"
+  },
+  {
+    "address": "0x100015618",
+    "selector": "transactionID",
+    "encoding": "I16@0:8"
+  },
+  {
+    "address": "0x100015620",
+    "selector": "setTransactionID:",
+    "encoding": "v20@0:8I16"
+  },
+  {
+    "address": "0x100015628",
+    "selector": "data",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x100015630",
+    "selector": "setData:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100015680",
+    "selector": "bufferSize",
+    "encoding": "q16@0:8"
+  },
+  {
+    "address": "0x100015688",
+    "selector": "offsetInBuffer",
+    "encoding": "q16@0:8"
+  },
+  {
+    "address": "0x100015690",
+    "selector": "range",
+    "encoding": "{_PTPRange=QQ}16@0:8"
+  },
+  {
+    "address": "0x10001569c",
+    "selector": "setRange:",
+    "encoding": "i32@0:8{_PTPRange=QQ}16"
+  },
+  {
+    "address": "0x1000156dc",
+    "selector": "bytesTransferred",
+    "encoding": "q16@0:8"
+  },
+  {
+    "address": "0x1000156e4",
+    "selector": "setBytesTransferred:",
+    "encoding": "v24@0:8q16"
+  },
+  {
+    "address": "0x1000156ec",
+    "selector": "copyFromBuffer:numBytes:",
+    "encoding": "q32@0:8^v16q24"
+  },
+  {
+    "address": "0x100015818",
+    "selector": "copyToBuffer:numBytes:",
+    "encoding": "q32@0:8^v16q24"
+  },
+  {
+    "address": "0x1000158f8",
+    "selector": "copyToWrappedBytes:forTransport:",
+    "encoding": "q28@0:8@16S24"
+  },
+  {
+    "address": "0x100015b7c",
+    "selector": "initWithTransactionID:totalDataSize:",
+    "encoding": "@28@0:8I16Q20"
+  },
+  {
+    "address": "0x100015bd0",
+    "selector": "initWithTCPBuffer:",
+    "encoding": "@24@0:8^v16"
+  },
+  {
+    "address": "0x100015c58",
+    "selector": "contentForTCP",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x100015cdc",
+    "selector": "description",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x100015d20",
+    "selector": "transactionID",
+    "encoding": "I16@0:8"
+  },
+  {
+    "address": "0x100015d28",
+    "selector": "setTransactionID:",
+    "encoding": "v20@0:8I16"
+  },
+  {
+    "address": "0x100015d30",
+    "selector": "totalDataSize",
+    "encoding": "Q16@0:8"
+  },
+  {
+    "address": "0x100015d38",
+    "selector": "setTotalDataSize:",
+    "encoding": "v24@0:8Q16"
+  },
+  {
+    "address": "0x100015d40",
+    "selector": "getDedupedAssetDirectory:increment:",
+    "encoding": "@28@0:8@16B24"
+  },
+  {
+    "address": "0x100015f28",
+    "selector": "virtualDirectoryName:",
+    "encoding": "@24@0:8@16"
+  },
+  {
+    "address": "0x100015fd8",
+    "selector": "virtualDirectoryDate:",
+    "encoding": "{timespec=qq}24@0:8@16"
+  },
+  {
+    "address": "0x1000160c4",
+    "selector": "initWithParent:andOptionalID:forSessionID:",
+    "encoding": "@32@0:8@16I24I28"
+  },
+  {
+    "address": "0x10001661c",
+    "selector": "dcimFolder",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x100016624",
+    "selector": "addContent",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x100017148",
+    "selector": "addAssets:createdObjects:",
+    "encoding": "@32@0:8@16@24"
+  },
+  {
+    "address": "0x100017808",
+    "selector": "deleteAssets:",
+    "encoding": "@24@0:8@16"
+  },
+  {
+    "address": "0x10001796c",
+    "selector": "dealloc",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x1000179fc",
+    "selector": "addCameraFileToIndex:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100017a34",
+    "selector": "addCameraFolderToIndex:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100017ae0",
+    "selector": "cameraFileWithObjectID:",
+    "encoding": "@24@0:8Q16"
+  },
+  {
+    "address": "0x100017b20",
+    "selector": "cameraFolderWithObjectID:",
+    "encoding": "@24@0:8Q16"
+  },
+  {
+    "address": "0x100017b60",
+    "selector": "removeCameraFileFromIndex:",
+    "encoding": "v24@0:8Q16"
+  },
+  {
+    "address": "0x100017b98",
+    "selector": "removeCameraFolderFromIndex:",
+    "encoding": "v24@0:8Q16"
+  },
+  {
+    "address": "0x100017bd0",
+    "selector": "objectHandlesForObjectFormatCode:inAssociation:",
+    "encoding": "@24@0:8S16I20"
+  },
+  {
+    "address": "0x100017bd8",
+    "selector": "appendObjectData:forObjectFormatCode:inAssociation:withContentType:",
+    "encoding": "Q36@0:8@16S24I28I32"
+  },
+  {
+    "address": "0x100017cc0",
+    "selector": "addGroup:",
+    "encoding": "I24@0:8@16"
+  },
+  {
+    "address": "0x100017cf4",
+    "selector": "dequeueGroup",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x100017e6c",
+    "selector": "sessionID",
+    "encoding": "I16@0:8"
+  },
+  {
+    "address": "0x100017e74",
+    "selector": "setSessionID:",
+    "encoding": "v20@0:8I16"
+  },
+  {
+    "address": "0x100017e7c",
+    "selector": "storageInfoDataset",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x100017e84",
+    "selector": "setStorageInfoDataset:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100017e8c",
+    "selector": "setDcimFolder:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100017e94",
+    "selector": "storageID",
+    "encoding": "I16@0:8"
+  },
+  {
+    "address": "0x100017e9c",
+    "selector": "setStorageID:",
+    "encoding": "v20@0:8I16"
+  },
+  {
+    "address": "0x100017ea4",
+    "selector": "objectHandle",
+    "encoding": "I16@0:8"
+  },
+  {
+    "address": "0x100017eac",
+    "selector": "setObjectHandle:",
+    "encoding": "v20@0:8I16"
+  },
+  {
+    "address": "0x100017eb4",
+    "selector": "indexedMediaSet",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x100017ebc",
+    "selector": "setIndexedMediaSet:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100017ec4",
+    "selector": "parent",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x100017ecc",
+    "selector": "setParent:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100017ed4",
+    "selector": "assetGroups",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x100017edc",
+    "selector": "setAssetGroups:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100017ee4",
+    "selector": "assetGroupIndex",
+    "encoding": "I16@0:8"
+  },
+  {
+    "address": "0x100017eec",
+    "selector": "setAssetGroupIndex:",
+    "encoding": "v20@0:8I16"
+  },
+  {
+    "address": "0x100017ef4",
+    "selector": "enumerated",
+    "encoding": "B16@0:8"
+  },
+  {
+    "address": "0x100017efc",
+    "selector": "setEnumerated:",
+    "encoding": "v20@0:8B16"
+  },
+  {
+    "address": "0x100017f04",
+    "selector": "supportedFormats",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x100017f0c",
+    "selector": "setSupportedFormats:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100017f54",
+    "selector": "initWithTransactionID:",
+    "encoding": "@20@0:8I16"
+  },
+  {
+    "address": "0x100017fa0",
+    "selector": "initWithTCPBuffer:",
+    "encoding": "@24@0:8^v16"
+  },
+  {
+    "address": "0x100018008",
+    "selector": "contentForTCP",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x100018080",
+    "selector": "description",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x1000180bc",
+    "selector": "transactionID",
+    "encoding": "I16@0:8"
+  },
+  {
+    "address": "0x1000180c4",
+    "selector": "setTransactionID:",
+    "encoding": "v20@0:8I16"
+  },
+  {
+    "address": "0x1000180cc",
+    "selector": "initWithOperationCode:transactionID:andData:",
+    "encoding": "@32@0:8S16I20@24"
+  },
+  {
+    "address": "0x10001813c",
+    "selector": "initWithTCPBuffer:",
+    "encoding": "@24@0:8^v16"
+  },
+  {
+    "address": "0x1000181e0",
+    "selector": "initWithUSBBuffer:",
+    "encoding": "@24@0:8^v16"
+  },
+  {
+    "address": "0x100018290",
+    "selector": "dealloc",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x1000182dc",
+    "selector": "contentForTCP",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x1000183a0",
+    "selector": "contentForUSB",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x100018470",
+    "selector": "contentForUSBUsingBuffer:capacity:",
+    "encoding": "@28@0:8^v16I24"
+  },
+  {
+    "address": "0x100018558",
+    "selector": "description",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x1000185e4",
+    "selector": "operationCode",
+    "encoding": "S16@0:8"
+  },
+  {
+    "address": "0x1000185ec",
+    "selector": "setOperationCode:",
+    "encoding": "v20@0:8S16"
+  },
+  {
+    "address": "0x1000185f4",
+    "selector": "transactionID",
+    "encoding": "I16@0:8"
+  },
+  {
+    "address": "0x1000185fc",
+    "selector": "setTransactionID:",
+    "encoding": "v20@0:8I16"
+  },
+  {
+    "address": "0x100018604",
+    "selector": "data",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10001860c",
+    "selector": "setData:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x1000186ac",
+    "selector": "init",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x100018708",
+    "selector": "dealloc",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x100018858",
+    "selector": "start",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x1000189b8",
+    "selector": "stop",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x100018ae4",
+    "selector": "setDelegate:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100018b20",
+    "selector": "setSessionID:",
+    "encoding": "v20@0:8I16"
+  },
+  {
+    "address": "0x100018c40",
+    "selector": "setHasVended:",
+    "encoding": "v20@0:8B16"
+  },
+  {
+    "address": "0x100018d7c",
+    "selector": "updateProtectionStatus:",
+    "encoding": "B24@0:8q16"
+  },
+  {
+    "address": "0x100018eac",
+    "selector": "photoLibraryIsAvailable",
+    "encoding": "B16@0:8"
+  },
+  {
+    "address": "0x100018eb4",
+    "selector": "prettyHostID",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x100018f28",
+    "selector": "prettyAccess:value:",
+    "encoding": "@28@0:8q16B24"
+  },
+  {
+    "address": "0x100019194",
+    "selector": "handleProtectionStatusChanged:",
+    "encoding": "v24@0:8q16"
+  },
+  {
+    "address": "0x1000194e4",
+    "selector": "handleInternalSettingsChanged",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x100019618",
+    "selector": "handleThrottleChanged",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x10001982c",
+    "selector": "isPhotoStorageAvailable",
+    "encoding": "B16@0:8"
+  },
+  {
+    "address": "0x10001986c",
+    "selector": "shouldRemovePlaceholderStorage",
+    "encoding": "B16@0:8"
+  },
+  {
+    "address": "0x10001988c",
+    "selector": "shouldVendPhotoStorage",
+    "encoding": "B16@0:8"
+  },
+  {
+    "address": "0x1000198c0",
+    "selector": "canVendPhotoStorage",
+    "encoding": "B16@0:8"
+  },
+  {
+    "address": "0x100019a84",
+    "selector": "registerForSecurityNotifications",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x100019dfc",
+    "selector": "unregisterForSecurityNotifications",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x100019e58",
+    "selector": "hostIsTrusted",
+    "encoding": "B16@0:8"
+  },
+  {
+    "address": "0x100019e64",
+    "selector": "deviceWasUnlocked",
+    "encoding": "B16@0:8"
+  },
+  {
+    "address": "0x100019e70",
+    "selector": "initWithResponseCode:transactionID:numParameters:parameters:",
+    "encoding": "@36@0:8S16I20I24^I28"
+  },
+  {
+    "address": "0x100019ef4",
+    "selector": "initWithResponseCode:transactionID:",
+    "encoding": "@24@0:8S16I20"
+  },
+  {
+    "address": "0x100019f4c",
+    "selector": "initWithResponseCode:transactionID:parameter1:",
+    "encoding": "@28@0:8S16I20I24"
+  },
+  {
+    "address": "0x100019fb4",
+    "selector": "initWithResponseCode:transactionID:parameter1:parameter2:",
+    "encoding": "@32@0:8S16I20I24I28"
+  },
+  {
+    "address": "0x10001a024",
+    "selector": "initWithResponseCode:transactionID:parameter1:parameter2:parameter3:",
+    "encoding": "@36@0:8S16I20I24I28I32"
+  },
+  {
+    "address": "0x10001a0a0",
+    "selector": "initWithResponseCode:transactionID:parameter1:parameter2:parameter3:parameter4:",
+    "encoding": "@40@0:8S16I20I24I28I32I36"
+  },
+  {
+    "address": "0x10001a124",
+    "selector": "initWithResponseCode:transactionID:parameter1:parameter2:parameter3:parameter4:parameter5:",
+    "encoding": "@44@0:8S16I20I24I28I32I36I40"
+  },
+  {
+    "address": "0x10001a1ac",
+    "selector": "copyWithZone:",
+    "encoding": "@24@0:8^{_NSZone=}16"
+  },
+  {
+    "address": "0x10001a290",
+    "selector": "initWithTCPBuffer:",
+    "encoding": "@24@0:8^v16"
+  },
+  {
+    "address": "0x10001a35c",
+    "selector": "initWithUSBBuffer:",
+    "encoding": "@24@0:8^v16"
+  },
+  {
+    "address": "0x10001a42c",
+    "selector": "contentForTCP",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10001a4fc",
+    "selector": "contentForUSB",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10001a5cc",
+    "selector": "contentForUSBUsingBuffer:capacity:",
+    "encoding": "@28@0:8^v16I24"
+  },
+  {
+    "address": "0x10001a6a8",
+    "selector": "description",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10001a6f4",
+    "selector": "responseCode",
+    "encoding": "S16@0:8"
+  },
+  {
+    "address": "0x10001a6fc",
+    "selector": "setResponseCode:",
+    "encoding": "v20@0:8S16"
+  },
+  {
+    "address": "0x10001a704",
+    "selector": "transactionID",
+    "encoding": "I16@0:8"
+  },
+  {
+    "address": "0x10001a70c",
+    "selector": "setTransactionID:",
+    "encoding": "v20@0:8I16"
+  },
+  {
+    "address": "0x10001a714",
+    "selector": "numParameters",
+    "encoding": "i16@0:8"
+  },
+  {
+    "address": "0x10001a71c",
+    "selector": "setNumParameters:",
+    "encoding": "v20@0:8I16"
+  },
+  {
+    "address": "0x10001a72c",
+    "selector": "parameterAtIndex:",
+    "encoding": "I20@0:8I16"
+  },
+  {
+    "address": "0x10001a748",
+    "selector": "setPparameter:atIndex:",
+    "encoding": "v24@0:8I16I20"
+  },
+  {
+    "address": "0x10001a75c",
+    "selector": "parameter1",
+    "encoding": "I16@0:8"
+  },
+  {
+    "address": "0x10001a764",
+    "selector": "setParameter1:",
+    "encoding": "v20@0:8I16"
+  },
+  {
+    "address": "0x10001a76c",
+    "selector": "parameter2",
+    "encoding": "I16@0:8"
+  },
+  {
+    "address": "0x10001a774",
+    "selector": "setParameter2:",
+    "encoding": "v20@0:8I16"
+  },
+  {
+    "address": "0x10001a77c",
+    "selector": "parameter3",
+    "encoding": "I16@0:8"
+  },
+  {
+    "address": "0x10001a784",
+    "selector": "setParameter3:",
+    "encoding": "v20@0:8I16"
+  },
+  {
+    "address": "0x10001a78c",
+    "selector": "parameter4",
+    "encoding": "I16@0:8"
+  },
+  {
+    "address": "0x10001a794",
+    "selector": "setParameter4:",
+    "encoding": "v20@0:8I16"
+  },
+  {
+    "address": "0x10001a79c",
+    "selector": "parameter5",
+    "encoding": "I16@0:8"
+  },
+  {
+    "address": "0x10001a7a4",
+    "selector": "setParameter5:",
+    "encoding": "v20@0:8I16"
+  },
+  {
+    "address": "0x10001a7ac",
+    "selector": "initWithDictionary:",
+    "encoding": "@24@0:8@16"
+  },
+  {
+    "address": "0x10001a88c",
+    "selector": "initWithEventCode:transactionID:",
+    "encoding": "@24@0:8S16I20"
+  },
+  {
+    "address": "0x10001a8e4",
+    "selector": "initWithEventCode:transactionID:parameter1:",
+    "encoding": "@28@0:8S16I20I24"
+  },
+  {
+    "address": "0x10001a94c",
+    "selector": "initWithEventCode:transactionID:parameter1:parameter2:",
+    "encoding": "@32@0:8S16I20I24I28"
+  },
+  {
+    "address": "0x10001a9bc",
+    "selector": "initWithEventCode:transactionID:parameter1:parameter2:parameter3:",
+    "encoding": "@36@0:8S16I20I24I28I32"
+  },
+  {
+    "address": "0x10001aa38",
+    "selector": "initWithTCPBuffer:",
+    "encoding": "@24@0:8^v16"
+  },
+  {
+    "address": "0x10001ab04",
+    "selector": "initWithUSBBuffer:",
+    "encoding": "@24@0:8^v16"
+  },
+  {
+    "address": "0x10001abd4",
+    "selector": "contentForTCP",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10001aca4",
+    "selector": "contentForUSB",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10001ad74",
+    "selector": "contentForUSBUsingBuffer:capacity:",
+    "encoding": "@28@0:8^v16I24"
+  },
+  {
+    "address": "0x10001ae50",
+    "selector": "description",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10001af0c",
+    "selector": "eventCode",
+    "encoding": "S16@0:8"
+  },
+  {
+    "address": "0x10001af14",
+    "selector": "setEventCode:",
+    "encoding": "v20@0:8S16"
+  },
+  {
+    "address": "0x10001af1c",
+    "selector": "transactionID",
+    "encoding": "I16@0:8"
+  },
+  {
+    "address": "0x10001af24",
+    "selector": "setTransactionID:",
+    "encoding": "v20@0:8I16"
+  },
+  {
+    "address": "0x10001af2c",
+    "selector": "parameter1",
+    "encoding": "I16@0:8"
+  },
+  {
+    "address": "0x10001af34",
+    "selector": "setParameter1:",
+    "encoding": "v20@0:8I16"
+  },
+  {
+    "address": "0x10001af3c",
+    "selector": "parameter2",
+    "encoding": "I16@0:8"
+  },
+  {
+    "address": "0x10001af44",
+    "selector": "setParameter2:",
+    "encoding": "v20@0:8I16"
+  },
+  {
+    "address": "0x10001af4c",
+    "selector": "parameter3",
+    "encoding": "I16@0:8"
+  },
+  {
+    "address": "0x10001af54",
+    "selector": "setParameter3:",
+    "encoding": "v20@0:8I16"
+  },
+  {
+    "address": "0x10001af5c",
+    "selector": "eventPacketDictionary",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10001b06c",
+    "selector": "initWithTypes:",
+    "encoding": "@24@0:8@16"
+  },
+  {
+    "address": "0x10001b1b0",
+    "selector": "dealloc",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x10001b1fc",
+    "selector": "mediaItemCount",
+    "encoding": "Q16@0:8"
+  },
+  {
+    "address": "0x10001b320",
+    "selector": "addMediaItemToIndex:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x10001b424",
+    "selector": "removeMediaItemFromIndex:",
+    "encoding": "B24@0:8@16"
+  },
+  {
+    "address": "0x10001b4a0",
+    "selector": "removeMediaItemsFromIndex:",
+    "encoding": "B24@0:8@16"
+  },
+  {
+    "address": "0x10001b5a0",
+    "selector": "removeMediaItemWithHandleFromIndex:",
+    "encoding": "B24@0:8Q16"
+  },
+  {
+    "address": "0x10001b5e4",
+    "selector": "removeAllItems",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x10001b6f4",
+    "selector": "mediaItemWithHandle:inTypes:",
+    "encoding": "@32@0:8Q16@24"
+  },
+  {
+    "address": "0x10001b8d4",
+    "selector": "orderedSetForType:",
+    "encoding": "@24@0:8@16"
+  },
+  {
+    "address": "0x10001b940",
+    "selector": "arrayForType:",
+    "encoding": "@24@0:8@16"
+  },
+  {
+    "address": "0x10001b9a4",
+    "selector": "performSelector:onTypes:",
+    "encoding": "v32@0:8@16@24"
+  },
+  {
+    "address": "0x10001bb6c",
+    "selector": "mediaLock",
+    "encoding": "{os_unfair_lock_s=I}16@0:8"
+  },
+  {
+    "address": "0x10001bb74",
+    "selector": "setMediaLock:",
+    "encoding": "v20@0:8{os_unfair_lock_s=I}16"
+  },
+  {
+    "address": "0x10001bb7c",
+    "selector": "mediaItems",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10001bb84",
+    "selector": "setMediaItems:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x10001bbec",
+    "selector": "objectPropertyWithPropertyCode:andDataType:",
+    "encoding": "@24@0:8I16S20"
+  },
+  {
+    "address": "0x10001bb8c",
+    "selector": "initWithPropertyCode:andDataType:",
+    "encoding": "@24@0:8S16S20"
+  },
+  {
+    "address": "0x10001bc38",
+    "selector": "objectValue:withObject:andHandle:",
+    "encoding": "v36@0:8@16@24I32"
+  },
+  {
+    "address": "0x10001beb4",
+    "selector": "objectPropertyDescriptionDataset:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x10001c014",
+    "selector": "objectPropertyListElement:withObject:andHandle:",
+    "encoding": "v36@0:8@16@24I32"
+  },
+  {
+    "address": "0x10001c0a8",
+    "selector": "propertyCode",
+    "encoding": "S16@0:8"
+  },
+  {
+    "address": "0x10001c0b0",
+    "selector": "dataType",
+    "encoding": "S16@0:8"
+  },
+  {
+    "address": "0x10001c0b8",
+    "selector": "formFlag",
+    "encoding": "C16@0:8"
+  },
+  {
+    "address": "0x10001c0c0",
+    "selector": "setFormFlag:",
+    "encoding": "v20@0:8C16"
+  },
+  {
+    "address": "0x10001c0c8",
+    "selector": "dealloc",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x10001c124",
+    "selector": "initWithConnectionNumber:",
+    "encoding": "@20@0:8I16"
+  },
+  {
+    "address": "0x10001c170",
+    "selector": "initWithTCPBuffer:",
+    "encoding": "@24@0:8^v16"
+  },
+  {
+    "address": "0x10001c1d8",
+    "selector": "contentForTCP",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10001c250",
+    "selector": "description",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10001c28c",
+    "selector": "connectionNumber",
+    "encoding": "I16@0:8"
+  },
+  {
+    "address": "0x10001c294",
+    "selector": "setConnectionNumber:",
+    "encoding": "v20@0:8I16"
+  },
+  {
+    "address": "0x10001c29c",
+    "selector": "wrappedBytesWithCapacity:",
+    "encoding": "@24@0:8Q16"
+  },
+  {
+    "address": "0x10001c2e0",
+    "selector": "wrappedBytesWithBytes:capacity:",
+    "encoding": "@32@0:8^v16Q24"
+  },
+  {
+    "address": "0x10001c32c",
+    "selector": "initWithCapacity:",
+    "encoding": "@24@0:8Q16"
+  },
+  {
+    "address": "0x10001c3a8",
+    "selector": "init",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10001c3b0",
+    "selector": "initWithBytes:capacity:",
+    "encoding": "@32@0:8^v16Q24"
+  },
+  {
+    "address": "0x10001c414",
+    "selector": "initWithFileDescriptor:capacity:",
+    "encoding": "@28@0:8i16Q20"
+  },
+  {
+    "address": "0x10001c474",
+    "selector": "setProgressNotifierCallback:context:",
+    "encoding": "v32@0:8^?16^v24"
+  },
+  {
+    "address": "0x10001c4a8",
+    "selector": "dealloc",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x10001c510",
+    "selector": "capacity",
+    "encoding": "Q16@0:8"
+  },
+  {
+    "address": "0x10001c518",
+    "selector": "setCapacity:",
+    "encoding": "Q24@0:8Q16"
+  },
+  {
+    "address": "0x10001c574",
+    "selector": "length",
+    "encoding": "Q16@0:8"
+  },
+  {
+    "address": "0x10001c57c",
+    "selector": "setLength:",
+    "encoding": "v24@0:8Q16"
+  },
+  {
+    "address": "0x10001c590",
+    "selector": "setHeaderOffset:",
+    "encoding": "v24@0:8Q16"
+  },
+  {
+    "address": "0x10001c598",
+    "selector": "headerOffset",
+    "encoding": "Q16@0:8"
+  },
+  {
+    "address": "0x10001c5a0",
+    "selector": "headerOffsetBytes",
+    "encoding": "r^v16@0:8"
+  },
+  {
+    "address": "0x10001c5b0",
+    "selector": "bytes",
+    "encoding": "r^v16@0:8"
+  },
+  {
+    "address": "0x10001c5b8",
+    "selector": "mutableBytes",
+    "encoding": "^v16@0:8"
+  },
+  {
+    "address": "0x10001c5c0",
+    "selector": "mutableData",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10001c5d8",
+    "selector": "data",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10001c5f0",
+    "selector": "wasInitWithFD",
+    "encoding": "B16@0:8"
+  },
+  {
+    "address": "0x10001c600",
+    "selector": "offset",
+    "encoding": "Q16@0:8"
+  },
+  {
+    "address": "0x10001c608",
+    "selector": "appendData:",
+    "encoding": "Q24@0:8@16"
+  },
+  {
+    "address": "0x10001c77c",
+    "selector": "appendBytes:length:",
+    "encoding": "Q32@0:8r^v16Q24"
+  },
+  {
+    "address": "0x10001c8f0",
+    "selector": "rewindBytesToPosition64:",
+    "encoding": "Q24@0:8Q16"
+  },
+  {
+    "address": "0x10001c934",
+    "selector": "excessDataLength",
+    "encoding": "Q16@0:8"
+  },
+  {
+    "address": "0x10001c93c",
+    "selector": "percentFull",
+    "encoding": "d16@0:8"
+  },
+  {
+    "address": "0x10001c96c",
+    "selector": "description",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10001ca2c",
+    "selector": "init",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10001ca64",
+    "selector": "initWithData:",
+    "encoding": "@24@0:8@16"
+  },
+  {
+    "address": "0x10001ca6c",
+    "selector": "initWithBytes:length:",
+    "encoding": "@28@0:8*16I24"
+  },
+  {
+    "address": "0x10001ca74",
+    "selector": "initWithData:contentType:",
+    "encoding": "@28@0:8@16i24"
+  },
+  {
+    "address": "0x10001cad8",
+    "selector": "initWithBytes:length:contentType:",
+    "encoding": "@32@0:8*16I24i28"
+  },
+  {
+    "address": "0x10001ceb4",
+    "selector": "dealloc",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x10001cf20",
+    "selector": "content",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10001cf28",
+    "selector": "contentLength:bufferLength:contentType:",
+    "encoding": "v36@0:8^I16^I24i32"
+  },
+  {
+    "address": "0x10001d038",
+    "selector": "contentLengthValid:forContentType:",
+    "encoding": "B24@0:8I16i20"
+  },
+  {
+    "address": "0x10001d080",
+    "selector": "content:",
+    "encoding": "@20@0:8i16"
+  },
+  {
+    "address": "0x10001d2f0",
+    "selector": "description",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10001d3f4",
+    "selector": "objectCompressedSize64",
+    "encoding": "Q16@0:8"
+  },
+  {
+    "address": "0x10001d3fc",
+    "selector": "objectCompressedSize",
+    "encoding": "I16@0:8"
+  },
+  {
+    "address": "0x10001d410",
+    "selector": "setObjectCompressedSize:",
+    "encoding": "v24@0:8Q16"
+  },
+  {
+    "address": "0x10001d418",
+    "selector": "keywords",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10001d444",
+    "selector": "setKeywords:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x10001d48c",
+    "selector": "addCustomKeyword:withIdentifier:",
+    "encoding": "v32@0:8@16@24"
+  },
+  {
+    "address": "0x10001d5e8",
+    "selector": "objectContentSizeForContentType:",
+    "encoding": "I20@0:8i16"
+  },
+  {
+    "address": "0x10001d620",
+    "selector": "objectBufferSizeForContentType:",
+    "encoding": "I20@0:8i16"
+  },
+  {
+    "address": "0x10001d658",
+    "selector": "relatedUUID",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10001d734",
+    "selector": "intervalSince1970",
+    "encoding": "q16@0:8"
+  },
+  {
+    "address": "0x10001d768",
+    "selector": "objectHandle",
+    "encoding": "I16@0:8"
+  },
+  {
+    "address": "0x10001d770",
+    "selector": "setObjectHandle:",
+    "encoding": "v20@0:8I16"
+  },
+  {
+    "address": "0x10001d778",
+    "selector": "storageID",
+    "encoding": "I16@0:8"
+  },
+  {
+    "address": "0x10001d780",
+    "selector": "setStorageID:",
+    "encoding": "v20@0:8I16"
+  },
+  {
+    "address": "0x10001d788",
+    "selector": "parentObject",
+    "encoding": "I16@0:8"
+  },
+  {
+    "address": "0x10001d790",
+    "selector": "setParentObject:",
+    "encoding": "v20@0:8I16"
+  },
+  {
+    "address": "0x10001d798",
+    "selector": "associationType",
+    "encoding": "S16@0:8"
+  },
+  {
+    "address": "0x10001d7a0",
+    "selector": "setAssociationType:",
+    "encoding": "v20@0:8S16"
+  },
+  {
+    "address": "0x10001d7a8",
+    "selector": "associationDesc",
+    "encoding": "I16@0:8"
+  },
+  {
+    "address": "0x10001d7b0",
+    "selector": "setAssociationDesc:",
+    "encoding": "v20@0:8I16"
+  },
+  {
+    "address": "0x10001d7b8",
+    "selector": "objectFormat",
+    "encoding": "S16@0:8"
+  },
+  {
+    "address": "0x10001d7c0",
+    "selector": "setObjectFormat:",
+    "encoding": "v20@0:8S16"
+  },
+  {
+    "address": "0x10001d7c8",
+    "selector": "protectionStatus",
+    "encoding": "S16@0:8"
+  },
+  {
+    "address": "0x10001d7d0",
+    "selector": "setProtectionStatus:",
+    "encoding": "v20@0:8S16"
+  },
+  {
+    "address": "0x10001d7d8",
+    "selector": "sequenceNumber",
+    "encoding": "I16@0:8"
+  },
+  {
+    "address": "0x10001d7e0",
+    "selector": "setSequenceNumber:",
+    "encoding": "v20@0:8I16"
+  },
+  {
+    "address": "0x10001d7e8",
+    "selector": "thumbCompressedSize",
+    "encoding": "I16@0:8"
+  },
+  {
+    "address": "0x10001d7f0",
+    "selector": "setThumbCompressedSize:",
+    "encoding": "v20@0:8I16"
+  },
+  {
+    "address": "0x10001d7f8",
+    "selector": "thumbFormat",
+    "encoding": "S16@0:8"
+  },
+  {
+    "address": "0x10001d800",
+    "selector": "setThumbFormat:",
+    "encoding": "v20@0:8S16"
+  },
+  {
+    "address": "0x10001d808",
+    "selector": "thumbOffset",
+    "encoding": "I16@0:8"
+  },
+  {
+    "address": "0x10001d810",
+    "selector": "setThumbOffset:",
+    "encoding": "v20@0:8I16"
+  },
+  {
+    "address": "0x10001d818",
+    "selector": "thumbPixWidth",
+    "encoding": "I16@0:8"
+  },
+  {
+    "address": "0x10001d820",
+    "selector": "setThumbPixWidth:",
+    "encoding": "v20@0:8I16"
+  },
+  {
+    "address": "0x10001d828",
+    "selector": "thumbPixHeight",
+    "encoding": "I16@0:8"
+  },
+  {
+    "address": "0x10001d830",
+    "selector": "setThumbPixHeight:",
+    "encoding": "v20@0:8I16"
+  },
+  {
+    "address": "0x10001d838",
+    "selector": "imagePixWidth",
+    "encoding": "I16@0:8"
+  },
+  {
+    "address": "0x10001d840",
+    "selector": "setImagePixWidth:",
+    "encoding": "v20@0:8I16"
+  },
+  {
+    "address": "0x10001d848",
+    "selector": "imagePixHeight",
+    "encoding": "I16@0:8"
+  },
+  {
+    "address": "0x10001d850",
+    "selector": "setImagePixHeight:",
+    "encoding": "v20@0:8I16"
+  },
+  {
+    "address": "0x10001d858",
+    "selector": "imageBitDepth",
+    "encoding": "I16@0:8"
+  },
+  {
+    "address": "0x10001d860",
+    "selector": "setImageBitDepth:",
+    "encoding": "v20@0:8I16"
+  },
+  {
+    "address": "0x10001d868",
+    "selector": "filename",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10001d870",
+    "selector": "setFilename:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x10001d878",
+    "selector": "captureDate",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10001d880",
+    "selector": "setCaptureDate:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x10001d888",
+    "selector": "modificationDate",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10001d890",
+    "selector": "setModificationDate:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x10001fcec",
+    "selector": "initWithTCPBuffer:",
+    "encoding": "@24@0:8^v16"
+  },
+  {
+    "address": "0x10001fd3c",
+    "selector": "contentForTCP",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10001fda4",
+    "selector": "description",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10001fddc",
+    "selector": "initWithOperationCode:transactionID:dataPhaseInfo:numParameters:parameters:",
+    "encoding": "@40@0:8S16I20I24I28^I32"
+  },
+  {
+    "address": "0x10001fe6c",
+    "selector": "initWithOperationCode:transactionID:dataPhaseInfo:",
+    "encoding": "@28@0:8S16I20I24"
+  },
+  {
+    "address": "0x10001fed0",
+    "selector": "initWithOperationCode:transactionID:dataPhaseInfo:parameter1:",
+    "encoding": "@32@0:8S16I20I24I28"
+  },
+  {
+    "address": "0x10001ff3c",
+    "selector": "initWithOperationCode:transactionID:dataPhaseInfo:parameter1:parameter2:",
+    "encoding": "@36@0:8S16I20I24I28I32"
+  },
+  {
+    "address": "0x10001ffb8",
+    "selector": "initWithOperationCode:transactionID:dataPhaseInfo:parameter1:parameter2:parameter3:",
+    "encoding": "@40@0:8S16I20I24I28I32I36"
+  },
+  {
+    "address": "0x100020038",
+    "selector": "initWithOperationCode:transactionID:dataPhaseInfo:parameter1:parameter2:parameter3:parameter4:",
+    "encoding": "@44@0:8S16I20I24I28I32I36I40"
+  },
+  {
+    "address": "0x1000200c0",
+    "selector": "initWithOperationCode:transactionID:dataPhaseInfo:parameter1:parameter2:parameter3:parameter4:parameter5:",
+    "encoding": "@48@0:8S16I20I24I28I32I36I40I44"
+  },
+  {
+    "address": "0x100020148",
+    "selector": "initWithTCPBuffer:",
+    "encoding": "@24@0:8^v16"
+  },
+  {
+    "address": "0x100020220",
+    "selector": "initWithUSBBuffer:",
+    "encoding": "@24@0:8^v16"
+  },
+  {
+    "address": "0x1000202f4",
+    "selector": "contentForTCP",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x1000203d0",
+    "selector": "contentForUSB",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x1000204a0",
+    "selector": "contentForUSBUsingBuffer:capacity:",
+    "encoding": "@28@0:8^v16I24"
+  },
+  {
+    "address": "0x10002057c",
+    "selector": "description",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x1000205c8",
+    "selector": "operationCode",
+    "encoding": "S16@0:8"
+  },
+  {
+    "address": "0x1000205d0",
+    "selector": "setOperationCode:",
+    "encoding": "v20@0:8S16"
+  },
+  {
+    "address": "0x1000205d8",
+    "selector": "transactionID",
+    "encoding": "I16@0:8"
+  },
+  {
+    "address": "0x1000205e0",
+    "selector": "setTransactionID:",
+    "encoding": "v20@0:8I16"
+  },
+  {
+    "address": "0x1000205e8",
+    "selector": "dataPhaseInfo",
+    "encoding": "I16@0:8"
+  },
+  {
+    "address": "0x1000205f0",
+    "selector": "setDataPhaseInfo:",
+    "encoding": "v20@0:8I16"
+  },
+  {
+    "address": "0x1000205f8",
+    "selector": "numParameters",
+    "encoding": "i16@0:8"
+  },
+  {
+    "address": "0x100020600",
+    "selector": "parameterAtIndex:",
+    "encoding": "I20@0:8I16"
+  },
+  {
+    "address": "0x10002061c",
+    "selector": "setPparameter:atIndex:",
+    "encoding": "v24@0:8I16I20"
+  },
+  {
+    "address": "0x100020630",
+    "selector": "parameter1",
+    "encoding": "I16@0:8"
+  },
+  {
+    "address": "0x100020638",
+    "selector": "setParameter1:",
+    "encoding": "v20@0:8I16"
+  },
+  {
+    "address": "0x100020640",
+    "selector": "parameter2",
+    "encoding": "I16@0:8"
+  },
+  {
+    "address": "0x100020648",
+    "selector": "setParameter2:",
+    "encoding": "v20@0:8I16"
+  },
+  {
+    "address": "0x100020650",
+    "selector": "parameter3",
+    "encoding": "I16@0:8"
+  },
+  {
+    "address": "0x100020658",
+    "selector": "setParameter3:",
+    "encoding": "v20@0:8I16"
+  },
+  {
+    "address": "0x100020660",
+    "selector": "parameter4",
+    "encoding": "I16@0:8"
+  },
+  {
+    "address": "0x100020668",
+    "selector": "setParameter4:",
+    "encoding": "v20@0:8I16"
+  },
+  {
+    "address": "0x100020670",
+    "selector": "parameter5",
+    "encoding": "I16@0:8"
+  },
+  {
+    "address": "0x100020678",
+    "selector": "setParameter5:",
+    "encoding": "v20@0:8I16"
+  },
+  {
+    "address": "0x10002114c",
+    "selector": "getFilesystemMediaCountForDirectories:media:nonMedia:",
+    "encoding": "v40@0:8^i16^i24^i32"
+  },
+  {
+    "address": "0x100022d8c",
+    "selector": "catalogPath:dirs:media:nonMedia:",
+    "encoding": "v48@0:8*16^i24^i32^i40"
+  },
+  {
+    "address": "0x100020680",
+    "selector": "init",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x100020694",
+    "selector": "initWithName:path:andTransportType:",
+    "encoding": "@36@0:8@16@24S32"
+  },
+  {
+    "address": "0x1000208bc",
+    "selector": "dealloc",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x10002095c",
+    "selector": "setDelegate:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100020964",
+    "selector": "openSession:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100020b04",
+    "selector": "closeSession:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100020bac",
+    "selector": "name",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x100020bb4",
+    "selector": "path",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x100020bbc",
+    "selector": "getDeviceInfo:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100020dc8",
+    "selector": "getStorageIDs:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100020f18",
+    "selector": "getStorageInfo:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100021034",
+    "selector": "getNumObjects:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100021514",
+    "selector": "getNumDownloadableObjects:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100021634",
+    "selector": "getObjectHandles:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x1000217a4",
+    "selector": "getObjectInfo:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x1000218c0",
+    "selector": "getObject:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100021b04",
+    "selector": "getThumb:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100021d6c",
+    "selector": "getObjectMetadata:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100021fa4",
+    "selector": "getPartialObject:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x10002215c",
+    "selector": "getObjectInfoForObjectsInStorage:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100022480",
+    "selector": "getObjectCompressedSize64:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x1000225a4",
+    "selector": "getPartialObject64:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100022820",
+    "selector": "getPartialObject64WithMD5:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x1000229b0",
+    "selector": "getObjectInfoForNextObjectGroupInStorage:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100022b64",
+    "selector": "getUserAssignedDeviceName:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100022cbc",
+    "selector": "deleteObject:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100022f14",
+    "selector": "handleSetHostMediaCapabilities:",
+    "encoding": "B24@0:8@16"
+  },
+  {
+    "address": "0x100022fc8",
+    "selector": "handleSetHostSupportsGroups:",
+    "encoding": "B24@0:8@16"
+  },
+  {
+    "address": "0x100023160",
+    "selector": "handleSetHostSupportedFormats:",
+    "encoding": "B24@0:8@16"
+  },
+  {
+    "address": "0x100023210",
+    "selector": "handleUnsupportedRequest:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100023384",
+    "selector": "handleRequest:",
+    "encoding": "@24@0:8@16"
+  },
+  {
+    "address": "0x100023994",
+    "selector": "handleStartData:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100023998",
+    "selector": "handleData:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100023ad8",
+    "selector": "handleCancel:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100023b04",
+    "selector": "resetResponderSession",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x100023b10",
+    "selector": "handleResetDevice:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100023c80",
+    "selector": "handleDeviceRemoval",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x100023dc8",
+    "selector": "sentData:responseCode:",
+    "encoding": "v32@0:8@16@24"
+  },
+  {
+    "address": "0x100023ea0",
+    "selector": "sendEvent:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100023ea8",
+    "selector": "reportObjectAdded:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100023f2c",
+    "selector": "reportObjectDeleted:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100023fb0",
+    "selector": "reportStorageAdded:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100024034",
+    "selector": "reportStorageDeleted:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x1000240b8",
+    "selector": "reportGroupAddedInStorage:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x10002413c",
+    "selector": "reportUserAssignedNameChange",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x1000241a0",
+    "selector": "start",
+    "encoding": "B16@0:8"
+  },
+  {
+    "address": "0x10002438c",
+    "selector": "stop",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x100024394",
+    "selector": "runRunLoop",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x1000244e4",
+    "selector": "stopRunLoop",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x100024510",
+    "selector": "transportActivated",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x100024564",
+    "selector": "transportDeactivated",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x100024568",
+    "selector": "removeVirtualCamera",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x10002462c",
+    "selector": "sendEventDeviceUnlocked",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x100024690",
+    "selector": "sendRestartSessionEvent",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x1000246f4",
+    "selector": "getDevicePropDesc:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x10002492c",
+    "selector": "getDevicePropValue:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100024a3c",
+    "selector": "getObjectPropsSupported:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100024c70",
+    "selector": "getObjectPropValue:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100024e6c",
+    "selector": "getObjectPropList:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x10002509c",
+    "selector": "getObjectPropDesc:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x10002519c",
+    "selector": "usingMacOS",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x1000251b0",
+    "selector": "setUsingMacOS:",
+    "encoding": "v20@0:8B16"
+  },
+  {
+    "address": "0x100025288",
+    "selector": "setUsingLegacyOS:",
+    "encoding": "v20@0:8B16"
+  },
+  {
+    "address": "0x10002529c",
+    "selector": "usingLegacyOS",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x1000252b0",
+    "selector": "usingMTP",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x1000252c4",
+    "selector": "setUsingMTP:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x1000254c4",
+    "selector": "setUsingWindows",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x1000255ac",
+    "selector": "setUsingPeerMediaCapabilities",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x1000255b8",
+    "selector": "usingPeerMediaCapabilities",
+    "encoding": "B16@0:8"
+  },
+  {
+    "address": "0x1000255c0",
+    "selector": "allowKeepAwake:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100025744",
+    "selector": "holdPowerAssertion",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x100025784",
+    "selector": "releasePowerAssertion",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x1000257b4",
+    "selector": "unsignedIntegerValue",
+    "encoding": "I16@0:8"
+  },
+  {
+    "address": "0x1000257bc",
+    "selector": "mediaItemType",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x1000257c8",
+    "selector": "initWithPLPTPAsset:supportedFormats:andParent:",
+    "encoding": "@40@0:8@16@24@32"
+  },
+  {
+    "address": "0x100025d3c",
+    "selector": "assignPTPObjectFormatCode:supportedFormats:",
+    "encoding": "v32@0:8@16@24"
+  },
+  {
+    "address": "0x1000262e4",
+    "selector": "objectInfoDataset",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x1000262ec",
+    "selector": "hasThumbnail",
+    "encoding": "B16@0:8"
+  },
+  {
+    "address": "0x10002632c",
+    "selector": "thumbnailForMaxPixelSize:compressedSize:",
+    "encoding": "@28@0:8I16^Q20"
+  },
+  {
+    "address": "0x100026570",
+    "selector": "metadata",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x1000266c4",
+    "selector": "dataSource",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x100026748",
+    "selector": "dealloc",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x1000267b0",
+    "selector": "storageID",
+    "encoding": "I16@0:8"
+  },
+  {
+    "address": "0x1000267b8",
+    "selector": "setStorageID:",
+    "encoding": "v20@0:8I16"
+  },
+  {
+    "address": "0x1000267c0",
+    "selector": "objectHandle",
+    "encoding": "I16@0:8"
+  },
+  {
+    "address": "0x1000267c8",
+    "selector": "setObjectHandle:",
+    "encoding": "v20@0:8I16"
+  },
+  {
+    "address": "0x1000267d0",
+    "selector": "serialNumber",
+    "encoding": "Q16@0:8"
+  },
+  {
+    "address": "0x1000267d8",
+    "selector": "setSerialNumber:",
+    "encoding": "v24@0:8Q16"
+  },
+  {
+    "address": "0x1000267e0",
+    "selector": "captureTimeSpec",
+    "encoding": "{timespec=qq}16@0:8"
+  },
+  {
+    "address": "0x100026818",
+    "selector": "setCaptureTimeSpec:",
+    "encoding": "v32@0:8{timespec=qq}16"
+  },
+  {
+    "address": "0x100026850",
+    "selector": "size",
+    "encoding": "q16@0:8"
+  },
+  {
+    "address": "0x100026858",
+    "selector": "setSize:",
+    "encoding": "v24@0:8q16"
+  },
+  {
+    "address": "0x100026860",
+    "selector": "parent",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x100026868",
+    "selector": "setParent:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100026870",
+    "selector": "baseName",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10002687c",
+    "selector": "plAssetHandle",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x100026888",
+    "selector": "desiredOrientation",
+    "encoding": "I16@0:8"
+  },
+  {
+    "address": "0x100026890",
+    "selector": "setDesiredOrientation:",
+    "encoding": "v20@0:8I16"
+  },
+  {
+    "address": "0x100026898",
+    "selector": "fourCharCode",
+    "encoding": "I16@0:8"
+  },
+  {
+    "address": "0x1000268a0",
+    "selector": "setFourCharCode:",
+    "encoding": "v20@0:8I16"
+  },
+  {
+    "address": "0x1000268a8",
+    "selector": "irisAsset",
+    "encoding": "B16@0:8"
+  },
+  {
+    "address": "0x1000268b4",
+    "selector": "setIrisAsset:",
+    "encoding": "v20@0:8B16"
+  },
+  {
+    "address": "0x1000268bc",
+    "selector": "unsignedIntegerValue",
+    "encoding": "I16@0:8"
+  },
+  {
+    "address": "0x1000268c4",
+    "selector": "mediaItemType",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x1000268d0",
+    "selector": "initWithName:captureTimeSpec:parent:storage:",
+    "encoding": "@48@0:8@16^{timespec=qq}24@32@40"
+  },
+  {
+    "address": "0x100026b04",
+    "selector": "initWithObjectHandle:",
+    "encoding": "@20@0:8I16"
+  },
+  {
+    "address": "0x100026bb4",
+    "selector": "storageID",
+    "encoding": "I16@0:8"
+  },
+  {
+    "address": "0x100026bbc",
+    "selector": "objectInfoDataset",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x100026bc4",
+    "selector": "objectHandle",
+    "encoding": "I16@0:8"
+  },
+  {
+    "address": "0x100026bcc",
+    "selector": "objectMatchingAssetHandle:",
+    "encoding": "@24@0:8@16"
+  },
+  {
+    "address": "0x100026d64",
+    "selector": "objectHandlesForObjectFormatCode:inAssociation:",
+    "encoding": "@24@0:8S16I20"
+  },
+  {
+    "address": "0x100027718",
+    "selector": "addFile:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x1000277f8",
+    "selector": "addFolder:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100027884",
+    "selector": "deleteFile:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100027958",
+    "selector": "deleteFolder:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x1000279e0",
+    "selector": "fileExists:",
+    "encoding": "B24@0:8@16"
+  },
+  {
+    "address": "0x100027a3c",
+    "selector": "folderMatchingName:",
+    "encoding": "@24@0:8@16"
+  },
+  {
+    "address": "0x100027ac4",
+    "selector": "appendObjectData:forObjectFormatCode:inAssociation:withContentType:",
+    "encoding": "Q36@0:8@16S24I28I32"
+  },
+  {
+    "address": "0x100028428",
+    "selector": "dealloc",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x100028494",
+    "selector": "parent",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10002849c",
+    "selector": "setParent:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x1000284a4",
+    "selector": "storage",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x1000284ac",
+    "selector": "setStorage:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x1000284b4",
+    "selector": "path",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x1000284bc",
+    "selector": "setPath:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x1000284c4",
+    "selector": "serialNumber",
+    "encoding": "Q16@0:8"
+  },
+  {
+    "address": "0x1000284cc",
+    "selector": "setSerialNumber:",
+    "encoding": "v24@0:8Q16"
+  },
+  {
+    "address": "0x1000284d4",
+    "selector": "captureTimeSpec",
+    "encoding": "{timespec=qq}16@0:8"
+  },
+  {
+    "address": "0x1000284e0",
+    "selector": "setCaptureTimeSpec:",
+    "encoding": "v32@0:8{timespec=qq}16"
+  },
+  {
+    "address": "0x1000284e8",
+    "selector": "size",
+    "encoding": "q16@0:8"
+  },
+  {
+    "address": "0x1000284f0",
+    "selector": "setSize:",
+    "encoding": "v24@0:8q16"
+  },
+  {
+    "address": "0x1000284f8",
+    "selector": "fileNames",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x100028500",
+    "selector": "setFileNames:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100028508",
+    "selector": "fileIndices",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x100028510",
+    "selector": "setFileIndices:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100028518",
+    "selector": "folders",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x100028520",
+    "selector": "setFolders:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100028528",
+    "selector": "setObjectHandle:",
+    "encoding": "v20@0:8I16"
+  },
+  {
+    "address": "0x100028530",
+    "selector": "setObjectInfoDataset:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100028538",
+    "selector": "initWithConnectionNumber:responderGUID:responderFriendlyName:",
+    "encoding": "@36@0:8I16*20@28"
+  },
+  {
+    "address": "0x1000285d4",
+    "selector": "initWithTCPBuffer:",
+    "encoding": "@24@0:8^v16"
+  },
+  {
+    "address": "0x100028670",
+    "selector": "dealloc",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x1000286bc",
+    "selector": "contentForTCP",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x100028768",
+    "selector": "description",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10002885c",
+    "selector": "connectionNumber",
+    "encoding": "I16@0:8"
+  },
+  {
+    "address": "0x100028864",
+    "selector": "setConnectionNumber:",
+    "encoding": "v20@0:8I16"
+  },
+  {
+    "address": "0x10002886c",
+    "selector": "responderGUID",
+    "encoding": "r*16@0:8"
+  },
+  {
+    "address": "0x100028874",
+    "selector": "responderGUIDString",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x100028908",
+    "selector": "setResponderGUID:",
+    "encoding": "v24@0:8*16"
+  },
+  {
+    "address": "0x100028914",
+    "selector": "responderFriendlyName",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10002891c",
+    "selector": "setResponderFriendlyName:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x100028b40",
+    "selector": "initWithReason:",
+    "encoding": "@20@0:8I16"
+  },
+  {
+    "address": "0x100028b8c",
+    "selector": "initWithTCPBuffer:",
+    "encoding": "@24@0:8^v16"
+  },
+  {
+    "address": "0x100028bf4",
+    "selector": "contentForTCP",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x100028c6c",
+    "selector": "description",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x100028cb8",
+    "selector": "reason",
+    "encoding": "I16@0:8"
+  },
+  {
+    "address": "0x100028cc0",
+    "selector": "setReason:",
+    "encoding": "v20@0:8I16"
+  },
+  {
+    "address": "0x100028cc8",
+    "selector": "initWithAssetHandle:assetSize:andQueueName:",
+    "encoding": "@40@0:8@16Q24@32"
+  },
+  {
+    "address": "0x100028d88",
+    "selector": "dealloc",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x100028ec0",
+    "selector": "dataSourcePathForDataRange:",
+    "encoding": "@32@0:8{_NSRange=QQ}16"
+  },
+  {
+    "address": "0x1000291b8",
+    "selector": "length",
+    "encoding": "Q16@0:8"
+  },
+  {
+    "address": "0x1000291bc",
+    "selector": "read:length:offset:",
+    "encoding": "q40@0:8^v16Q24q32"
+  },
+  {
+    "address": "0x100029dec",
+    "selector": "boostAssetReaderLifespan",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x10002a0d8",
+    "selector": "plAssetHandle",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10002a0e4",
+    "selector": "setPlAssetHandle:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x10002a0ec",
+    "selector": "plAssetReader",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10002a0f8",
+    "selector": "setPlAssetReader:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x10002a100",
+    "selector": "plAssetTimer",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10002a10c",
+    "selector": "setPlAssetTimer:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x10002a114",
+    "selector": "plAssetQueue",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10002a11c",
+    "selector": "setPlAssetQueue:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x10002a124",
+    "selector": "plAssetSize",
+    "encoding": "Q16@0:8"
+  },
+  {
+    "address": "0x10002a12c",
+    "selector": "setPlAssetSize:",
+    "encoding": "v24@0:8Q16"
+  },
+  {
+    "address": "0x10002a134",
+    "selector": "queueName",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10002a140",
+    "selector": "setQueueName:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x10002a148",
+    "selector": "fd",
+    "encoding": "i16@0:8"
+  },
+  {
+    "address": "0x10002a150",
+    "selector": "setFd:",
+    "encoding": "v20@0:8i16"
+  },
+  {
+    "address": "0x10002a158",
+    "selector": "dataSourcePath",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10002a164",
+    "selector": "setDataSourcePath:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x10002a16c",
+    "selector": "toggleHeaderOffset",
+    "encoding": "B16@0:8"
+  },
+  {
+    "address": "0x10002a178",
+    "selector": "setToggleHeaderOffset:",
+    "encoding": "v20@0:8B16"
+  },
+  {
+    "address": "0x10002a180",
+    "selector": "filepath",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10002a188",
+    "selector": "initWithOperationCode:transactionID:andData:",
+    "encoding": "@32@0:8S16I20@24"
+  },
+  {
+    "address": "0x10002a204",
+    "selector": "initWithOperationCode:transactionID:andDataSource:",
+    "encoding": "@32@0:8S16I20@24"
+  },
+  {
+    "address": "0x10002a280",
+    "selector": "initWithOperationCode:transactionID:andFilepath:",
+    "encoding": "@32@0:8S16I20@24"
+  },
+  {
+    "address": "0x10002a390",
+    "selector": "initWithTCPBuffer:",
+    "encoding": "@24@0:8^v16"
+  },
+  {
+    "address": "0x10002a43c",
+    "selector": "initWithUSBBuffer:",
+    "encoding": "@24@0:8^v16"
+  },
+  {
+    "address": "0x10002a4f4",
+    "selector": "dealloc",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x10002a560",
+    "selector": "contentForTCP",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10002a694",
+    "selector": "contentForUSB",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10002a7d8",
+    "selector": "contentForUSBUsingBuffer:capacity:",
+    "encoding": "@28@0:8^v16I24"
+  },
+  {
+    "address": "0x10002a930",
+    "selector": "description",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10002a9b0",
+    "selector": "operationCode",
+    "encoding": "S16@0:8"
+  },
+  {
+    "address": "0x10002a9b8",
+    "selector": "setOperationCode:",
+    "encoding": "v20@0:8S16"
+  },
+  {
+    "address": "0x10002a9c0",
+    "selector": "transactionID",
+    "encoding": "I16@0:8"
+  },
+  {
+    "address": "0x10002a9c8",
+    "selector": "setTransactionID:",
+    "encoding": "v20@0:8I16"
+  },
+  {
+    "address": "0x10002a9d0",
+    "selector": "data",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10002a9d8",
+    "selector": "setData:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x10002aa28",
+    "selector": "bufferSize",
+    "encoding": "q16@0:8"
+  },
+  {
+    "address": "0x10002aa30",
+    "selector": "offsetInBuffer",
+    "encoding": "q16@0:8"
+  },
+  {
+    "address": "0x10002aa38",
+    "selector": "range",
+    "encoding": "{_PTPRange=QQ}16@0:8"
+  },
+  {
+    "address": "0x10002aa44",
+    "selector": "setRange:",
+    "encoding": "i32@0:8{_PTPRange=QQ}16"
+  },
+  {
+    "address": "0x10002aa84",
+    "selector": "bytesTransferred",
+    "encoding": "q16@0:8"
+  },
+  {
+    "address": "0x10002aa8c",
+    "selector": "setBytesTransferred:",
+    "encoding": "v24@0:8q16"
+  },
+  {
+    "address": "0x10002aa94",
+    "selector": "copyToBuffer:numBytes:",
+    "encoding": "q32@0:8^v16q24"
+  },
+  {
+    "address": "0x10002ab74",
+    "selector": "copyToWrappedBytes:forTransport:",
+    "encoding": "q28@0:8@16S24"
+  },
+  {
+    "address": "0x10002ade4",
+    "selector": "copyDataToWrappedBytes:forTransport:fromOffset:",
+    "encoding": "q36@0:8@16S24Q28"
+  },
+  {
+    "address": "0x10002ae50",
+    "selector": "copyHeaderToWrappedBytes:forTransport:",
+    "encoding": "q28@0:8@16S24"
+  },
+  {
+    "address": "0x10002af80",
+    "selector": "copyFromBuffer:numBytes:",
+    "encoding": "q32@0:8^v16q24"
+  },
+  {
+    "address": "0x10002b0ac",
+    "selector": "init",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10002b118",
+    "selector": "setContent:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x10002be7c",
+    "selector": "initWithData:",
+    "encoding": "@24@0:8@16"
+  },
+  {
+    "address": "0x10002bf20",
+    "selector": "initWithMutableData:",
+    "encoding": "@24@0:8@16"
+  },
+  {
+    "address": "0x10002bfb4",
+    "selector": "dealloc",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x10002c030",
+    "selector": "updateContent",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x10002cd14",
+    "selector": "content",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10002cd3c",
+    "selector": "description",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10002ce6c",
+    "selector": "devicePropertyCode",
+    "encoding": "S16@0:8"
+  },
+  {
+    "address": "0x10002ce74",
+    "selector": "setDevicePropertyCode:",
+    "encoding": "v20@0:8S16"
+  },
+  {
+    "address": "0x10002ce84",
+    "selector": "dataTypeCode",
+    "encoding": "S16@0:8"
+  },
+  {
+    "address": "0x10002ce8c",
+    "selector": "setDataTypeCode:",
+    "encoding": "v20@0:8S16"
+  },
+  {
+    "address": "0x10002ce9c",
+    "selector": "readWriteAttribute",
+    "encoding": "C16@0:8"
+  },
+  {
+    "address": "0x10002cea4",
+    "selector": "setReadWriteAttribute:",
+    "encoding": "v20@0:8C16"
+  },
+  {
+    "address": "0x10002ceb4",
+    "selector": "factoryDefaultValue",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10002cebc",
+    "selector": "setFactoryDefaultValue:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x10002cf00",
+    "selector": "currentValue",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10002cf08",
+    "selector": "setCurrentValue:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x10002cf4c",
+    "selector": "formFlag",
+    "encoding": "C16@0:8"
+  },
+  {
+    "address": "0x10002cf54",
+    "selector": "setFormFlag:",
+    "encoding": "v20@0:8C16"
+  },
+  {
+    "address": "0x10002cf64",
+    "selector": "minimumValue",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10002cf6c",
+    "selector": "setMinimumValue:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x10002cfb0",
+    "selector": "maximumValue",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10002cfb8",
+    "selector": "setMaximumValue:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x10002cffc",
+    "selector": "stepSize",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10002d004",
+    "selector": "setStepSize:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x10002d048",
+    "selector": "numberOfValues",
+    "encoding": "S16@0:8"
+  },
+  {
+    "address": "0x10002d050",
+    "selector": "setNumberOfValues:",
+    "encoding": "v20@0:8S16"
+  },
+  {
+    "address": "0x10002d060",
+    "selector": "supportedValues",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10002d068",
+    "selector": "setSupportedValues:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x10002d0ac",
+    "selector": "init",
+    "encoding": "@16@0:8"
+  },
+  {
+    "address": "0x10002d11c",
+    "selector": "dealloc",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x10002d16c",
+    "selector": "setDelegate:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x10002d174",
+    "selector": "type",
+    "encoding": "S16@0:8"
+  },
+  {
+    "address": "0x10002d17c",
+    "selector": "connectionStatus",
+    "encoding": "i16@0:8"
+  },
+  {
+    "address": "0x10002d184",
+    "selector": "startResponder",
+    "encoding": "B16@0:8"
+  },
+  {
+    "address": "0x10002d18c",
+    "selector": "startInitiator",
+    "encoding": "B16@0:8"
+  },
+  {
+    "address": "0x10002d194",
+    "selector": "stop",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x10002d198",
+    "selector": "role",
+    "encoding": "i16@0:8"
+  },
+  {
+    "address": "0x10002d1a0",
+    "selector": "connected",
+    "encoding": "B16@0:8"
+  },
+  {
+    "address": "0x10002d1a8",
+    "selector": "setStatus:withInfo:",
+    "encoding": "v28@0:8i16*20"
+  },
+  {
+    "address": "0x10002d2a0",
+    "selector": "sendRequest:receiveData:timeout:",
+    "encoding": "@36@0:8@16@24I32"
+  },
+  {
+    "address": "0x10002d2a8",
+    "selector": "sendRequest:sendData:timeout:",
+    "encoding": "@36@0:8@16@24I32"
+  },
+  {
+    "address": "0x10002d2b0",
+    "selector": "sendData:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x10002d2b4",
+    "selector": "sendResponse:",
+    "encoding": "B24@0:8@16"
+  },
+  {
+    "address": "0x10002d2bc",
+    "selector": "sendEvent:",
+    "encoding": "B24@0:8@16"
+  },
+  {
+    "address": "0x10002d2c4",
+    "selector": "abortPendingIO",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x10002d2c8",
+    "selector": "cancelTransaction:",
+    "encoding": "v24@0:8@16"
+  },
+  {
+    "address": "0x10002d2cc",
+    "selector": "deviceStatus",
+    "encoding": "S16@0:8"
+  },
+  {
+    "address": "0x10002d2d4",
+    "selector": "deviceReset",
+    "encoding": "v16@0:8"
+  },
+  {
+    "address": "0x10002d2d8",
+    "selector": "timedOut",
+    "encoding": "B16@0:8"
+  },
+  {
+    "address": "0x10002d2e4",
+    "selector": "setTimedOut:",
+    "encoding": "v20@0:8B16"
+  }
+]

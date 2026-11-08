@@ -1,0 +1,90 @@
+===== 100003ca8 PTPHostUSBTransport::sendTransaction:timeout: =====
+XREF 100059bd0 DATA null
+XREF 10002e5f0 DATA null
+100003ca8 pacibsp
+100003cac stp x22,x21,[sp, #-0x30]!
+100003cb0 stp x20,x19,[sp, #0x10]
+100003cb4 stp x29,x30,[sp, #0x20]
+100003cb8 add x29,sp,#0x20
+100003cbc mov x21,x3
+100003cc0 mov x19,x2
+100003cc4 mov x20,x0
+100003cc8 bl 0x10002a5c0
+100003ccc bl 0x100029eb0
+100003cd0 mov x22,x0
+100003cd4 nop
+100003cd8 ldrsw x8,0x10005677c
+100003cdc ldrb w8,[x20, x8]
+100003ce0 cbz w8,0x100003d2c
+100003ce4 mov x0,x19
+100003ce8 bl 0x10002ce40
+100003cec mov x2,x0
+100003cf0 mov x0,x20
+100003cf4 bl 0x10002d160
+100003cf8 cbz w0,0x100003d2c
+100003cfc mov x0,x19
+100003d00 bl 0x10002e080
+100003d04 cbz x0,0x100003d1c
+100003d08 mov x0,x19
+100003d0c bl 0x10002e080
+100003d10 mov x2,x0
+100003d14 mov x0,x20
+100003d18 bl 0x10002d060
+100003d1c mov x0,x20
+100003d20 mov x2,x19
+100003d24 mov x3,x21
+100003d28 bl 0x10002cb40
+100003d2c mov x0,x22
+100003d30 bl 0x100029ea0
+100003d34 mov x0,x19
+100003d38 bl 0x10002e0a0
+100003d3c mov x2,x0
+100003d40 mov x0,x20
+100003d44 bl 0x10002ce20
+100003d48 mov x0,x19
+100003d4c ldp x29,x30,[sp, #0x20]
+100003d50 ldp x20,x19,[sp, #0x10]
+100003d54 ldp x22,x21,[sp], #0x30
+100003d58 autibsp
+100003d5c eor x16,x30,x30, LSL #0x1
+100003d60 tbz x16,#0x3e,0x100003d68
+100003d64 brk #0xc471
+100003d68 b 0x10002cea0
+
+/* Function Stack Size: 0x1c bytes */
+
+ID PTPHostUSBTransport::sendTransaction_timeout_
+             (ID param_1,SEL param_2,ID param_3,unsigned_int param_4)
+
+{
+  code *pcVar1;
+  bool bVar2;
+  undefined8 uVar3;
+  ID IVar4;
+  ulong unaff_x30;
+
+  addTransaction_(param_1,param_3);
+  uVar3 = _objc_autoreleasePoolPush();
+  if (*(char *)(param_1 + (long)_connected) != '\0') {
+    IVar4 = objc_stub::requestPacket(param_3);
+    bVar2 = sendRequest_(param_1,IVar4);
+    if (bVar2 != 0) {
+      IVar4 = objc_stub::txDataPacket(param_3);
+      if (IVar4 != 0) {
+        IVar4 = objc_stub::txDataPacket(param_3);
+        sendData_(param_1,IVar4);
+      }
+      readResponseData_withTimeout_(param_1,param_3,param_4);
+    }
+  }
+  _objc_autoreleasePoolPop(uVar3);
+  IVar4 = objc_stub::txID(param_3);
+  removeTransaction_(param_1,IVar4);
+  if (((unaff_x30 ^ unaff_x30 << 1) >> 0x3e & 1) != 0) {
+                    /* WARNING: Does not return */
+    pcVar1 = (code *)SoftwareBreakpoint(0xc471,0x100003d68);
+    (*pcVar1)();
+  }
+  IVar4 = objc_stub::responsePacket(param_3);
+  return IVar4;
+}

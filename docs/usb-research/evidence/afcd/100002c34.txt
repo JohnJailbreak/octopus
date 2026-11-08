@@ -1,0 +1,441 @@
+===== 100002c34 FUN_100002c34 =====
+XREF 10000c986 DATA null
+XREF 100002b80 DATA FUN_100002abc
+100002c34 pacibsp
+100002c38 stp x26,x25,[sp, #-0x50]!
+100002c3c stp x24,x23,[sp, #0x10]
+100002c40 stp x22,x21,[sp, #0x20]
+100002c44 stp x20,x19,[sp, #0x30]
+100002c48 stp x29,x30,[sp, #0x40]
+100002c4c add x29,sp,#0x40
+100002c50 sub sp,sp,#0x460
+100002c54 mov x20,x1
+100002c58 mov x19,x0
+100002c5c nop
+100002c60 ldr x8,0x100004248
+100002c64 ldr x8,[x8]
+100002c68 stur x8,[x29, #-0x48]
+100002c6c adr x1,0x100003a1a
+100002c70 nop
+100002c74 mov w0,#0x4
+100002c78 bl 0x100003248
+100002c7c mov x0,x20
+100002c80 bl 0x1000035f8
+100002c84 nop
+100002c88 ldr x8,0x100004278
+100002c8c cmp x0,x8
+100002c90 b.eq 0x100002cb0
+100002c94 nop
+100002c98 ldr x8,0x100004280
+100002c9c cmp x0,x8
+100002ca0 b.eq 0x100002ce0
+100002ca4 adr x1,0x100003ad8
+100002ca8 nop
+100002cac b 0x100002d20
+100002cb0 str xzr,[sp, #0x18]
+100002cb4 adr x1,0x100003a28
+100002cb8 nop
+100002cbc mov w0,#0x4
+100002cc0 bl 0x100003248
+100002cc4 add x1,sp,#0x18
+100002cc8 mov x0,x20
+100002ccc bl 0x100003498
+100002cd0 cbz w0,0x100002d28
+100002cd4 adr x1,0x100003a4b
+100002cd8 nop
+100002cdc b 0x100002d20
+100002ce0 nop
+100002ce4 ldr x8,0x100004268
+100002ce8 cmp x20,x8
+100002cec b.eq 0x100003018
+100002cf0 nop
+100002cf4 ldr x8,0x100004258
+100002cf8 cmp x20,x8
+100002cfc b.eq 0x100003024
+100002d00 nop
+100002d04 ldr x8,0x100004260
+100002d08 ldr x1,[x8]
+100002d0c mov x0,x20
+100002d10 bl 0x1000035e8
+100002d14 str x0,[sp]
+100002d18 adr x1,0x100003ab4
+100002d1c nop
+100002d20 mov w0,#0x1
+100002d24 b 0x100003030
+100002d28 ldr x20,[sp, #0x18]
+100002d2c ldrb w25,[x19, #0x28]
+100002d30 stp xzr,xzr,[sp, #0x20]
+100002d34 add x0,sp,#0x58
+100002d38 mov w1,#0x400
+100002d3c bl 0x1000033b8
+100002d40 adr x1,0x100003b33
+100002d44 nop
+100002d48 mov w0,#0x5
+100002d4c bl 0x100003248
+100002d50 nop
+100002d54 ldr x2,0x100004290
+100002d58 nop
+100002d5c ldr x3,0x100004298
+100002d60 mov x0,#0x0
+100002d64 mov x1,#0x0
+100002d68 bl 0x1000032d8
+100002d6c mov x21,x0
+100002d70 nop
+100002d74 ldr x8,0x1000042a0
+100002d78 ldr x1,[x8]
+100002d7c mov x2,x20
+100002d80 bl 0x1000032c8
+100002d84 add x0,sp,#0x28
+100002d88 add x2,sp,#0x20
+100002d8c mov x1,x21
+100002d90 bl 0x100003548
+100002d94 mov x20,x0
+100002d98 mov x0,x21
+100002d9c bl 0x100003318
+100002da0 ldr x0,[sp, #0x20]
+100002da4 cbz x0,0x100002df0
+100002da8 bl 0x100003308
+100002dac mov x21,x0
+100002db0 bl 0x1000032e8
+100002db4 cmp x21,x0
+100002db8 b.ne 0x100002de8
+100002dbc ldr x0,[sp, #0x20]
+100002dc0 nop
+100002dc4 ldr x8,0x1000042a8
+100002dc8 ldr x1,[x8]
+100002dcc bl 0x1000032f8
+100002dd0 cbz x0,0x100002de8
+100002dd4 add x1,sp,#0x58
+100002dd8 mov w2,#0x400
+100002ddc mov w3,#0x100
+100002de0 movk w3,#0x800, LSL #16
+100002de4 bl 0x100003348
+100002de8 ldr x0,[sp, #0x20]
+100002dec bl 0x100003318
+100002df0 cbnz w20,0x100003074
+100002df4 ldr x0,[sp, #0x28]
+100002df8 bl 0x1000034c8
+100002dfc mov x20,x0
+100002e00 ldr x0,[sp, #0x28]
+100002e04 bl 0x1000034b8
+100002e08 adr x8,0x100003b8a
+100002e0c nop
+100002e10 adr x9,0x100003b86
+100002e14 nop
+100002e18 cmp x0,#0x0
+100002e1c csel x8,x9,x8,eq
+100002e20 stp x20,x8,[sp, #0x8]
+100002e24 add x8,sp,#0x58
+100002e28 str x8,[sp]
+100002e2c adr x1,0x100003b4b
+100002e30 nop
+100002e34 mov w0,#0x5
+100002e38 bl 0x100003248
+100002e3c ldr x22,[sp, #0x28]
+100002e40 mov x0,x22
+100002e44 bl 0x1000034c8
+100002e48 mov x21,x0
+100002e4c ldr x0,[sp, #0x28]
+100002e50 bl 0x1000034b8
+100002e54 mov x20,x0
+100002e58 nop
+100002e5c ldr x23,0x100008048
+100002e60 str x23,[sp]
+100002e64 adr x1,0x100003bd1
+100002e68 nop
+100002e6c mov w0,#0x5
+100002e70 bl 0x100003248
+100002e74 bl 0x100003608
+100002e78 mov w8,#0x1
+100002e7c str w8,[sp, #0x54]
+100002e80 add x3,sp,#0x54
+100002e84 mov x0,x21
+100002e88 mov w1,#0xffff
+100002e8c mov w2,#0x1022
+100002e90 mov w4,#0x4
+100002e94 bl 0x100003558
+100002e98 tbz w0,#0x1f,0x100002ebc
+100002e9c bl 0x100003378
+100002ea0 ldr w0,[x0]
+100002ea4 bl 0x100003598
+100002ea8 str x0,[sp]
+100002eac adr x1,0x100003bec
+100002eb0 nop
+100002eb4 mov w0,#0x5
+100002eb8 bl 0x100003248
+100002ebc bl 0x100003218
+100002ec0 cbz x0,0x100003088
+100002ec4 mov x24,x0
+100002ec8 nop
+100002ecc ldr x8,0x100004288
+100002ed0 ldr x0,[x8]
+100002ed4 mov x1,x23
+100002ed8 mov w2,#0x100
+100002edc movk w2,#0x800, LSL #16
+100002ee0 bl 0x100003338
+100002ee4 mov x23,x0
+100002ee8 mov x0,x24
+100002eec mov x1,x23
+100002ef0 bl 0x1000032b8
+100002ef4 mov x0,x23
+100002ef8 bl 0x100003318
+100002efc mov x0,x24
+100002f00 mov x1,x22
+100002f04 bl 0x1000032a8
+100002f08 mov x0,#0x0
+100002f0c mov x1,x21
+100002f10 mov w2,#0x0
+100002f14 mov x3,#0x0
+100002f18 mov x4,x24
+100002f1c bl 0x1000031a8
+100002f20 cbz x0,0x100003094
+100002f24 mov x21,x0
+100002f28 mov x1,x20
+100002f2c bl 0x100003208
+100002f30 mov x0,x21
+100002f34 mov w1,#0x0
+100002f38 bl 0x1000031e8
+100002f3c mov x0,x21
+100002f40 bl 0x100003238
+100002f44 cbz w25,0x100002f54
+100002f48 mov x0,x21
+100002f4c mov w1,#0x1
+100002f50 bl 0x100003278
+100002f54 adr x1,0x100003c37
+100002f58 nop
+100002f5c mov w0,#0x5
+100002f60 bl 0x100003248
+100002f64 mov w0,#0x15
+100002f68 mov x1,#0x0
+100002f6c bl 0x1000033d8
+100002f70 mov x1,x0
+100002f74 adrp x20,0x100008000
+100002f78 ldr x0,[x20, #0x50]
+100002f7c adr x16,0x1000030ac
+100002f80 nop
+100002f84 paciza x16
+100002f88 mov x3,x16
+100002f8c mov x2,x21
+100002f90 bl 0x1000033e8
+100002f94 ldr x0,[x20, #0x50]
+100002f98 nop
+100002f9c ldr x1,0x100008058
+100002fa0 add x8,sp,#0x30
+100002fa4 nop
+100002fa8 ldr x16,0x100004240
+100002fac mov x17,x8
+100002fb0 movk x17,#0x6ae1, LSL #48
+100002fb4 pacda x16,x17
+100002fb8 str x16,[sp, #0x30]
+100002fbc nop
+100002fc0 ldr d0,0x100003658
+100002fc4 str d0,[sp, #0x38]
+100002fc8 add x8,x8,#0x10
+100002fcc adr x9,0x100004300
+100002fd0 nop
+100002fd4 adr x16,0x100003158
+100002fd8 nop
+100002fdc pacia x16,x8
+100002fe0 stp x16,x9,[sp, #0x40]
+100002fe4 mov w8,#0x1
+100002fe8 strb w8,[sp, #0x50]
+100002fec add x2,sp,#0x30
+100002ff0 bl 0x100003408
+100002ff4 adr x1,0x100003bb8
+100002ff8 nop
+100002ffc mov w0,#0x5
+100003000 bl 0x100003248
+100003004 ldr x0,[sp, #0x18]
+100003008 bl 0x100003318
+10000300c adr x1,0x100003a3b
+100003010 nop
+100003014 b 0x10000302c
+100003018 adr x1,0x100003a75
+10000301c nop
+100003020 b 0x10000302c
+100003024 adr x1,0x100003a95
+100003028 nop
+10000302c mov w0,#0x4
+100003030 bl 0x100003248
+100003034 ldr x0,[x19, #0x20]
+100003038 bl 0x1000035a8
+10000303c ldur x8,[x29, #-0x48]
+100003040 nop
+100003044 ldr x9,0x100004248
+100003048 ldr x9,[x9]
+10000304c cmp x9,x8
+100003050 b.ne 0x100003070
+100003054 add sp,sp,#0x460
+100003058 ldp x29,x30,[sp, #0x40]
+10000305c ldp x20,x19,[sp, #0x30]
+100003060 ldp x22,x21,[sp, #0x20]
+100003064 ldp x24,x23,[sp, #0x10]
+100003068 ldp x26,x25,[sp], #0x50
+10000306c retab
+100003070 bl 0x100003388
+100003074 add x8,sp,#0x58
+100003078 stp x8,x20,[sp]
+10000307c adr x1,0x100003b8b
+100003080 nop
+100003084 b 0x10000309c
+100003088 adr x1,0x100003c0b
+10000308c nop
+100003090 b 0x10000309c
+100003094 adr x1,0x100003c19
+100003098 nop
+10000309c mov w0,#0x1
+1000030a0 bl 0x100003248
+1000030a4 mov w0,#0x1
+1000030a8 bl 0x100003448
+
+void FUN_100002c34(long param_1,undefined *param_2)
+
+{
+  char cVar1;
+  int iVar2;
+  undefined *puVar3;
+  undefined8 uVar4;
+  undefined8 uVar5;
+  long lVar6;
+  long lVar7;
+  undefined8 uVar8;
+  undefined8 uVar9;
+  int *piVar10;
+  void *context;
+  dispatch_queue_t queue;
+  char *pcVar11;
+  undefined8 local_498;
+  long local_490;
+  undefined8 local_488;
+  undefined *local_480;
+  undefined8 local_478;
+  code *local_470;
+  undefined *puStack_468;
+  undefined1 local_460;
+  undefined4 local_45c;
+  undefined1 auStack_458 [1024];
+  long local_58;
+
+  local_58 = *(long *)PTR____stack_chk_guard_100004248;
+  _AFCLog(4,"event handler");
+  puVar3 = (undefined *)_xpc_get_type(param_2);
+  if (puVar3 == PTR___xpc_type_dictionary_100004278) {
+    local_498 = 0;
+    _AFCLog(4,"Processing checkin");
+    iVar2 = _lockdown_copy_checkin_info(param_2,&local_498);
+    uVar4 = local_498;
+    if (iVar2 == 0) {
+      cVar1 = *(char *)(param_1 + 0x28);
+      local_490 = 0;
+      local_488 = 0;
+      _bzero(auStack_458,0x400);
+      _AFCLog(5,"Handle lockdown message");
+      uVar5 = _CFDictionaryCreateMutable
+                        (0,0,PTR__kCFTypeDictionaryKeyCallBacks_100004290,
+                         PTR__kCFTypeDictionaryValueCallBacks_100004298);
+      _CFDictionaryAddValue
+                (uVar5,*(undefined8 *)PTR__kLockdownCheckinConnectionInfoKey_1000042a0,uVar4);
+      iVar2 = _secure_lockdown_checkin(&local_488,uVar5,&local_490);
+      _CFRelease(uVar5);
+      if (local_490 != 0) {
+        lVar6 = _CFGetTypeID();
+        lVar7 = _CFDictionaryGetTypeID();
+        if ((lVar6 == lVar7) &&
+           (lVar6 = _CFDictionaryGetValue
+                              (local_490,*(undefined8 *)PTR__kLockdownCheckinPath_1000042a8),
+           lVar6 != 0)) {
+          _CFStringGetCString(lVar6,auStack_458,0x400,0x8000100);
+        }
+        _CFRelease(local_490);
+      }
+      if (iVar2 != 0) {
+        pcVar11 = "Could not check in with lockdown at \'%s\': %d";
+LAB_10000309c:
+        _AFCLog(1,pcVar11);
+                    /* WARNING: Subroutine does not return */
+        _exit(1);
+      }
+      _lockdown_get_socket(local_488);
+      _lockdown_get_securecontext(local_488);
+      _AFCLog(5,"Checked in with lockdown on path \'%s\' socket %d with%s SSL");
+      uVar5 = local_488;
+      uVar8 = _lockdown_get_socket(local_488);
+      uVar9 = _lockdown_get_securecontext(local_488);
+      uVar4 = DAT_100008048;
+      _AFCLog(5,"run_connection for root %s");
+      _xpc_transaction_begin();
+      local_45c = 1;
+      iVar2 = _setsockopt((int)uVar8,0xffff,0x1022,&local_45c,4);
+      if (iVar2 < 0) {
+        piVar10 = ___error();
+        _strerror(*piVar10);
+        _AFCLog(5,"Could not set SO_NOSIGPIPE: %s");
+      }
+      lVar6 = _AFCCreateServerContext();
+      if (lVar6 == 0) {
+        pcVar11 = "no memory: %m";
+        goto LAB_10000309c;
+      }
+      uVar4 = _CFStringCreateWithCString
+                        (*(undefined8 *)PTR__kCFAllocatorDefault_100004288,uVar4,0x8000100);
+      _AFCServerContextSetRootPath(lVar6,uVar4);
+      _CFRelease(uVar4);
+      _AFCServerContextSetLockdownConnection(lVar6,uVar5);
+      context = (void *)_AFCConnectionCreate(0,uVar8,0,0,lVar6);
+      if (context == (void *)0x0) {
+        pcVar11 = "could not open connection: %m";
+        goto LAB_10000309c;
+      }
+      _AFCConnectionSetSecureContext(context,uVar9);
+      _AFCConnectionSetDisposeSecureContextOnInvalidate(context,0);
+      _AFCInitServerConnection(context);
+      if (cVar1 != '\0') {
+        _AFCServerConnectionSetFileCoordinationEnabled(context,1);
+      }
+      _AFCLog(5,"Using async dispatch queue");
+      queue = _dispatch_get_global_queue(0x15,0);
+      _dispatch_group_async_f(DAT_100008050,queue,context,FUN_1000030ac);
+      local_480 = PTR___NSConcreteStackBlock_100004240;
+      local_478 = DAT_100003658;
+      local_470 = FUN_100003158;
+      puStack_468 = &DAT_100004300;
+      local_460 = 1;
+      _dispatch_group_notify(DAT_100008050,DAT_100008058,&local_480);
+      _AFCLog(5,"Lockdown message handled");
+      _CFRelease(local_498);
+      pcVar11 = "Checkin handled";
+      goto LAB_10000302c;
+    }
+    pcVar11 = "Should not get XPC message after checkin.";
+  }
+  else {
+    if (puVar3 == PTR___xpc_type_error_100004280) {
+      if (param_2 == PTR___xpc_error_termination_imminent_100004268) {
+        pcVar11 = "XPC connection should close now";
+      }
+      else {
+        if (param_2 != PTR___xpc_error_connection_invalid_100004258) {
+          _xpc_dictionary_get_string
+                    (param_2,*(undefined8 *)PTR___xpc_error_key_description_100004260);
+          pcVar11 = "Got XPC error on xpc connection: %s";
+          goto LAB_100002d20;
+        }
+        pcVar11 = "The connection is now invalid.";
+      }
+LAB_10000302c:
+      uVar4 = 4;
+      goto LAB_100003030;
+    }
+    pcVar11 = "Unexpected XPC event; this connection is toast.";
+  }
+LAB_100002d20:
+  uVar4 = 1;
+LAB_100003030:
+  _AFCLog(uVar4,pcVar11);
+  _xpc_connection_cancel(*(undefined8 *)(param_1 + 0x20));
+  if (*(long *)PTR____stack_chk_guard_100004248 == local_58) {
+    return;
+  }
+                    /* WARNING: Subroutine does not return */
+  ___stack_chk_fail();
+}

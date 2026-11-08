@@ -1,0 +1,198 @@
+===== 10000197c PTPRemoteCameraDeviceManager::listener:shouldAcceptNewConnection: =====
+XREF 100059b9a DATA null
+XREF 10003052c DATA null
+10000197c pacibsp
+100001980 sub sp,sp,#0x70
+100001984 stp x24,x23,[sp, #0x30]
+100001988 stp x22,x21,[sp, #0x40]
+10000198c stp x20,x19,[sp, #0x50]
+100001990 stp x29,x30,[sp, #0x60]
+100001994 add x29,sp,#0x60
+100001998 mov x19,x3
+10000199c mov x20,x0
+1000019a0 nop
+1000019a4 ldr x8,0x100040570
+1000019a8 ldr x8,[x8]
+1000019ac str x8,[sp, #0x28]
+1000019b0 bl 0x100001954
+1000019b4 adr x21,0x100044f28
+1000019b8 nop
+1000019bc mov x0,x21
+1000019c0 bl 0x10002c020
+1000019c4 cmp x0,#0x15
+1000019c8 b.cc 0x1000019f0
+1000019cc adr x0,0x100044f28
+1000019d0 nop
+1000019d4 mov x2,#0x0
+1000019d8 mov w3,#0x12
+1000019dc bl 0x10002dec0
+1000019e0 adr x2,0x100040f88
+1000019e4 nop
+1000019e8 bl 0x10002dde0
+1000019ec mov x21,x0
+1000019f0 nop
+1000019f4 ldr x22,0x100056420
+1000019f8 mov x0,x19
+1000019fc bl 0x10002c9e0
+100001a00 str x0,[sp]
+100001a04 adr x2,0x100044f48
+100001a08 nop
+100001a0c mov x0,x22
+100001a10 bl 0x10002de20
+100001a14 mov x23,x0
+100001a18 nop
+100001a1c nop
+100001a20 ldr x22,0x100057958
+100001a24 mov x0,x22
+100001a28 mov w1,#0x0
+100001a2c bl 0x10002a140
+100001a30 cbz w0,0x100001a7c
+100001a34 mov x0,x21
+100001a38 bl 0x10002a2c0
+100001a3c mov w8,#0x202
+100001a40 movk w8,#0x822, LSL #16
+100001a44 str w8,[sp, #0x10]
+100001a48 stur x0,[sp, #0x14]
+100001a4c mov w8,#0x842
+100001a50 strh w8,[sp, #0x1c]
+100001a54 stur x23,[sp, #0x1e]
+100001a58 adr x0,0x100000000
+100001a5c nop
+100001a60 adr x3,0x10003f12c
+100001a64 nop
+100001a68 add x4,sp,#0x10
+100001a6c mov x1,x22
+100001a70 mov w2,#0x0
+100001a74 mov w5,#0x16
+100001a78 bl 0x100029c80
+100001a7c adrp x22,0x100056000
+100001a80 ldr x0,[x22, #0x4c8]
+100001a84 adrp x23,0x100056000
+100001a88 ldr x2,[x23, #0x3f0]
+100001a8c bl 0x10002bea0
+100001a90 mov x21,x0
+100001a94 ldr x0,[x22, #0x4c8]
+100001a98 ldr x2,[x23, #0x3f0]
+100001a9c bl 0x10002bea0
+100001aa0 mov x22,x0
+100001aa4 adr x3,0x100044f68
+100001aa8 nop
+100001aac mov x0,x20
+100001ab0 mov x2,x21
+100001ab4 mov w4,#0x1
+100001ab8 bl 0x10002a580
+100001abc adr x3,0x100044f88
+100001ac0 nop
+100001ac4 mov x0,x20
+100001ac8 mov x2,x21
+100001acc mov w4,#0x1
+100001ad0 bl 0x10002a580
+100001ad4 adr x3,0x100044fa8
+100001ad8 nop
+100001adc mov x0,x20
+100001ae0 mov x2,x21
+100001ae4 mov w4,#0x1
+100001ae8 bl 0x10002a580
+100001aec adr x3,0x100044fc8
+100001af0 nop
+100001af4 mov x0,x20
+100001af8 mov x2,x22
+100001afc mov w4,#0x0
+100001b00 bl 0x10002a580
+100001b04 adr x3,0x100044fe8
+100001b08 nop
+100001b0c mov x0,x20
+100001b10 mov x2,x22
+100001b14 mov w4,#0x0
+100001b18 bl 0x10002a580
+100001b1c mov x0,x19
+100001b20 mov x2,x21
+100001b24 bl 0x10002d5e0
+100001b28 mov x0,x19
+100001b2c mov x2,x22
+100001b30 bl 0x10002d980
+100001b34 mov x0,x19
+100001b38 mov x2,x20
+100001b3c bl 0x10002d600
+100001b40 mov x0,x20
+100001b44 mov x2,x19
+100001b48 bl 0x10002a560
+100001b4c mov x0,x19
+100001b50 bl 0x10002cec0
+100001b54 ldr x8,[sp, #0x28]
+100001b58 nop
+100001b5c ldr x9,0x100040570
+100001b60 ldr x9,[x9]
+100001b64 cmp x9,x8
+100001b68 b.ne 0x100001b88
+100001b6c mov w0,#0x1
+100001b70 ldp x29,x30,[sp, #0x60]
+100001b74 ldp x20,x19,[sp, #0x50]
+100001b78 ldp x22,x21,[sp, #0x40]
+100001b7c ldp x24,x23,[sp, #0x30]
+100001b80 add sp,sp,#0x70
+100001b84 retab
+100001b88 bl 0x100029c50
+
+/* Function Stack Size: 0x20 bytes */
+
+bool PTPRemoteCameraDeviceManager::listener_shouldAcceptNewConnection_
+               (ID param_1,SEL param_2,ID param_3,ID param_4)
+
+{
+  undefined *self;
+  undefined8 uVar1;
+  int iVar2;
+  ID IVar3;
+  ID IVar4;
+  undefined8 in_x6;
+  undefined8 in_x7;
+  cfstringStruct *self_00;
+  undefined4 local_60;
+  ID local_5c;
+  undefined2 local_54;
+  ID local_52;
+  long local_48;
+
+  local_48 = *(long *)PTR____stack_chk_guard_100040570;
+  ___ICOSLogCreate();
+  self_00 = &cf_remoteManager;
+  IVar3 = objc_stub::length(0x100044f28);
+  if (0x14 < IVar3) {
+    IVar3 = objc_stub::substringWithRange_(0x100044f28,0,0x12);
+    self_00 = (cfstringStruct *)objc_stub::stringByAppendingString_(IVar3,&cf___);
+  }
+  self = PTR__OBJC_CLASS___NSString_100056420;
+  IVar3 = objc_stub::processIdentifier(param_4);
+  IVar4 = NSString::stringWithFormat_((ID)self,&cf_NewConnection__d);
+  uVar1 = __gICOSLog;
+  iVar2 = _os_log_type_enabled(__gICOSLog,0);
+  if (iVar2 != 0) {
+    local_5c = objc_stub::UTF8String((ID)self_00);
+    local_60 = 0x8220202;
+    local_54 = 0x842;
+    local_52 = IVar4;
+    __os_log_impl(0x100000000,uVar1,0,"%{public}20s | %{public}@",&local_60,0x16,in_x6,in_x7,IVar3);
+  }
+  IVar3 = NSXPCInterface::interfaceWithProtocol_
+                    ((ID)PTR__OBJC_CLASS___NSXPCInterface_1000564c8,
+                     PTR_ICXPCDeviceManagerProtocol_1000563f0);
+  IVar4 = NSXPCInterface::interfaceWithProtocol_
+                    ((ID)PTR__OBJC_CLASS___NSXPCInterface_1000564c8,
+                     PTR_ICXPCDeviceManagerProtocol_1000563f0);
+  addSelectorToInterface_selectorString_origin_(param_1,IVar3,0x100044f68,1);
+  addSelectorToInterface_selectorString_origin_(param_1,IVar3,0x100044f88,1);
+  addSelectorToInterface_selectorString_origin_(param_1,IVar3,0x100044fa8,1);
+  addSelectorToInterface_selectorString_origin_(param_1,IVar4,0x100044fc8,0);
+  addSelectorToInterface_selectorString_origin_(param_1,IVar4,0x100044fe8,0);
+  objc_stub::setExportedInterface_(param_4,IVar3);
+  objc_stub::setRemoteObjectInterface_(param_4,IVar4);
+  objc_stub::setExportedObject_(param_4,param_1);
+  addRemoteManagerConnection_(param_1,param_4);
+  objc_stub::resume(param_4);
+  if (*(long *)PTR____stack_chk_guard_100040570 == local_48) {
+    return 1;
+  }
+                    /* WARNING: Subroutine does not return */
+  ___stack_chk_fail();
+}

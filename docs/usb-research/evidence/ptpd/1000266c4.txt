@@ -1,0 +1,59 @@
+===== 1000266c4 PTPFile::dataSource =====
+XREF 10005daf0 DATA null
+XREF 100034cf8 DATA null
+1000266c4 pacibsp
+1000266c8 sub sp,sp,#0x40
+1000266cc stp x22,x21,[sp, #0x10]
+1000266d0 stp x20,x19,[sp, #0x20]
+1000266d4 stp x29,x30,[sp, #0x30]
+1000266d8 add x29,sp,#0x30
+1000266dc mov x19,x0
+1000266e0 ldr x0,[x0, #0x18]
+1000266e4 cbnz x0,0x100026734
+1000266e8 nop
+1000266ec ldr x0,0x100059840
+1000266f0 bl 0x10002e920
+1000266f4 mov x20,x0
+1000266f8 ldr x21,[x19, #0x10]
+1000266fc ldr x22,[x19, #0x40]
+100026700 nop
+100026704 ldr x0,0x100059700
+100026708 ldr x8,[x19, #0x50]
+10002670c str x8,[sp]
+100026710 adr x2,0x10004acd8
+100026714 nop
+100026718 bl 0x100032a40
+10002671c mov x4,x0
+100026720 mov x0,x20
+100026724 mov x2,x21
+100026728 mov x3,x22
+10002672c bl 0x1000303e0
+100026730 str x0,[x19, #0x18]
+100026734 ldp x29,x30,[sp, #0x30]
+100026738 ldp x20,x19,[sp, #0x20]
+10002673c ldp x22,x21,[sp, #0x10]
+100026740 add sp,sp,#0x40
+100026744 retab
+
+/* Function Stack Size: 0x10 bytes */
+
+ID PTPFile::dataSource(ID param_1,SEL param_2)
+
+{
+  ID IVar1;
+  ID IVar2;
+  ID IVar3;
+  unsigned_long_long uVar4;
+
+  IVar1 = *(ID *)(param_1 + 0x18);
+  if (IVar1 == 0) {
+    IVar1 = _objc_alloc(PTR_PTPDataSource_100059840);
+    IVar3 = *(ID *)(param_1 + 0x10);
+    uVar4 = *(unsigned_long_long *)(param_1 + 0x40);
+    IVar2 = NSString::stringWithFormat_
+                      ((ID)PTR__OBJC_CLASS___NSString_100059700,&cf_com_apple_ptpd___);
+    IVar1 = PTPDataSource::initWithAssetHandle_assetSize_andQueueName_(IVar1,IVar3,uVar4,IVar2);
+    *(ID *)(param_1 + 0x18) = IVar1;
+  }
+  return IVar1;
+}

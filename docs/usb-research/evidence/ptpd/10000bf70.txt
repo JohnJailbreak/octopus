@@ -1,0 +1,478 @@
+===== 10000bf70 PTPVirtualCamera::initWithName:andPath: =====
+XREF 10005d779 DATA null
+XREF 100033238 DATA null
+XREF 100024534 CALL_OVERRIDE_UNCONDITIONAL PTPResponder::transportActivated
+10000bf70 pacibsp
+10000bf74 sub sp,sp,#0x60
+10000bf78 stp x24,x23,[sp, #0x20]
+10000bf7c stp x22,x21,[sp, #0x30]
+10000bf80 stp x20,x19,[sp, #0x40]
+10000bf84 stp x29,x30,[sp, #0x50]
+10000bf88 add x29,sp,#0x50
+10000bf8c mov x20,x3
+10000bf90 mov x21,x2
+10000bf94 nop
+10000bf98 ldr x8,0x100059870
+10000bf9c stp x0,x8,[sp, #0x10]
+10000bfa0 nop
+10000bfa4 ldr x1,0x100058750
+10000bfa8 add x0,sp,#0x10
+10000bfac bl 0x10002e9d0
+10000bfb0 mov x19,x0
+10000bfb4 cbz x0,0x10000c44c
+10000bfb8 adr x8,0x10005a94c
+10000bfbc nop
+10000bfc0 str wzr,[x8]
+10000bfc4 adr x8,0x10005a950
+10000bfc8 nop
+10000bfcc str wzr,[x8]
+10000bfd0 adr x8,0x10005a954
+10000bfd4 nop
+10000bfd8 str wzr,[x8]
+10000bfdc bl 0x10002eb00
+10000bfe0 str x0,[x19, #0x8]
+10000bfe4 bl 0x10002eaf0
+10000bfe8 str x0,[x19, #0x20]
+10000bfec nop
+10000bff0 ldr x0,0x100059780
+10000bff4 bl 0x10002e930
+10000bff8 str x0,[x19, #0x28]
+10000bffc nop
+10000c000 ldr x0,0x100059788
+10000c004 bl 0x10002e920
+10000c008 mov x2,#0x0
+10000c00c bl 0x100030480
+10000c010 adr x8,0x10005a940
+10000c014 nop
+10000c018 str x0,[x19, #0x30]
+10000c01c strb wzr,[x8]
+10000c020 stp xzr,xzr,[x19, #0x80]
+10000c024 nop
+10000c028 ldr x0,0x100059738
+10000c02c bl 0x10002e930
+10000c030 str x0,[x19, #0xc0]
+10000c034 adr x0,0x10003620e
+10000c038 nop
+10000c03c nop
+10000c040 ldr x1,0x100044530
+10000c044 bl 0x10002e770
+10000c048 str x0,[x19, #0x98]
+10000c04c nop
+10000c050 ldr x0,0x100059770
+10000c054 bl 0x10002e920
+10000c058 adr x2,0x100045d18
+10000c05c nop
+10000c060 bl 0x1000304c0
+10000c064 cbz x0,0x10000c23c
+10000c068 mov x20,x0
+10000c06c ldr x21,[x19, #0x28]
+10000c070 adr x2,0x100045d38
+10000c074 nop
+10000c078 bl 0x100030ec0
+10000c07c bl 0x100032d00
+10000c080 mov x2,x0
+10000c084 mov x0,x21
+10000c088 bl 0x100032480
+10000c08c ldr x21,[x19, #0x28]
+10000c090 adr x2,0x100045d58
+10000c094 nop
+10000c098 mov x0,x20
+10000c09c bl 0x100030ec0
+10000c0a0 bl 0x100032ca0
+10000c0a4 mov x2,x0
+10000c0a8 mov x0,x21
+10000c0ac bl 0x100032700
+10000c0b0 ldr x21,[x19, #0x28]
+10000c0b4 adr x2,0x100045d78
+10000c0b8 nop
+10000c0bc mov x0,x20
+10000c0c0 bl 0x100030ec0
+10000c0c4 bl 0x100032d00
+10000c0c8 mov x2,x0
+10000c0cc mov x0,x21
+10000c0d0 bl 0x100032720
+10000c0d4 ldr x21,[x19, #0x28]
+10000c0d8 adr x2,0x100045d98
+10000c0dc nop
+10000c0e0 mov x0,x20
+10000c0e4 bl 0x100030ec0
+10000c0e8 mov x2,x0
+10000c0ec mov x0,x21
+10000c0f0 bl 0x1000326e0
+10000c0f4 ldr x21,[x19, #0x28]
+10000c0f8 adr x2,0x100045db8
+10000c0fc nop
+10000c100 mov x0,x20
+10000c104 bl 0x100030ec0
+10000c108 bl 0x100032d00
+10000c10c mov x2,x0
+10000c110 mov x0,x21
+10000c114 bl 0x100031f60
+10000c118 ldr x21,[x19, #0x28]
+10000c11c adr x2,0x100045dd8
+10000c120 nop
+10000c124 mov x0,x20
+10000c128 bl 0x100030ec0
+10000c12c mov x2,x0
+10000c130 mov x0,x21
+10000c134 bl 0x100032220
+10000c138 ldr x21,[x19, #0x28]
+10000c13c adr x2,0x100045df8
+10000c140 nop
+10000c144 mov x0,x20
+10000c148 bl 0x100030ec0
+10000c14c mov x2,x0
+10000c150 mov x0,x21
+10000c154 bl 0x100031e00
+10000c158 ldr x21,[x19, #0x28]
+10000c15c adr x2,0x100045e18
+10000c160 nop
+10000c164 mov x0,x20
+10000c168 bl 0x100030ec0
+10000c16c mov x2,x0
+10000c170 mov x0,x21
+10000c174 bl 0x100031d80
+10000c178 ldr x21,[x19, #0x28]
+10000c17c adr x2,0x100045e38
+10000c180 nop
+10000c184 mov x0,x20
+10000c188 bl 0x100030ec0
+10000c18c mov x2,x0
+10000c190 mov x0,x21
+10000c194 bl 0x100031c80
+10000c198 ldr x21,[x19, #0x28]
+10000c19c adr x2,0x100045e58
+10000c1a0 nop
+10000c1a4 mov x0,x20
+10000c1a8 bl 0x100030ec0
+10000c1ac mov x2,x0
+10000c1b0 mov x0,x21
+10000c1b4 bl 0x100031fe0
+10000c1b8 ldr x21,[x19, #0x28]
+10000c1bc adr x2,0x100045e78
+10000c1c0 nop
+10000c1c4 mov x0,x20
+10000c1c8 bl 0x100030ec0
+10000c1cc mov x2,x0
+10000c1d0 mov x0,x21
+10000c1d4 bl 0x100032080
+10000c1d8 ldr x21,[x19, #0x28]
+10000c1dc adr x2,0x100045e98
+10000c1e0 nop
+10000c1e4 mov x0,x20
+10000c1e8 bl 0x100030ec0
+10000c1ec mov x2,x0
+10000c1f0 mov x0,x21
+10000c1f4 bl 0x100032100
+10000c1f8 ldr x21,[x19, #0x28]
+10000c1fc adr x2,0x100045eb8
+10000c200 nop
+10000c204 mov x0,x20
+10000c208 bl 0x100030ec0
+10000c20c mov x2,x0
+10000c210 mov x0,x21
+10000c214 bl 0x100031dc0
+10000c218 ldr x21,[x19, #0x28]
+10000c21c adr x2,0x100045ed8
+10000c220 nop
+10000c224 mov x0,x20
+10000c228 bl 0x100030ec0
+10000c22c mov x2,x0
+10000c230 mov x0,x21
+10000c234 bl 0x100032440
+10000c238 bl 0x10002ea50
+10000c23c adr x0,0x100045ef8
+10000c240 nop
+10000c244 mov x1,#0x0
+10000c248 bl 0x10002e600
+10000c24c adrp x23,0x100059000
+10000c250 cbz x0,0x10000c290
+10000c254 mov x20,x0
+10000c258 ldr x8,[x19, #0x8]
+10000c25c bl 0x10002eaa0
+10000c260 ldr x0,[x23, #0x700]
+10000c264 bl 0x10002e920
+10000c268 str x20,[sp]
+10000c26c adr x2,0x100045f18
+10000c270 nop
+10000c274 bl 0x100030560
+10000c278 mov x2,x0
+10000c27c str x0,[x19, #0x8]
+10000c280 ldr x0,[x19, #0x28]
+10000c284 bl 0x100032100
+10000c288 mov x0,x20
+10000c28c bl 0x10002e480
+10000c290 adr x0,0x100045ed8
+10000c294 nop
+10000c298 mov x1,#0x0
+10000c29c bl 0x10002e600
+10000c2a0 cbz x0,0x10000c2d4
+10000c2a4 mov x20,x0
+10000c2a8 ldr x21,[x19, #0x28]
+10000c2ac ldr x0,[x23, #0x700]
+10000c2b0 str x20,[sp]
+10000c2b4 adr x2,0x100045358
+10000c2b8 nop
+10000c2bc bl 0x100032a40
+10000c2c0 mov x2,x0
+10000c2c4 mov x0,x21
+10000c2c8 bl 0x100032440
+10000c2cc mov x0,x20
+10000c2d0 bl 0x10002e480
+10000c2d4 adr x0,0x100045f38
+10000c2d8 nop
+10000c2dc mov x1,#0x0
+10000c2e0 bl 0x10002e600
+10000c2e4 cbz x0,0x10000c318
+10000c2e8 mov x20,x0
+10000c2ec ldr x21,[x19, #0x28]
+10000c2f0 ldr x0,[x23, #0x700]
+10000c2f4 str x20,[sp]
+10000c2f8 adr x2,0x100045358
+10000c2fc nop
+10000c300 bl 0x100032a40
+10000c304 mov x2,x0
+10000c308 mov x0,x21
+10000c30c bl 0x100031dc0
+10000c310 mov x0,x20
+10000c314 bl 0x10002e480
+10000c318 adr x0,0x100045f58
+10000c31c nop
+10000c320 mov x1,#0x0
+10000c324 bl 0x10002e600
+10000c328 cbz x0,0x10000c33c
+10000c32c mov x20,x0
+10000c330 ldr x8,[x19, #0x70]
+10000c334 bl 0x10002eaa0
+10000c338 str x20,[x19, #0x70]
+10000c33c adr x0,0x100045f78
+10000c340 nop
+10000c344 mov x1,#0x0
+10000c348 bl 0x10002e600
+10000c34c cbz x0,0x10000c360
+10000c350 mov x20,x0
+10000c354 ldr x8,[x19, #0x10]
+10000c358 bl 0x10002eaa0
+10000c35c str x20,[x19, #0x10]
+10000c360 bl 0x10002e450
+10000c364 str x0,[x19, #0x60]
+10000c368 nop
+10000c36c ldr x8,0x10005a990
+10000c370 cmn x8,#0x1
+10000c374 b.ne 0x10000c468
+10000c378 nop
+10000c37c ldr x20,0x10005a958
+10000c380 mov x0,x20
+10000c384 bl 0x10002f660
+10000c388 cmp x0,#0x0
+10000c38c cset w24,ne
+10000c390 mov x0,x20
+10000c394 bl 0x10002f660
+10000c398 mov x22,x0
+10000c39c adr x0,0x100045ed8
+10000c3a0 nop
+10000c3a4 mov x1,#0x0
+10000c3a8 bl 0x10002e600
+10000c3ac mov x21,x0
+10000c3b0 ldr x0,[x23, #0x700]
+10000c3b4 stp x24,x22,[sp]
+10000c3b8 adr x2,0x100045f98
+10000c3bc nop
+10000c3c0 bl 0x100032a40
+10000c3c4 mov x22,x0
+10000c3c8 cbz x21,0x10000c3ec
+10000c3cc ldr x0,[x23, #0x700]
+10000c3d0 stp x22,x21,[sp]
+10000c3d4 adr x2,0x100045fb8
+10000c3d8 nop
+10000c3dc bl 0x100032a40
+10000c3e0 mov x22,x0
+10000c3e4 mov x0,x21
+10000c3e8 bl 0x10002e480
+10000c3ec ldr x0,[x19, #0x28]
+10000c3f0 mov x2,x22
+10000c3f4 bl 0x1000326e0
+10000c3f8 mov x0,x19
+10000c3fc bl 0x1000308c0
+10000c400 mov x0,x19
+10000c404 bl 0x100032c40
+10000c408 adrp x8,0x10005a000
+10000c40c str x0,[x8, #0x960]
+10000c410 nop
+10000c414 ldr x0,0x100059790
+10000c418 bl 0x10002e920
+10000c41c nop
+10000c420 nop
+10000c424 ldr w3,0x10005a780
+10000c428 mov x2,x19
+10000c42c mov w4,#0x0
+10000c430 bl 0x1000306e0
+10000c434 str x0,[x19, #0x90]
+10000c438 mov x0,x20
+10000c43c mov x2,x19
+10000c440 bl 0x100031d60
+10000c444 mov x0,x19
+10000c448 bl 0x1000328a0
+10000c44c mov x0,x19
+10000c450 ldp x29,x30,[sp, #0x50]
+10000c454 ldp x20,x19,[sp, #0x40]
+10000c458 ldp x22,x21,[sp, #0x30]
+10000c45c ldp x24,x23,[sp, #0x20]
+10000c460 add sp,sp,#0x60
+10000c464 retab
+10000c468 adr x0,0x10005a990
+10000c46c nop
+10000c470 adr x1,0x1000446c0
+10000c474 nop
+10000c478 bl 0x10002e750
+10000c47c b 0x10000c378
+
+/* WARNING: Function: _objc_retain_x21 replaced with injection: _objc_retain_fixup */
+/* WARNING: Function: _objc_retain_x20 replaced with injection: _objc_retain_fixup */
+/* WARNING: Function: _objc_release_x20 replaced with injection: _objc_release_fixup */
+/* WARNING: Function: _objc_release_x8 replaced with injection: _objc_release_fixup */
+/* Function Stack Size: 0x20 bytes */
+
+ID PTPVirtualCamera::initWithName_andPath_(ID param_1,SEL param_2,ID param_3,ID param_4)
+
+{
+  ID self;
+  undefined8 uVar1;
+  ID IVar2;
+  dispatch_queue_t pdVar3;
+  ID IVar4;
+  long lVar5;
+  ID IVar6;
+  ID local_50;
+  undefined *puStack_48;
+
+  puStack_48 = PTR_PTPVirtualCamera_100059870;
+  local_50 = param_1;
+  self = NSObject::init((ID)&local_50,PTR_s_init_100058750);
+  if (self != 0) {
+    DAT_10005a94c = 0;
+    DAT_10005a950 = 0;
+    DAT_10005a954 = 0;
+    *(ID *)(self + 8) = self;
+    *(ID *)(self + 0x20) = self;
+    uVar1 = _objc_alloc_init(PTR_PTPDeviceInfoDataset_100059780);
+    *(undefined8 *)(self + 0x28) = uVar1;
+    IVar2 = _objc_alloc(PTR__OBJC_CLASS___NSMutableDictionary_100059788);
+    IVar2 = NSMutableDictionary::initWithCapacity_(IVar2,0);
+    *(ID *)(self + 0x30) = IVar2;
+    DAT_10005a940 = 0;
+    *(undefined8 *)(self + 0x80) = 0;
+    *(undefined8 *)(self + 0x88) = 0;
+    uVar1 = _objc_alloc_init(PTR__OBJC_CLASS___NSMutableArray_100059738);
+    *(undefined8 *)(self + 0xc0) = uVar1;
+    pdVar3 = _dispatch_queue_create
+                       ("PTP Enumeration Queue",
+                        (dispatch_queue_attr_t)PTR___dispatch_queue_attr_concurrent_100044530);
+    *(dispatch_queue_t *)(self + 0x98) = pdVar3;
+    IVar2 = _objc_alloc(PTR__OBJC_CLASS___NSDictionary_100059770);
+    IVar2 = NSDictionary::initWithContentsOfFile_
+                      (IVar2,&cf__System_Library_ApplePTP_PTPDeviceInfoDataset_plist);
+    if (IVar2 != 0) {
+      IVar6 = *(ID *)(self + 0x28);
+      IVar4 = NSDictionary::objectForKey_(IVar2,&cf_StandardVersion);
+      IVar4 = NSDictionary::unsignedShortValue(IVar4);
+      objc_stub::setStandardVersion_(IVar6,IVar4);
+      IVar6 = *(ID *)(self + 0x28);
+      IVar4 = NSDictionary::objectForKey_(IVar2,&cf_VendorExtensionID);
+      IVar4 = NSDictionary::unsignedIntValue(IVar4);
+      objc_stub::setVendorExtensionID_(IVar6,IVar4);
+      IVar6 = *(ID *)(self + 0x28);
+      IVar4 = NSDictionary::objectForKey_(IVar2,&cf_VendorExtensionVersion);
+      IVar4 = NSDictionary::unsignedShortValue(IVar4);
+      objc_stub::setVendorExtensionVersion_(IVar6,IVar4);
+      IVar6 = *(ID *)(self + 0x28);
+      IVar4 = NSDictionary::objectForKey_(IVar2,&cf_VendorExtensionDesc);
+      objc_stub::setVendorExtensionDescription_(IVar6,IVar4);
+      IVar6 = *(ID *)(self + 0x28);
+      IVar4 = NSDictionary::objectForKey_(IVar2,&cf_FunctionalMode);
+      IVar4 = NSDictionary::unsignedShortValue(IVar4);
+      objc_stub::setFunctionalMode_(IVar6,IVar4);
+      IVar6 = *(ID *)(self + 0x28);
+      IVar4 = NSDictionary::objectForKey_(IVar2,&cf_OperationsSupported);
+      objc_stub::setOperationsSupported_(IVar6,IVar4);
+      IVar6 = *(ID *)(self + 0x28);
+      IVar4 = NSDictionary::objectForKey_(IVar2,&cf_EventsSupported);
+      objc_stub::setEventsSupported_(IVar6,IVar4);
+      IVar6 = *(ID *)(self + 0x28);
+      IVar4 = NSDictionary::objectForKey_(IVar2,&cf_DevicePropertiesSupported);
+      objc_stub::setDevicePropertiesSupported_(IVar6,IVar4);
+      IVar6 = *(ID *)(self + 0x28);
+      IVar4 = NSDictionary::objectForKey_(IVar2,&cf_CaptureFormats);
+      objc_stub::setCaptureFormats_(IVar6,IVar4);
+      IVar6 = *(ID *)(self + 0x28);
+      IVar4 = NSDictionary::objectForKey_(IVar2,&cf_ImageFormats);
+      objc_stub::setImageFormats_(IVar6,IVar4);
+      IVar6 = *(ID *)(self + 0x28);
+      IVar4 = NSDictionary::objectForKey_(IVar2,&cf_Manufacturer);
+      objc_stub::setManufacturer_(IVar6,IVar4);
+      IVar6 = *(ID *)(self + 0x28);
+      IVar4 = NSDictionary::objectForKey_(IVar2,&cf_Model);
+      objc_stub::setModel_(IVar6,IVar4);
+      IVar6 = *(ID *)(self + 0x28);
+      IVar4 = NSDictionary::objectForKey_(IVar2,&cf_DeviceVersion);
+      objc_stub::setDeviceVersion_(IVar6,IVar4);
+      IVar4 = *(ID *)(self + 0x28);
+      IVar2 = NSDictionary::objectForKey_(IVar2,&cf_SerialNumber);
+      objc_stub::setSerialNumber_(IVar4,IVar2);
+    }
+    lVar5 = _MGCopyAnswer(&cf_DeviceClass,0);
+    if (lVar5 != 0) {
+      IVar2 = _objc_alloc(*(undefined8 *)(self + 8),PTR__OBJC_CLASS___NSString_100059700);
+      IVar2 = objc_stub::initWithFormat_(IVar2,&cf_Apple__);
+      *(ID *)(self + 8) = IVar2;
+      objc_stub::setModel_(*(ID *)(self + 0x28),IVar2);
+      _CFRelease(lVar5);
+    }
+    lVar5 = _MGCopyAnswer(&cf_SerialNumber,0);
+    if (lVar5 != 0) {
+      IVar4 = *(ID *)(self + 0x28);
+      IVar2 = NSString::stringWithFormat_((ID)PTR__OBJC_CLASS___NSString_100059700,&cf___);
+      objc_stub::setSerialNumber_(IVar4,IVar2);
+      _CFRelease(lVar5);
+    }
+    lVar5 = _MGCopyAnswer(&cf_ProductVersion,0);
+    if (lVar5 != 0) {
+      IVar4 = *(ID *)(self + 0x28);
+      IVar2 = NSString::stringWithFormat_((ID)PTR__OBJC_CLASS___NSString_100059700,&cf___);
+      objc_stub::setDeviceVersion_(IVar4,IVar2);
+      _CFRelease(lVar5);
+    }
+    lVar5 = _MGCopyAnswer(&cf_ProductType,0);
+    if (lVar5 != 0) {
+      *(long *)(self + 0x70) = lVar5;
+    }
+    lVar5 = _MGCopyAnswer(&cf_UserAssignedDeviceName,0);
+    if (lVar5 != 0) {
+      *(long *)(self + 0x10) = lVar5;
+    }
+    uVar1 = _CFNotificationCenterGetDarwinNotifyCenter(0);
+    *(undefined8 *)(self + 0x60) = uVar1;
+    if (DAT_10005a990 != -1) {
+      _dispatch_once(&DAT_10005a990,&PTR___NSConcreteGlobalBlock_1000446c0);
+    }
+    IVar2 = DAT_10005a958;
+    objc_stub::cplStorageState(DAT_10005a958);
+    objc_stub::cplStorageState(IVar2);
+    lVar5 = _MGCopyAnswer(&cf_SerialNumber,0);
+    IVar4 = NSString::stringWithFormat_
+                      ((ID)PTR__OBJC_CLASS___NSString_100059700,&cf_ICPE__d_CPLS__lu);
+    if (lVar5 != 0) {
+      IVar4 = NSString::stringWithFormat_((ID)PTR__OBJC_CLASS___NSString_100059700,&cf____ASN___);
+      _CFRelease(lVar5);
+    }
+    objc_stub::setVendorExtensionDescription_(*(ID *)(self + 0x28),IVar4);
+    NSObject::initializeMTPProperties(self);
+    DAT_10005a960 = NSObject::transferBehaviorUserPreference(self);
+    IVar4 = _objc_alloc(PTR_PTPStorage_100059790);
+    IVar4 = PTPStorage::initWithParent_andOptionalID_forSessionID_(IVar4,self,DAT_10005a780,0);
+    *(ID *)(self + 0x90) = IVar4;
+    objc_stub::setDelegate_(IVar2,self);
+    NSObject::startObservers(self);
+  }
+  return self;
+}

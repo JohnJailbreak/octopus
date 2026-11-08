@@ -255,6 +255,8 @@ static void adapter_requests(oct_diag *d, oct_diag_result *out) { (void)d; run_c
 static void adapter_events(oct_diag *d, oct_diag_result *out) { (void)d; run_compat(out, oct_compat_events); }
 static void adapter_lifecycle(oct_diag *d, oct_diag_result *out) { (void)d; run_compat(out, oct_compat_lifecycle); }
 
+static void adapter_usb_boundary(oct_diag *d, oct_diag_result *out) { (void)d; run_compat(out, oct_compat_usb_boundary); }
+
 /* ---- The list -------------------------------------------------------------------------- */
 
 static void add(oct_diag *diag, const char *id, const char *group, const char *title, oct_diag_kind kind, int phase,
@@ -288,6 +290,8 @@ oct_status oct_diag_create(oct_diag **out)
         adapter_events);
     add(diag, "adapter.lifecycle", "Transport adapter (simulated)", "USB lifecycle", OCT_DIAG_SIMULATED, -1,
         adapter_lifecycle);
+    add(diag, "adapter.usb_boundary", "Transport adapter (simulated)", "USB interface and setup validation",
+        OCT_DIAG_SIMULATED, -1, adapter_usb_boundary);
     *out = diag;
     return OCT_OK;
 }

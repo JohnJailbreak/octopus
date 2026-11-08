@@ -1,0 +1,72 @@
+===== 1000030ac FUN_1000030ac =====
+XREF 10000c988 DATA null
+XREF 100002f88 PARAM FUN_100002c34
+1000030ac pacibsp
+1000030b0 stp x20,x19,[sp, #-0x20]!
+1000030b4 stp x29,x30,[sp, #0x10]
+1000030b8 add x29,sp,#0x10
+1000030bc mov x19,x0
+1000030c0 adr x1,0x100003cae
+1000030c4 nop
+1000030c8 mov w0,#0x4
+1000030cc bl 0x100003248
+1000030d0 mov x0,x19
+1000030d4 mov x1,#0x0
+1000030d8 bl 0x1000031f8
+1000030dc mov x0,x19
+1000030e0 bl 0x1000031b8
+1000030e4 mov x20,x0
+1000030e8 bl 0x100003298
+1000030ec mov x1,x0
+1000030f0 mov x0,x19
+1000030f4 bl 0x100003268
+1000030f8 mov x0,x20
+1000030fc bl 0x100003288
+100003100 cbz x0,0x100003110
+100003104 mov x0,x20
+100003108 bl 0x100003288
+10000310c bl 0x1000034a8
+100003110 mov x0,x20
+100003114 bl 0x100003228
+100003118 mov x0,x19
+10000311c mov x1,#0x0
+100003120 bl 0x1000031d8
+100003124 mov x0,x19
+100003128 bl 0x1000031c8
+10000312c mov x0,x19
+100003130 bl 0x100003318
+100003134 adr x1,0x100003cc4
+100003138 nop
+10000313c mov w0,#0x4
+100003140 bl 0x100003248
+100003144 bl 0x100003618
+100003148 mov x0,#0x0
+10000314c ldp x29,x30,[sp, #0x10]
+100003150 ldp x20,x19,[sp], #0x20
+100003154 retab
+
+undefined8 FUN_1000030ac(undefined8 param_1)
+
+{
+  undefined8 uVar1;
+  undefined8 uVar2;
+  long lVar3;
+
+  _AFCLog(4,"Running server thread");
+  _AFCConnectionSetIOTimeout(param_1,0);
+  uVar1 = _AFCConnectionGetContext(param_1);
+  uVar2 = _AFCServerContextGetRootPath();
+  _AFCServeWithRoot(param_1,uVar2);
+  lVar3 = _AFCServerContextGetLockdownConnection(uVar1);
+  if (lVar3 != 0) {
+    _AFCServerContextGetLockdownConnection(uVar1);
+    _lockdown_disconnect();
+  }
+  _AFCFreeServerContext(uVar1);
+  _AFCConnectionSetContext(param_1,0);
+  _AFCConnectionInvalidate(param_1);
+  _CFRelease(param_1);
+  _AFCLog(4,"Server thread finished");
+  _xpc_transaction_end();
+  return 0;
+}

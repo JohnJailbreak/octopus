@@ -249,7 +249,7 @@ static void test_diagnostics(void)
     oct_diag *diag = NULL;
     CHECK_OK(oct_diag_create(&diag));
     uint32_t count = oct_diag_count(diag);
-    CHECK_EQ(count, 17);
+    CHECK_EQ(count, 18);
     uint32_t passed = 0, simulated = 0;
     for (uint32_t i = 0; i < count; i++) {
         oct_diag_result result, identity;
@@ -269,7 +269,7 @@ static void test_diagnostics(void)
         if (result.status != OCT_DIAG_PASS) fprintf(stderr, "diagnostic %s: %s\n", result.id, result.detail);
     }
     CHECK_EQ(passed, count);
-    CHECK_EQ(simulated, 5);
+    CHECK_EQ(simulated, 6);
     oct_diag_result result;
     CHECK_EQ(oct_diag_run(diag, count, &result), OCT_E_INVALID_ARGUMENT);
     oct_diag_destroy(diag);
@@ -295,7 +295,7 @@ static void test_diagnostics(void)
     }
     CHECK_EQ(failed, 1);
     CHECK_EQ(skipped, 7);
-    CHECK_EQ(after_pass, 5); /* the adapter checks don't depend on the responder phases */
+    CHECK_EQ(after_pass, 6); /* the adapter checks don't depend on the responder phases */
     oct_diag_destroy(diag);
     CHECK_STR(oct_diag_status_name(OCT_DIAG_BLOCKED), "BLOCKED");
     CHECK_STR(oct_diag_kind_name(OCT_DIAG_EXTERNAL), "external");

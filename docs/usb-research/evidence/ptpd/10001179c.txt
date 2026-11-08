@@ -1,0 +1,74 @@
+===== 10001179c PTPVirtualCamera::dataSourceForObjectHandle:responseCode:size: =====
+XREF 10005d7eb DATA null
+XREF 1000334f0 DATA null
+10001179c pacibsp
+1000117a0 stp x22,x21,[sp, #-0x30]!
+1000117a4 stp x20,x19,[sp, #0x10]
+1000117a8 stp x29,x30,[sp, #0x20]
+1000117ac add x29,sp,#0x20
+1000117b0 mov x20,x4
+1000117b4 mov x19,x3
+1000117b8 mov x21,x0
+1000117bc nop
+1000117c0 ldr x0,0x100059740
+1000117c4 bl 0x100030dc0
+1000117c8 mov x2,x0
+1000117cc mov x0,x21
+1000117d0 bl 0x100030f00
+1000117d4 mov x22,x0
+1000117d8 nop
+1000117dc ldr x0,0x1000597c0
+1000117e0 bl 0x10002e9e0
+1000117e4 mov x1,x0
+1000117e8 mov x0,x22
+1000117ec bl 0x10002e9f0
+1000117f0 tbz w0,#0x0,0x100011818
+1000117f4 mov x0,x22
+1000117f8 bl 0x10002f700
+1000117fc mov x21,x0
+100011800 mov x0,x22
+100011804 bl 0x100030fa0
+100011808 bl 0x100030e60
+10001180c str w0,[x20]
+100011810 mov w8,#0x2001
+100011814 b 0x100011820
+100011818 mov x21,#0x0
+10001181c mov w8,#0x2009
+100011820 strh w8,[x19]
+100011824 mov x0,x21
+100011828 ldp x29,x30,[sp, #0x20]
+10001182c ldp x20,x19,[sp, #0x10]
+100011830 ldp x22,x21,[sp], #0x30
+100011834 retab
+
+/* Function Stack Size: 0x24 bytes */
+
+ID PTPVirtualCamera::dataSourceForObjectHandle_responseCode_size_
+             (ID param_1,SEL param_2,unsigned_int param_3,unsigned_short *param_4,
+             unsigned_int *param_5)
+
+{
+  ID IVar1;
+  undefined8 uVar2;
+  ulong uVar3;
+  ID IVar4;
+  unsigned_short uVar5;
+
+  IVar1 = NSNumber::numberWithUnsignedInt_((ID)PTR__OBJC_CLASS___NSNumber_100059740,(ulong)param_3);
+  IVar1 = objectForObjectHandle_(param_1,IVar1);
+  uVar2 = _objc_opt_class(PTR_PTPFile_1000597c0);
+  uVar3 = _objc_opt_isKindOfClass(IVar1,uVar2);
+  if ((uVar3 & 1) == 0) {
+    IVar4 = 0;
+    uVar5 = 0x2009;
+  }
+  else {
+    IVar4 = objc_stub::dataSource(IVar1);
+    IVar1 = objc_stub::objectInfoDataset(IVar1);
+    IVar1 = objc_stub::objectCompressedSize(IVar1);
+    *param_5 = (unsigned_int)IVar1;
+    uVar5 = 0x2001;
+  }
+  *param_4 = uVar5;
+  return IVar4;
+}

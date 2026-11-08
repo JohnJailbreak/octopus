@@ -1,0 +1,232 @@
+===== 100020694 PTPResponder::initWithName:path:andTransportType: =====
+XREF 10005da5f DATA null
+XREF 10003493c DATA null
+XREF 100020690 CALL_OVERRIDE_UNCONDITIONAL PTPResponder::init
+XREF 10002d4e4 CALL_OVERRIDE_UNCONDITIONAL entry
+100020694 pacibsp
+100020698 sub sp,sp,#0x90
+10002069c stp x26,x25,[sp, #0x40]
+1000206a0 stp x24,x23,[sp, #0x50]
+1000206a4 stp x22,x21,[sp, #0x60]
+1000206a8 stp x20,x19,[sp, #0x70]
+1000206ac stp x29,x30,[sp, #0x80]
+1000206b0 add x29,sp,#0x80
+1000206b4 mov x20,x4
+1000206b8 mov x21,x3
+1000206bc mov x22,x2
+1000206c0 nop
+1000206c4 ldr x8,0x100044518
+1000206c8 ldr x8,[x8]
+1000206cc str x8,[sp, #0x38]
+1000206d0 nop
+1000206d4 ldr x8,0x100059908
+1000206d8 stp x0,x8,[sp, #0x10]
+1000206dc nop
+1000206e0 ldr x1,0x100058750
+1000206e4 add x0,sp,#0x10
+1000206e8 bl 0x10002e9d0
+1000206ec mov x19,x0
+1000206f0 adrp x25,0x100059000
+1000206f4 cbz x0,0x1000207c4
+1000206f8 nop
+1000206fc ldr x8,0x100044548
+100020700 ldr x23,[x8]
+100020704 mov x0,x23
+100020708 bl 0x10002e4d0
+10002070c mov x24,x0
+100020710 mov x0,x23
+100020714 mov x1,x24
+100020718 bl 0x10002e4e0
+10002071c str x0,[x19, #0x48]
+100020720 mov x0,x24
+100020724 bl 0x10002e480
+100020728 nop
+10002072c ldr x0,0x100059738
+100020730 bl 0x10002e920
+100020734 mov x2,#0x0
+100020738 bl 0x100030480
+10002073c str x0,[x19, #0x30]
+100020740 ldr x0,[x25, #0x700]
+100020744 bl 0x10002e920
+100020748 mov x2,x22
+10002074c bl 0x1000307a0
+100020750 str x0,[x19, #0x50]
+100020754 ldr x0,[x25, #0x700]
+100020758 bl 0x10002e920
+10002075c mov x2,x21
+100020760 bl 0x1000307a0
+100020764 str x0,[x19, #0x58]
+100020768 strb wzr,[x19, #0x78]
+10002076c mov x8,#0xc00000000000
+100020770 movk x8,#0x4092, LSL #48
+100020774 str x8,[x19, #0x80]
+100020778 cmp w20,#0x1
+10002077c b.ne 0x1000207b4
+100020780 nop
+100020784 ldr x0,0x100059820
+100020788 bl 0x10002e920
+10002078c mov x2,x19
+100020790 bl 0x100030500
+100020794 str x0,[x19, #0x8]
+100020798 cbz x0,0x1000207bc
+10002079c adr x0,0x10003a776
+1000207a0 nop
+1000207a4 mov x1,#0x0
+1000207a8 bl 0x10002e770
+1000207ac str x0,[x19, #0x90]
+1000207b0 b 0x1000207c4
+1000207b4 ldr x0,[x19, #0x8]
+1000207b8 cbnz x0,0x10002079c
+1000207bc bl 0x10002ea40
+1000207c0 mov x19,#0x0
+1000207c4 bl 0x100028978
+1000207c8 adr x20,0x100044d58
+1000207cc nop
+1000207d0 mov x0,x20
+1000207d4 bl 0x100030b20
+1000207d8 cmp x0,#0x15
+1000207dc b.cc 0x100020804
+1000207e0 adr x0,0x100044d58
+1000207e4 nop
+1000207e8 mov x2,#0x0
+1000207ec mov w3,#0x12
+1000207f0 bl 0x100032ac0
+1000207f4 adr x2,0x100044d78
+1000207f8 nop
+1000207fc bl 0x1000329e0
+100020800 mov x20,x0
+100020804 ldr x0,[x25, #0x700]
+100020808 str x19,[sp]
+10002080c adr x2,0x10004a758
+100020810 nop
+100020814 bl 0x100032a40
+100020818 mov x22,x0
+10002081c nop
+100020820 nop
+100020824 ldr x21,0x10005a970
+100020828 mov x0,x21
+10002082c mov w1,#0x0
+100020830 bl 0x10002eba0
+100020834 cbz w0,0x100020880
+100020838 mov x0,x20
+10002083c bl 0x10002ed20
+100020840 mov w8,#0x202
+100020844 movk w8,#0x822, LSL #16
+100020848 str w8,[sp, #0x20]
+10002084c stur x0,[sp, #0x24]
+100020850 mov w8,#0x842
+100020854 strh w8,[sp, #0x2c]
+100020858 stur x22,[sp, #0x2e]
+10002085c adr x0,0x100000000
+100020860 nop
+100020864 adr x3,0x10003c434
+100020868 nop
+10002086c add x4,sp,#0x20
+100020870 mov x1,x21
+100020874 mov w2,#0x0
+100020878 mov w5,#0x16
+10002087c bl 0x10002e6d0
+100020880 ldr x8,[sp, #0x38]
+100020884 nop
+100020888 ldr x9,0x100044518
+10002088c ldr x9,[x9]
+100020890 cmp x9,x8
+100020894 b.ne 0x1000208b8
+100020898 mov x0,x19
+10002089c ldp x29,x30,[sp, #0x80]
+1000208a0 ldp x20,x19,[sp, #0x70]
+1000208a4 ldp x22,x21,[sp, #0x60]
+1000208a8 ldp x24,x23,[sp, #0x50]
+1000208ac ldp x26,x25,[sp, #0x40]
+1000208b0 add sp,sp,#0x90
+1000208b4 retab
+1000208b8 bl 0x10002e690
+
+/* WARNING: Function: _objc_release_x19 replaced with injection: _objc_release_fixup */
+/* Function Stack Size: 0x24 bytes */
+
+ID PTPResponder::initWithName_path_andTransportType_
+             (ID param_1,SEL param_2,ID param_3,ID param_4,unsigned_short param_5)
+
+{
+  int iVar1;
+  ID IVar2;
+  undefined8 uVar3;
+  ID IVar4;
+  dispatch_queue_t pdVar5;
+  ID IVar6;
+  undefined8 in_x6;
+  undefined8 in_x7;
+  cfstringStruct *self;
+  undefined8 uVar7;
+  ID local_80;
+  undefined *puStack_78;
+  undefined4 local_70;
+  ID local_6c;
+  undefined2 local_64;
+  ID local_62;
+  long local_58;
+
+  local_58 = *(long *)PTR____stack_chk_guard_100044518;
+  puStack_78 = PTR_PTPResponder_100059908;
+  local_80 = param_1;
+  IVar2 = NSObject::init((ID)&local_80,PTR_s_init_100058750);
+  pdVar5 = (dispatch_queue_t)0x0;
+  if (IVar2 != 0) {
+    uVar7 = *(undefined8 *)PTR__kCFAllocatorDefault_100044548;
+    uVar3 = _CFUUIDCreate(uVar7);
+    uVar7 = _CFUUIDCreateString(uVar7,uVar3);
+    *(undefined8 *)(IVar2 + 0x48) = uVar7;
+    _CFRelease(uVar3);
+    IVar4 = _objc_alloc(PTR__OBJC_CLASS___NSMutableArray_100059738);
+    IVar4 = NSMutableArray::initWithCapacity_(IVar4,0);
+    *(ID *)(IVar2 + 0x30) = IVar4;
+    IVar4 = _objc_alloc(PTR__OBJC_CLASS___NSString_100059700);
+    IVar4 = NSString::initWithString_(IVar4,param_3);
+    *(ID *)(IVar2 + 0x50) = IVar4;
+    IVar4 = _objc_alloc(PTR__OBJC_CLASS___NSString_100059700);
+    IVar4 = NSString::initWithString_(IVar4,param_4);
+    *(ID *)(IVar2 + 0x58) = IVar4;
+    *(undefined1 *)(IVar2 + 0x78) = 0;
+    *(undefined8 *)(IVar2 + 0x80) = 0x4092c00000000000;
+    if (param_5 == 1) {
+      IVar4 = _objc_alloc(PTR_PTPDeviceUSBTransport_100059820);
+      IVar4 = PTPDeviceUSBTransport::initWithDelegate_(IVar4,IVar2);
+      *(ID *)(IVar2 + 8) = IVar4;
+    }
+    else {
+      IVar4 = *(ID *)(IVar2 + 8);
+    }
+    if (IVar4 == 0) {
+      pdVar5 = (dispatch_queue_t)0x0;
+      IVar2 = 0;
+    }
+    else {
+      pdVar5 = _dispatch_queue_create("APTP Operation Queue",(dispatch_queue_attr_t)0x0);
+      *(dispatch_queue_t *)(IVar2 + 0x90) = pdVar5;
+    }
+  }
+  ___ICOSLogCreate(pdVar5);
+  self = &cf___;
+  IVar4 = objc_stub::length(0x100044d58);
+  if (0x14 < IVar4) {
+    IVar4 = objc_stub::substringWithRange_(0x100044d58,0,0x12);
+    self = (cfstringStruct *)objc_stub::stringByAppendingString_(IVar4,&cf___);
+  }
+  IVar4 = IVar2;
+  IVar6 = NSString::stringWithFormat_((ID)PTR__OBJC_CLASS___NSString_100059700,&cf_USBTransport_p);
+  uVar3 = __gICOSLog;
+  iVar1 = _os_log_type_enabled(__gICOSLog,0);
+  if (iVar1 != 0) {
+    local_6c = objc_stub::UTF8String((ID)self);
+    local_70 = 0x8220202;
+    local_64 = 0x842;
+    local_62 = IVar6;
+    __os_log_impl(0x100000000,uVar3,0,"%{public}20s | %{public}@",&local_70,0x16,in_x6,in_x7,IVar4);
+  }
+  if (*(long *)PTR____stack_chk_guard_100044518 != local_58) {
+                    /* WARNING: Subroutine does not return */
+    ___stack_chk_fail();
+  }
+  return IVar2;
+}

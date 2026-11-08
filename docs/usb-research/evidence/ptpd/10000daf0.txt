@@ -1,0 +1,355 @@
+===== 10000daf0 PTPVirtualCamera::addStorage: =====
+XREF 10005d79c DATA null
+XREF 1000332f8 DATA null
+10000daf0 pacibsp
+10000daf4 sub sp,sp,#0x80
+10000daf8 stp x26,x25,[sp, #0x30]
+10000dafc stp x24,x23,[sp, #0x40]
+10000db00 stp x22,x21,[sp, #0x50]
+10000db04 stp x20,x19,[sp, #0x60]
+10000db08 stp x29,x30,[sp, #0x70]
+10000db0c add x29,sp,#0x70
+10000db10 mov x20,x2
+10000db14 mov x19,x0
+10000db18 nop
+10000db1c ldr x8,0x100044518
+10000db20 ldr x8,[x8]
+10000db24 str x8,[sp, #0x28]
+10000db28 ldr x0,[x0, #0x30]
+10000db2c bl 0x10002f620
+10000db30 adrp x25,0x100059000
+10000db34 adr x24,0x10005a970
+10000db38 nop
+10000db3c cmp x0,#0x1
+10000db40 b.ne 0x10000dcb4
+10000db44 bl 0x100028978
+10000db48 adr x21,0x100044d58
+10000db4c nop
+10000db50 mov x0,x21
+10000db54 bl 0x100030b20
+10000db58 cmp x0,#0x15
+10000db5c b.cc 0x10000db84
+10000db60 adr x0,0x100044d58
+10000db64 nop
+10000db68 mov x2,#0x0
+10000db6c mov w3,#0x12
+10000db70 bl 0x100032ac0
+10000db74 adr x2,0x100044d78
+10000db78 nop
+10000db7c bl 0x1000329e0
+10000db80 mov x21,x0
+10000db84 ldr x22,[x25, #0x700]
+10000db88 mov x0,x20
+10000db8c bl 0x100032940
+10000db90 str x0,[sp]
+10000db94 adr x2,0x1000461f8
+10000db98 nop
+10000db9c mov x0,x22
+10000dba0 bl 0x100032a40
+10000dba4 mov x23,x0
+10000dba8 ldr x22,[x24]
+10000dbac mov x0,x22
+10000dbb0 mov w1,#0x0
+10000dbb4 bl 0x10002eba0
+10000dbb8 cbz w0,0x10000dc04
+10000dbbc mov x0,x21
+10000dbc0 bl 0x10002ed20
+10000dbc4 mov w8,#0x202
+10000dbc8 movk w8,#0x822, LSL #16
+10000dbcc str w8,[sp, #0x10]
+10000dbd0 stur x0,[sp, #0x14]
+10000dbd4 mov w8,#0x842
+10000dbd8 strh w8,[sp, #0x1c]
+10000dbdc stur x23,[sp, #0x1e]
+10000dbe0 adr x0,0x100000000
+10000dbe4 nop
+10000dbe8 adr x3,0x10003c434
+10000dbec nop
+10000dbf0 add x4,sp,#0x10
+10000dbf4 mov x1,x22
+10000dbf8 mov w2,#0x0
+10000dbfc mov w5,#0x16
+10000dc00 bl 0x10002e6d0
+10000dc04 bl 0x100028978
+10000dc08 adr x21,0x100044d58
+10000dc0c nop
+10000dc10 mov x0,x21
+10000dc14 bl 0x100030b20
+10000dc18 cmp x0,#0x15
+10000dc1c b.cc 0x10000dc44
+10000dc20 adr x0,0x100044d58
+10000dc24 nop
+10000dc28 mov x2,#0x0
+10000dc2c mov w3,#0x12
+10000dc30 bl 0x100032ac0
+10000dc34 adr x2,0x100044d78
+10000dc38 nop
+10000dc3c bl 0x1000329e0
+10000dc40 mov x21,x0
+10000dc44 ldr x0,[x25, #0x700]
+10000dc48 adr x2,0x100046218
+10000dc4c nop
+10000dc50 bl 0x100032a40
+10000dc54 mov x23,x0
+10000dc58 ldr x22,[x24]
+10000dc5c mov x0,x22
+10000dc60 mov w1,#0x0
+10000dc64 bl 0x10002eba0
+10000dc68 cbz w0,0x10000dcb4
+10000dc6c mov x0,x21
+10000dc70 bl 0x10002ed20
+10000dc74 mov w8,#0x202
+10000dc78 movk w8,#0x822, LSL #16
+10000dc7c str w8,[sp, #0x10]
+10000dc80 stur x0,[sp, #0x14]
+10000dc84 mov w8,#0x842
+10000dc88 strh w8,[sp, #0x1c]
+10000dc8c stur x23,[sp, #0x1e]
+10000dc90 adr x0,0x100000000
+10000dc94 nop
+10000dc98 adr x3,0x10003c434
+10000dc9c nop
+10000dca0 add x4,sp,#0x10
+10000dca4 mov x1,x22
+10000dca8 mov w2,#0x0
+10000dcac mov w5,#0x16
+10000dcb0 bl 0x10002e6d0
+10000dcb4 cbz x20,0x10000de68
+10000dcb8 bl 0x100028978
+10000dcbc adr x21,0x100044d58
+10000dcc0 nop
+10000dcc4 mov x0,x21
+10000dcc8 bl 0x100030b20
+10000dccc cmp x0,#0x15
+10000dcd0 b.cc 0x10000dcf8
+10000dcd4 adr x0,0x100044d58
+10000dcd8 nop
+10000dcdc mov x2,#0x0
+10000dce0 mov w3,#0x12
+10000dce4 bl 0x100032ac0
+10000dce8 adr x2,0x100044d78
+10000dcec nop
+10000dcf0 bl 0x1000329e0
+10000dcf4 mov x21,x0
+10000dcf8 ldr x22,[x25, #0x700]
+10000dcfc mov x0,x20
+10000dd00 bl 0x100032940
+10000dd04 str x0,[sp]
+10000dd08 adr x2,0x100046238
+10000dd0c nop
+10000dd10 mov x0,x22
+10000dd14 bl 0x100032a40
+10000dd18 mov x23,x0
+10000dd1c ldr x22,[x24]
+10000dd20 mov x0,x22
+10000dd24 mov w1,#0x0
+10000dd28 bl 0x10002eba0
+10000dd2c cbz w0,0x10000dd78
+10000dd30 mov x0,x21
+10000dd34 bl 0x10002ed20
+10000dd38 mov w8,#0x202
+10000dd3c movk w8,#0x822, LSL #16
+10000dd40 str w8,[sp, #0x10]
+10000dd44 stur x0,[sp, #0x14]
+10000dd48 mov w8,#0x842
+10000dd4c strh w8,[sp, #0x1c]
+10000dd50 stur x23,[sp, #0x1e]
+10000dd54 adr x0,0x100000000
+10000dd58 nop
+10000dd5c adr x3,0x10003c434
+10000dd60 nop
+10000dd64 add x4,sp,#0x10
+10000dd68 mov x1,x22
+10000dd6c mov w2,#0x0
+10000dd70 mov w5,#0x16
+10000dd74 bl 0x10002e6d0
+10000dd78 ldr x21,[x19, #0x30]
+10000dd7c nop
+10000dd80 ldr x22,0x100059740
+10000dd84 mov x0,x20
+10000dd88 bl 0x100032940
+10000dd8c mov x2,x0
+10000dd90 mov x0,x22
+10000dd94 bl 0x100030dc0
+10000dd98 mov x3,x0
+10000dd9c mov x0,x21
+10000dda0 mov x2,x20
+10000dda4 bl 0x100032180
+10000dda8 bl 0x100028978
+10000ddac adr x20,0x100044d58
+10000ddb0 nop
+10000ddb4 mov x0,x20
+10000ddb8 bl 0x100030b20
+10000ddbc cmp x0,#0x15
+10000ddc0 b.cc 0x10000dde8
+10000ddc4 adr x0,0x100044d58
+10000ddc8 nop
+10000ddcc mov x2,#0x0
+10000ddd0 mov w3,#0x12
+10000ddd4 bl 0x100032ac0
+10000ddd8 adr x2,0x100044d78
+10000dddc nop
+10000dde0 bl 0x1000329e0
+10000dde4 mov x20,x0
+10000dde8 ldr x21,[x25, #0x700]
+10000ddec ldr x0,[x19, #0x30]
+10000ddf0 bl 0x10002f620
+10000ddf4 str x0,[sp]
+10000ddf8 adr x2,0x100046258
+10000ddfc nop
+10000de00 mov x0,x21
+10000de04 bl 0x100032a40
+10000de08 mov x21,x0
+10000de0c ldr x19,[x24]
+10000de10 mov x0,x19
+10000de14 mov w1,#0x0
+10000de18 bl 0x10002eba0
+10000de1c cbz w0,0x10000de68
+10000de20 mov x0,x20
+10000de24 bl 0x10002ed20
+10000de28 mov w8,#0x202
+10000de2c movk w8,#0x822, LSL #16
+10000de30 str w8,[sp, #0x10]
+10000de34 stur x0,[sp, #0x14]
+10000de38 mov w8,#0x842
+10000de3c strh w8,[sp, #0x1c]
+10000de40 stur x21,[sp, #0x1e]
+10000de44 adr x0,0x100000000
+10000de48 nop
+10000de4c adr x3,0x10003c434
+10000de50 nop
+10000de54 add x4,sp,#0x10
+10000de58 mov x1,x19
+10000de5c mov w2,#0x0
+10000de60 mov w5,#0x16
+10000de64 bl 0x10002e6d0
+10000de68 ldr x8,[sp, #0x28]
+10000de6c nop
+10000de70 ldr x9,0x100044518
+10000de74 ldr x9,[x9]
+10000de78 cmp x9,x8
+10000de7c b.ne 0x10000de9c
+10000de80 ldp x29,x30,[sp, #0x70]
+10000de84 ldp x20,x19,[sp, #0x60]
+10000de88 ldp x22,x21,[sp, #0x50]
+10000de8c ldp x24,x23,[sp, #0x40]
+10000de90 ldp x26,x25,[sp, #0x30]
+10000de94 add sp,sp,#0x80
+10000de98 retab
+10000de9c bl 0x10002e690
+
+/* Function Stack Size: 0x18 bytes */
+
+void PTPVirtualCamera::addStorage_(ID param_1,SEL param_2,ID param_3)
+
+{
+  undefined *puVar1;
+  undefined8 uVar2;
+  int iVar3;
+  ID IVar4;
+  ID IVar5;
+  undefined8 in_x6;
+  undefined8 in_x7;
+  cfstringStruct *pcVar6;
+  undefined4 local_70;
+  ID local_6c;
+  undefined2 local_64;
+  ID local_62;
+  long local_58;
+
+  local_58 = *(long *)PTR____stack_chk_guard_100044518;
+  IVar4 = objc_stub::count(*(ID *)(param_1 + 0x30));
+  if (IVar4 == 1) {
+    ___ICOSLogCreate();
+    pcVar6 = &cf___;
+    IVar4 = objc_stub::length(0x100044d58);
+    if (0x14 < IVar4) {
+      IVar4 = objc_stub::substringWithRange_(0x100044d58,0,0x12);
+      pcVar6 = (cfstringStruct *)objc_stub::stringByAppendingString_(IVar4,&cf___);
+    }
+    puVar1 = PTR__OBJC_CLASS___NSString_100059700;
+    IVar4 = objc_stub::storageID(param_3);
+    IVar5 = NSString::stringWithFormat_((ID)puVar1,&cf_Storage0x_xisbeingadded);
+    uVar2 = __gICOSLog;
+    iVar3 = _os_log_type_enabled(__gICOSLog,0);
+    if (iVar3 != 0) {
+      local_6c = objc_stub::UTF8String((ID)pcVar6);
+      local_70 = 0x8220202;
+      local_64 = 0x842;
+      local_62 = IVar5;
+      __os_log_impl(0x100000000,uVar2,0,"%{public}20s | %{public}@",&local_70,0x16,in_x6,in_x7,IVar4
+                   );
+    }
+    ___ICOSLogCreate();
+    pcVar6 = &cf___;
+    IVar4 = objc_stub::length(0x100044d58);
+    if (0x14 < IVar4) {
+      IVar4 = objc_stub::substringWithRange_(0x100044d58,0,0x12);
+      pcVar6 = (cfstringStruct *)objc_stub::stringByAppendingString_(IVar4,&cf___);
+    }
+    IVar4 = NSString::stringWithFormat_
+                      ((ID)PTR__OBJC_CLASS___NSString_100059700,
+                       &cf_Twostoragescannotco_exist_shouldquit);
+    uVar2 = __gICOSLog;
+    iVar3 = _os_log_type_enabled(__gICOSLog,0);
+    if (iVar3 != 0) {
+      local_6c = objc_stub::UTF8String((ID)pcVar6);
+      local_70 = 0x8220202;
+      local_64 = 0x842;
+      local_62 = IVar4;
+      __os_log_impl(0x100000000,uVar2,0,"%{public}20s | %{public}@",&local_70,0x16);
+    }
+  }
+  if (param_3 != 0) {
+    ___ICOSLogCreate();
+    pcVar6 = &cf___;
+    IVar4 = objc_stub::length(0x100044d58);
+    if (0x14 < IVar4) {
+      IVar4 = objc_stub::substringWithRange_(0x100044d58,0,0x12);
+      pcVar6 = (cfstringStruct *)objc_stub::stringByAppendingString_(IVar4,&cf___);
+    }
+    puVar1 = PTR__OBJC_CLASS___NSString_100059700;
+    IVar4 = objc_stub::storageID(param_3);
+    IVar5 = NSString::stringWithFormat_((ID)puVar1,&cf_Storage0x_xisbeingadded);
+    uVar2 = __gICOSLog;
+    iVar3 = _os_log_type_enabled(__gICOSLog,0);
+    if (iVar3 != 0) {
+      local_6c = objc_stub::UTF8String((ID)pcVar6);
+      local_70 = 0x8220202;
+      local_64 = 0x842;
+      local_62 = IVar5;
+      __os_log_impl(0x100000000,uVar2,0,"%{public}20s | %{public}@",&local_70,0x16,in_x6,in_x7,IVar4
+                   );
+    }
+    puVar1 = PTR__OBJC_CLASS___NSNumber_100059740;
+    IVar5 = *(ID *)(param_1 + 0x30);
+    IVar4 = objc_stub::storageID(param_3);
+    IVar4 = NSNumber::numberWithUnsignedInt_((ID)puVar1,IVar4);
+    objc_stub::setObject_forKey_(IVar5,param_3,IVar4);
+    ___ICOSLogCreate();
+    pcVar6 = &cf___;
+    IVar4 = objc_stub::length(0x100044d58);
+    if (0x14 < IVar4) {
+      IVar4 = objc_stub::substringWithRange_(0x100044d58,0,0x12);
+      pcVar6 = (cfstringStruct *)objc_stub::stringByAppendingString_(IVar4,&cf___);
+    }
+    puVar1 = PTR__OBJC_CLASS___NSString_100059700;
+    IVar4 = objc_stub::count(*(ID *)(param_1 + 0x30));
+    IVar5 = NSString::stringWithFormat_((ID)puVar1,&cf_Storagecountisnow__lu);
+    uVar2 = __gICOSLog;
+    iVar3 = _os_log_type_enabled(__gICOSLog,0);
+    if (iVar3 != 0) {
+      local_6c = objc_stub::UTF8String((ID)pcVar6);
+      local_70 = 0x8220202;
+      local_64 = 0x842;
+      local_62 = IVar5;
+      __os_log_impl(0x100000000,uVar2,0,"%{public}20s | %{public}@",&local_70,0x16,in_x6,in_x7,IVar4
+                   );
+    }
+  }
+  if (*(long *)PTR____stack_chk_guard_100044518 == local_58) {
+    return;
+  }
+                    /* WARNING: Subroutine does not return */
+  ___stack_chk_fail();
+}

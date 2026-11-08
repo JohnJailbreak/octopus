@@ -1,0 +1,5 @@
+work/reference/USBDeviceConfiguration DFA3C76A-08EE-3D68-9D96-BD56F908A6FA cpu=0100000c subtype=80000002 platform=2 minimum=00110000
+work/reference/afcd E91A0D5B-F781-38E1-A464-720E3348B7E3 cpu=0100000c subtype=80000002 platform=2 minimum=00110000
+work/reference/lockdownd 87AE1730-F0C0-39FC-84CD-24ED0EB4E48A cpu=0100000c subtype=80000002 platform=2 minimum=00110000
+work/reference/ptpcamerad 245801E3-FF45-3942-8DBF-AA9F80BD4ADC cpu=0100000c subtype=80000002 platform=2 minimum=00110000
+work/reference/ptpd FFD54FC7-0508-3AB8-8D17-2F698B611E10 cpu=0100000c subtype=80000002 platform=2 minimum=00110000

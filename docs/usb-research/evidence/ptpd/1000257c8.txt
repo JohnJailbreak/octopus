@@ -1,0 +1,534 @@
+===== 1000257c8 PTPFile::initWithPLPTPAsset:supportedFormats:andParent: =====
+XREF 10005dae7 DATA null
+XREF 100034cb0 DATA null
+XREF 100017714 CALL_OVERRIDE_UNCONDITIONAL FUN_1000173e4
+1000257c8 pacibsp
+1000257cc sub sp,sp,#0x70
+1000257d0 stp d9,d8,[sp, #0x20]
+1000257d4 stp x24,x23,[sp, #0x30]
+1000257d8 stp x22,x21,[sp, #0x40]
+1000257dc stp x20,x19,[sp, #0x50]
+1000257e0 stp x29,x30,[sp, #0x60]
+1000257e4 add x29,sp,#0x60
+1000257e8 mov x21,x4
+1000257ec mov x23,x3
+1000257f0 mov x19,x2
+1000257f4 nop
+1000257f8 ldr x8,0x100059910
+1000257fc stp x0,x8,[sp, #0x10]
+100025800 nop
+100025804 ldr x1,0x100058750
+100025808 add x0,sp,#0x10
+10002580c bl 0x10002e9d0
+100025810 mov x20,x0
+100025814 cbz x0,0x100025d1c
+100025818 mov x0,x19
+10002581c bl 0x10002fc40
+100025820 mov x22,x0
+100025824 bl 0x100032a00
+100025828 bl 0x10002f580
+10002582c str x0,[x20, #0x50]
+100025830 mov x0,x19
+100025834 bl 0x100030e60
+100025838 bl 0x100032ce0
+10002583c str x0,[x20, #0x40]
+100025840 mov x0,x21
+100025844 bl 0x100032920
+100025848 bl 0x100032940
+10002584c str w0,[x20, #0x8]
+100025850 str x21,[x20, #0x48]
+100025854 bl 0x100004224
+100025858 str w0,[x20, #0xc]
+10002585c nop
+100025860 ldr x0,0x100059838
+100025864 bl 0x10002e930
+100025868 mov x24,x20
+10002586c str x0,[x24, #0x20]!
+100025870 mov x0,x19
+100025874 bl 0x10002f9c0
+100025878 str w0,[x20, #0x58]
+10002587c mov x0,x20
+100025880 mov x2,x19
+100025884 mov x3,x23
+100025888 bl 0x10002f160
+10002588c ldr x0,[x24]
+100025890 ldr w2,[x20, #0x8]
+100025894 bl 0x100032500
+100025898 ldr x0,[x24]
+10002589c ldr x2,[x20, #0x40]
+1000258a0 bl 0x1000321c0
+1000258a4 ldr x0,[x24]
+1000258a8 mov w2,#0x0
+1000258ac bl 0x100032380
+1000258b0 ldr x23,[x24]
+1000258b4 mov x0,x21
+1000258b8 bl 0x100030f40
+1000258bc mov x2,x0
+1000258c0 mov x0,x23
+1000258c4 bl 0x100032280
+1000258c8 ldr x21,[x24]
+1000258cc mov x0,x19
+1000258d0 bl 0x10002f560
+1000258d4 mov x2,x0
+1000258d8 mov x0,x21
+1000258dc bl 0x100032420
+1000258e0 ldr x0,[x24]
+1000258e4 mov x2,x22
+1000258e8 bl 0x100031ea0
+1000258ec ldr x0,[x24]
+1000258f0 ldr w2,[x20, #0xc]
+1000258f4 bl 0x100032200
+1000258f8 ldr x21,[x24]
+1000258fc mov x0,x19
+100025900 bl 0x1000302c0
+100025904 fcvtzu w2,d0
+100025908 mov x0,x21
+10002590c bl 0x100032020
+100025910 ldr x21,[x24]
+100025914 mov x0,x19
+100025918 bl 0x1000302c0
+10002591c fcvtzu w2,d1
+100025920 mov x0,x21
+100025924 bl 0x100032000
+100025928 ldr x21,[x24]
+10002592c mov x0,x19
+100025930 bl 0x100032b40
+100025934 bl 0x100032ca0
+100025938 mov x2,x0
+10002593c mov x0,x21
+100025940 bl 0x1000325a0
+100025944 mov x0,x19
+100025948 bl 0x100032b00
+10002594c bl 0x100032ca0
+100025950 cbz w0,0x1000259e4
+100025954 mov x21,x0
+100025958 mov x0,x19
+10002595c bl 0x100032b40
+100025960 bl 0x100032ca0
+100025964 mov x2,x0
+100025968 ldr x0,[x24]
+10002596c cbz w2,0x100025980
+100025970 bl 0x1000325a0
+100025974 ldr x0,[x24]
+100025978 mov x2,x21
+10002597c b 0x100025990
+100025980 ldr w8,[x20, #0x40]
+100025984 cmp w8,#0x4, LSL #12
+100025988 mov w9,#0x4000
+10002598c csel w2,w8,w9,cc
+100025990 bl 0x100032560
+100025994 ldr x0,[x24]
+100025998 mov w2,#0x3808
+10002599c bl 0x100032580
+1000259a0 mov x0,x19
+1000259a4 bl 0x100032b60
+1000259a8 fmov d8,d1
+1000259ac nop
+1000259b0 ldr x8,0x1000444a0
+1000259b4 ldr d1,[x8]
+1000259b8 fcmp d0,d1
+1000259bc b.ne 0x1000259cc
+1000259c0 ldr d1,[x8, #0x8]
+1000259c4 fcmp d8,d1
+1000259c8 b.eq 0x1000259e4
+1000259cc ldr x0,[x24]
+1000259d0 fcvtzu w2,d0
+1000259d4 bl 0x1000325e0
+1000259d8 ldr x0,[x24]
+1000259dc fcvtzu w2,d8
+1000259e0 bl 0x1000325c0
+1000259e4 mov x0,x19
+1000259e8 bl 0x10002f360
+1000259ec cbz x0,0x1000259fc
+1000259f0 mov x2,x0
+1000259f4 ldr x0,[x24]
+1000259f8 bl 0x100031c60
+1000259fc mov x0,x19
+100025a00 bl 0x100030c40
+100025a04 cbz x0,0x100025a14
+100025a08 mov x2,x0
+100025a0c ldr x0,[x24]
+100025a10 bl 0x100032120
+100025a14 mov x0,x19
+100025a18 bl 0x10002f100
+100025a1c bl 0x10002eac0
+100025a20 str x0,[x20, #0x10]
+100025a24 adr x8,0x10005a94c
+100025a28 nop
+100025a2c ldr w9,[x8]
+100025a30 add w9,w9,#0x1
+100025a34 str w9,[x8]
+100025a38 ldr x8,[x20, #0x40]
+100025a3c mov x9,#0x100000000
+100025a40 cmp x8,x9
+100025a44 b.lt 0x100025a5c
+100025a48 adr x8,0x10005a950
+100025a4c nop
+100025a50 ldr w9,[x8]
+100025a54 add w9,w9,#0x1
+100025a58 str w9,[x8]
+100025a5c mov x0,x19
+100025a60 bl 0x100030040
+100025a64 cmp x0,#0x0
+100025a68 cset w8,ne
+100025a6c strb w8,[x20, #0x5c]
+100025a70 ldr x21,[x20, #0x20]
+100025a74 mov x0,x19
+100025a78 bl 0x10002f680
+100025a7c mov x2,x0
+100025a80 adr x3,0x10004aa98
+100025a84 nop
+100025a88 mov x0,x21
+100025a8c bl 0x10002ee20
+100025a90 ldr x21,[x20, #0x20]
+100025a94 mov x0,x19
+100025a98 bl 0x10002fc60
+100025a9c mov x2,x0
+100025aa0 adr x3,0x10004aab8
+100025aa4 nop
+100025aa8 mov x0,x21
+100025aac bl 0x10002ee20
+100025ab0 ldr x21,[x20, #0x20]
+100025ab4 mov x0,x19
+100025ab8 bl 0x10002fb00
+100025abc mov x2,x0
+100025ac0 adr x3,0x10004aad8
+100025ac4 nop
+100025ac8 mov x0,x21
+100025acc bl 0x10002ee20
+100025ad0 ldr x21,[x20, #0x20]
+100025ad4 mov x0,x19
+100025ad8 bl 0x100030040
+100025adc mov x2,x0
+100025ae0 adr x3,0x10004aaf8
+100025ae4 nop
+100025ae8 mov x0,x21
+100025aec bl 0x10002ee20
+100025af0 ldr x21,[x20, #0x20]
+100025af4 mov x0,x19
+100025af8 bl 0x100031780
+100025afc mov x2,x0
+100025b00 adr x3,0x10004ab18
+100025b04 nop
+100025b08 mov x0,x21
+100025b0c bl 0x10002ee20
+100025b10 ldr x21,[x20, #0x20]
+100025b14 mov x0,x19
+100025b18 bl 0x1000311e0
+100025b1c mov x2,x0
+100025b20 adr x3,0x10004ab38
+100025b24 nop
+100025b28 mov x0,x21
+100025b2c bl 0x10002ee20
+100025b30 ldr x21,[x20, #0x20]
+100025b34 mov x0,x19
+100025b38 bl 0x100032840
+100025b3c mov x2,x0
+100025b40 adr x3,0x10004ab58
+100025b44 nop
+100025b48 mov x0,x21
+100025b4c bl 0x10002ee20
+100025b50 ldr x21,[x20, #0x20]
+100025b54 mov x0,x19
+100025b58 bl 0x100030b60
+100025b5c mov x2,x0
+100025b60 adr x3,0x10004ab78
+100025b64 nop
+100025b68 mov x0,x21
+100025b6c bl 0x10002ee20
+100025b70 mov x0,x19
+100025b74 bl 0x1000309c0
+100025b78 adrp x23,0x100059000
+100025b7c cbz w0,0x100025bbc
+100025b80 ldr x21,[x24]
+100025b84 ldr x22,[x23, #0x700]
+100025b88 mov x0,x19
+100025b8c bl 0x1000309c0
+100025b90 mov w8,w0
+100025b94 str x8,[sp]
+100025b98 adr x2,0x10004ab98
+100025b9c nop
+100025ba0 mov x0,x22
+100025ba4 bl 0x100032a40
+100025ba8 mov x2,x0
+100025bac adr x3,0x10004abb8
+100025bb0 nop
+100025bb4 mov x0,x21
+100025bb8 bl 0x10002ee20
+100025bbc mov x0,x19
+100025bc0 bl 0x100030a00
+100025bc4 cbz w0,0x100025c04
+100025bc8 ldr x21,[x24]
+100025bcc ldr x22,[x23, #0x700]
+100025bd0 mov x0,x19
+100025bd4 bl 0x100030a00
+100025bd8 mov w8,w0
+100025bdc str x8,[sp]
+100025be0 adr x2,0x10004ab98
+100025be4 nop
+100025be8 mov x0,x22
+100025bec bl 0x100032a40
+100025bf0 mov x2,x0
+100025bf4 adr x3,0x10004abd8
+100025bf8 nop
+100025bfc mov x0,x21
+100025c00 bl 0x10002ee20
+100025c04 mov x0,x19
+100025c08 bl 0x1000309e0
+100025c0c cbz w0,0x100025c4c
+100025c10 ldr x21,[x24]
+100025c14 ldr x22,[x23, #0x700]
+100025c18 mov x0,x19
+100025c1c bl 0x1000309e0
+100025c20 mov w8,w0
+100025c24 str x8,[sp]
+100025c28 adr x2,0x10004ab98
+100025c2c nop
+100025c30 mov x0,x22
+100025c34 bl 0x100032a40
+100025c38 mov x2,x0
+100025c3c adr x3,0x10004abf8
+100025c40 nop
+100025c44 mov x0,x21
+100025c48 bl 0x10002ee20
+100025c4c mov x0,x19
+100025c50 bl 0x100030a60
+100025c54 cbz w0,0x100025c94
+100025c58 ldr x21,[x24]
+100025c5c ldr x22,[x23, #0x700]
+100025c60 mov x0,x19
+100025c64 bl 0x100030a60
+100025c68 mov w8,w0
+100025c6c str x8,[sp]
+100025c70 adr x2,0x10004ab98
+100025c74 nop
+100025c78 mov x0,x22
+100025c7c bl 0x100032a40
+100025c80 mov x2,x0
+100025c84 adr x3,0x10004ac18
+100025c88 nop
+100025c8c mov x0,x21
+100025c90 bl 0x10002ee20
+100025c94 mov x0,x19
+100025c98 bl 0x100030ae0
+100025c9c cbz w0,0x100025cdc
+100025ca0 ldr x21,[x24]
+100025ca4 ldr x22,[x23, #0x700]
+100025ca8 mov x0,x19
+100025cac bl 0x100030ae0
+100025cb0 mov w8,w0
+100025cb4 str x8,[sp]
+100025cb8 adr x2,0x10004ab98
+100025cbc nop
+100025cc0 mov x0,x22
+100025cc4 bl 0x100032a40
+100025cc8 mov x2,x0
+100025ccc adr x3,0x10004ac38
+100025cd0 nop
+100025cd4 mov x0,x21
+100025cd8 bl 0x10002ee20
+100025cdc ldr x21,[x24]
+100025ce0 mov x0,x19
+100025ce4 bl 0x10002f200
+100025ce8 mov x2,x0
+100025cec adr x3,0x10004ac58
+100025cf0 nop
+100025cf4 mov x0,x21
+100025cf8 bl 0x10002ee20
+100025cfc ldr x21,[x24]
+100025d00 mov x0,x19
+100025d04 bl 0x1000311c0
+100025d08 mov x2,x0
+100025d0c adr x3,0x10004ac78
+100025d10 nop
+100025d14 mov x0,x21
+100025d18 bl 0x10002ee20
+100025d1c mov x0,x20
+100025d20 ldp x29,x30,[sp, #0x60]
+100025d24 ldp x20,x19,[sp, #0x50]
+100025d28 ldp x22,x21,[sp, #0x40]
+100025d2c ldp x24,x23,[sp, #0x30]
+100025d30 ldp d9,d8,[sp, #0x20]
+100025d34 add sp,sp,#0x70
+100025d38 retab
+
+/* WARNING: Function: _objc_retain replaced with injection: _objc_retain_fixup */
+/* Function Stack Size: 0x28 bytes */
+
+ID PTPFile::initWithPLPTPAsset_supportedFormats_andParent_
+             (ID param_1,SEL param_2,ID param_3,ID param_4,ID param_5)
+
+{
+  undefined *puVar1;
+  undefined4 uVar2;
+  ID self;
+  ID IVar3;
+  ID IVar4;
+  uint uVar5;
+  ID IVar6;
+  ID *pIVar7;
+  double extraout_d0;
+  double extraout_d0_00;
+  double in_d1;
+  ID local_60;
+  undefined *puStack_58;
+
+  puStack_58 = PTR_PTPFile_100059910;
+  local_60 = param_1;
+  self = NSObject::init((ID)&local_60,PTR_s_init_100058750);
+  if (self != 0) {
+    IVar3 = objc_stub::filename(param_3);
+    IVar4 = objc_stub::stringByDeletingPathExtension(IVar3);
+    IVar4 = objc_stub::copy(IVar4);
+    *(ID *)(self + 0x50) = IVar4;
+    IVar4 = objc_stub::objectCompressedSize(param_3);
+    IVar4 = objc_stub::unsignedLongLongValue(IVar4);
+    *(ID *)(self + 0x40) = IVar4;
+    IVar4 = objc_stub::storage(param_5);
+    IVar4 = objc_stub::storageID(IVar4);
+    *(int *)(self + 8) = (int)IVar4;
+    *(ID *)(self + 0x48) = param_5;
+    uVar2 = FUN_100004224();
+    *(undefined4 *)(self + 0xc) = uVar2;
+    IVar4 = _objc_alloc_init(PTR_PTPObjectInfoDataset_100059838);
+    pIVar7 = (ID *)(self + 0x20);
+    *pIVar7 = IVar4;
+    IVar4 = objc_stub::desiredOrientation(param_3);
+    *(int *)(self + 0x58) = (int)IVar4;
+    NSObject::assignPTPObjectFormatCode_supportedFormats_(self,param_3,param_4);
+    objc_stub::setStorageID_(*pIVar7,(ulong)*(uint *)(self + 8));
+    objc_stub::setObjectCompressedSize_(*pIVar7,*(undefined8 *)(self + 0x40));
+    objc_stub::setProtectionStatus_(*pIVar7,0);
+    IVar6 = *pIVar7;
+    IVar4 = objc_stub::objectHandle(param_5);
+    objc_stub::setParentObject_(IVar6,IVar4);
+    IVar6 = *pIVar7;
+    IVar4 = objc_stub::conversionGroup(param_3);
+    objc_stub::setSequenceNumber_(IVar6,IVar4);
+    objc_stub::setFilename_(*pIVar7,IVar3);
+    objc_stub::setObjectHandle_(*pIVar7,(ulong)*(uint *)(self + 0xc));
+    IVar3 = *pIVar7;
+    objc_stub::imagePixSize(param_3);
+    objc_stub::setImagePixWidth_(IVar3,(ulong)(uint)(int)extraout_d0);
+    IVar3 = *pIVar7;
+    objc_stub::imagePixSize(param_3);
+    objc_stub::setImagePixHeight_(IVar3,(ulong)(uint)(int)in_d1);
+    IVar4 = *pIVar7;
+    IVar3 = objc_stub::thumbOffset(param_3);
+    IVar3 = objc_stub::unsignedIntValue(IVar3);
+    objc_stub::setThumbOffset_(IVar4,IVar3);
+    IVar3 = objc_stub::thumbCompressedSize(param_3);
+    IVar3 = objc_stub::unsignedIntValue(IVar3);
+    if ((int)IVar3 != 0) {
+      IVar4 = objc_stub::thumbOffset(param_3);
+      IVar4 = objc_stub::unsignedIntValue(IVar4);
+      IVar6 = *pIVar7;
+      if ((int)IVar4 == 0) {
+        uVar5 = *(uint *)(self + 0x40);
+        if (0x3fff < uVar5) {
+          uVar5 = 0x4000;
+        }
+        IVar3 = (ID)uVar5;
+      }
+      else {
+        objc_stub::setThumbOffset_(IVar6);
+        IVar6 = *pIVar7;
+      }
+      objc_stub::setThumbCompressedSize_(IVar6,IVar3);
+      objc_stub::setThumbFormat_(*pIVar7,0x3808);
+      objc_stub::thumbPixSize(param_3);
+      if ((extraout_d0_00 != *(double *)PTR__CGSizeZero_1000444a0) ||
+         (in_d1 != *(double *)(PTR__CGSizeZero_1000444a0 + 8))) {
+        objc_stub::setThumbPixWidth_(*pIVar7,(ulong)(uint)(int)extraout_d0_00);
+        objc_stub::setThumbPixHeight_(*pIVar7,(ulong)(uint)(int)in_d1);
+      }
+    }
+    IVar3 = objc_stub::captureDateString(param_3);
+    if (IVar3 != 0) {
+      objc_stub::setCaptureDate_(*pIVar7,IVar3);
+    }
+    IVar3 = objc_stub::modificationDateString(param_3);
+    if (IVar3 != 0) {
+      objc_stub::setModificationDate_(*pIVar7,IVar3);
+    }
+    IVar3 = objc_stub::assetHandle(param_3);
+    *(ID *)(self + 0x10) = IVar3;
+    DAT_10005a94c = DAT_10005a94c + 1;
+    if (0xffffffff < *(long *)(self + 0x40)) {
+      DAT_10005a950 = DAT_10005a950 + 1;
+    }
+    IVar3 = objc_stub::groupUUID(param_3);
+    *(bool *)(self + 0x5c) = IVar3 != 0;
+    IVar4 = *(ID *)(self + 0x20);
+    IVar3 = objc_stub::createdFilename(param_3);
+    objc_stub::addCustomKeyword_withIdentifier_(IVar4,IVar3,&cf_CFN);
+    IVar4 = *(ID *)(self + 0x20);
+    IVar3 = objc_stub::fingerprint(param_3);
+    objc_stub::addCustomKeyword_withIdentifier_(IVar4,IVar3,&cf_FPRINT);
+    IVar4 = *(ID *)(self + 0x20);
+    IVar3 = objc_stub::durationString(param_3);
+    objc_stub::addCustomKeyword_withIdentifier_(IVar4,IVar3,&cf_D);
+    IVar4 = *(ID *)(self + 0x20);
+    IVar3 = objc_stub::groupUUID(param_3);
+    objc_stub::addCustomKeyword_withIdentifier_(IVar4,IVar3,&cf_GUUID);
+    IVar4 = *(ID *)(self + 0x20);
+    IVar3 = objc_stub::relatedUUID(param_3);
+    objc_stub::addCustomKeyword_withIdentifier_(IVar4,IVar3,&cf_RUUID);
+    IVar4 = *(ID *)(self + 0x20);
+    IVar3 = objc_stub::originatingAssetID(param_3);
+    objc_stub::addCustomKeyword_withIdentifier_(IVar4,IVar3,&cf_OAID);
+    IVar4 = *(ID *)(self + 0x20);
+    IVar3 = objc_stub::spatialOverCaptureGroupIdentifier(param_3);
+    objc_stub::addCustomKeyword_withIdentifier_(IVar4,IVar3,&cf_SOCGID);
+    IVar4 = *(ID *)(self + 0x20);
+    IVar3 = objc_stub::locationString(param_3);
+    objc_stub::addCustomKeyword_withIdentifier_(IVar4,IVar3,&cf_G);
+    IVar3 = objc_stub::isBurstFavorite(param_3);
+    puVar1 = PTR__OBJC_CLASS___NSString_100059700;
+    if ((int)IVar3 != 0) {
+      IVar4 = *pIVar7;
+      objc_stub::isBurstFavorite(param_3);
+      IVar3 = NSString::stringWithFormat_((ID)puVar1,&cf__d);
+      objc_stub::addCustomKeyword_withIdentifier_(IVar4,IVar3,&cf_BFAV);
+    }
+    IVar3 = objc_stub::isBurstPicked(param_3);
+    puVar1 = PTR__OBJC_CLASS___NSString_100059700;
+    if ((int)IVar3 != 0) {
+      IVar4 = *pIVar7;
+      objc_stub::isBurstPicked(param_3);
+      IVar3 = NSString::stringWithFormat_((ID)puVar1,&cf__d);
+      objc_stub::addCustomKeyword_withIdentifier_(IVar4,IVar3,&cf_BPIK);
+    }
+    IVar3 = objc_stub::isBurstFirstPicked(param_3);
+    puVar1 = PTR__OBJC_CLASS___NSString_100059700;
+    if ((int)IVar3 != 0) {
+      IVar4 = *pIVar7;
+      objc_stub::isBurstFirstPicked(param_3);
+      IVar3 = NSString::stringWithFormat_((ID)puVar1,&cf__d);
+      objc_stub::addCustomKeyword_withIdentifier_(IVar4,IVar3,&cf_FPIK);
+    }
+    IVar3 = objc_stub::isHighFrameRateVideo(param_3);
+    puVar1 = PTR__OBJC_CLASS___NSString_100059700;
+    if ((int)IVar3 != 0) {
+      IVar4 = *pIVar7;
+      objc_stub::isHighFrameRateVideo(param_3);
+      IVar3 = NSString::stringWithFormat_((ID)puVar1,&cf__d);
+      objc_stub::addCustomKeyword_withIdentifier_(IVar4,IVar3,&cf_HFRV);
+    }
+    IVar3 = objc_stub::isTimeLapseVideo(param_3);
+    puVar1 = PTR__OBJC_CLASS___NSString_100059700;
+    if ((int)IVar3 != 0) {
+      IVar4 = *pIVar7;
+      objc_stub::isTimeLapseVideo(param_3);
+      IVar3 = NSString::stringWithFormat_((ID)puVar1,&cf__d);
+      objc_stub::addCustomKeyword_withIdentifier_(IVar4,IVar3,&cf_TLV);
+    }
+    IVar4 = *pIVar7;
+    IVar3 = objc_stub::burstUUID(param_3);
+    objc_stub::addCustomKeyword_withIdentifier_(IVar4,IVar3,&cf_BUUID);
+    IVar4 = *pIVar7;
+    IVar3 = objc_stub::originalFilename(param_3);
+    objc_stub::addCustomKeyword_withIdentifier_(IVar4,IVar3,&cf_ON);
+  }
+  return self;
+}

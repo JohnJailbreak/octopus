@@ -7,6 +7,14 @@ the app's changelog.
 
 ## v0.4
 
+### Unreleased USB engineering
+
+- Validate complete USB control requests and PTP endpoint descriptors before forwarding to the transport adapter; add simulated diagnostic coverage.
+- Collect read-only PTP registry discovery and ptpd binary identity through existing diagnostics; export observations and timeline.
+- Correct connection claims based only on process state or generic transaction counts.
+- Preserve the current app, updater and IPA/TIPA packaging; native USB ownership and Explorer storage remain blocked.
+- Record implementation-level analysis of five supplied Apple binaries under docs/usb-research.
+
 One button runs every safe check and makes one archive to send; the adapter learns the rest of the USB class's rules.
 
 - **Run Full Diagnostics**, in Settings > Diagnostics: 29 checks in one run, each PASS, FAIL, SKIPPED or BLOCKED with

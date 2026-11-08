@@ -1,0 +1,35 @@
+===== 100003158 FUN_100003158 =====
+XREF 10000c98a DATA null
+XREF 100002fe0 DATA FUN_100002c34
+100003158 pacibsp
+10000315c stp x20,x19,[sp, #-0x20]!
+100003160 stp x29,x30,[sp, #0x10]
+100003164 add x29,sp,#0x10
+100003168 mov x19,x0
+10000316c adr x1,0x100003c52
+100003170 nop
+100003174 mov w0,#0x5
+100003178 bl 0x100003248
+10000317c ldrb w8,[x19, #0x20]
+100003180 cbz w8,0x100003190
+100003184 ldp x29,x30,[sp, #0x10]
+100003188 ldp x20,x19,[sp], #0x20
+10000318c retab
+100003190 adr x1,0x100003c6e
+100003194 nop
+100003198 mov w0,#0x4
+10000319c bl 0x100003248
+1000031a0 mov w0,#0x0
+1000031a4 bl 0x100003448
+
+void FUN_100003158(long param_1)
+
+{
+  _AFCLog(5,"Dispatch group is now idle.");
+  if (*(char *)(param_1 + 0x20) != '\0') {
+    return;
+  }
+  _AFCLog(4,"Exiting because server thread is done and we are not lingering.");
+                    /* WARNING: Subroutine does not return */
+  _exit(0);
+}

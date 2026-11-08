@@ -1,0 +1,125 @@
+===== 1000027c0 PTPHostUSBTransport::initWithLocationID:delegate: =====
+XREF 100059bc2 DATA null
+XREF 10002e578 DATA null
+XREF 1000099a0 CALL_OVERRIDE_UNCONDITIONAL PTPInitiator::initWithHostLocationID:
+1000027c0 pacibsp
+1000027c4 sub sp,sp,#0x40
+1000027c8 stp x22,x21,[sp, #0x10]
+1000027cc stp x20,x19,[sp, #0x20]
+1000027d0 stp x29,x30,[sp, #0x30]
+1000027d4 add x29,sp,#0x30
+1000027d8 mov x21,x3
+1000027dc mov x20,x2
+1000027e0 nop
+1000027e4 ldr x8,0x1000565f0
+1000027e8 stp x0,x8,[sp]
+1000027ec nop
+1000027f0 ldr x1,0x1000551d8
+1000027f4 mov x0,sp
+1000027f8 bl 0x100029f40
+1000027fc mov x19,x0
+100002800 cbz x0,0x1000028e8
+100002804 mov x0,#0x0
+100002808 bl 0x100029d20
+10000280c nop
+100002810 ldrsw x8,0x10005672c
+100002814 str x0,[x19, x8#0x0]
+100002818 nop
+10000281c nop
+100002820 ldrsw x8,0x100056850
+100002824 mov w9,#0x2
+100002828 strh w9,[x19, x8#0x0]
+10000282c nop
+100002830 nop
+100002834 ldrsw x8,0x10005685c
+100002838 str x21,[x19, x8#0x0]
+10000283c nop
+100002840 ldrsw x8,0x100056730
+100002844 str w20,[x19, x8#0x0]
+100002848 nop
+10000284c ldr x0,0x100056408
+100002850 bl 0x100029e70
+100002854 mov x2,#0x0
+100002858 bl 0x10002b980
+10000285c nop
+100002860 ldrsw x8,0x100056734
+100002864 str x0,[x19, x8#0x0]
+100002868 nop
+10000286c nop
+100002870 ldr w8,0x10003ed30
+100002874 nop
+100002878 ldrsw x9,0x100056738
+10000287c str w8,[x19, x9#0x0]
+100002880 nop
+100002884 nop
+100002888 ldr w8,0x10003ed38
+10000288c nop
+100002890 ldrsw x20,0x10005673c
+100002894 str w8,[x19, x20#0x0]
+100002898 ldr w0,[x19, x9#0x0]
+10000289c mov w1,#0xc7fa
+1000028a0 movk w1,#0x9cb8, LSL #16
+1000028a4 bl 0x100029e20
+1000028a8 nop
+1000028ac ldrsw x8,0x100056740
+1000028b0 str x0,[x19, x8#0x0]
+1000028b4 ldr w0,[x19, x20#0x0]
+1000028b8 mov w1,#0x6cbf
+1000028bc movk w1,#0x7c48, LSL #16
+1000028c0 bl 0x100029e20
+1000028c4 nop
+1000028c8 ldrsw x8,0x100056744
+1000028cc str x0,[x19, x8#0x0]
+1000028d0 nop
+1000028d4 ldr x0,0x100056418
+1000028d8 bl 0x100029e80
+1000028dc nop
+1000028e0 ldrsw x8,0x100056748
+1000028e4 str x0,[x19, x8#0x0]
+1000028e8 mov x0,x19
+1000028ec ldp x29,x30,[sp, #0x30]
+1000028f0 ldp x20,x19,[sp, #0x20]
+1000028f4 ldp x22,x21,[sp, #0x10]
+1000028f8 add sp,sp,#0x40
+1000028fc retab
+
+/* Function Stack Size: 0x1c bytes */
+
+ID PTPHostUSBTransport::initWithLocationID_delegate_
+             (ID param_1,SEL param_2,unsigned_int param_3,ID param_4)
+
+{
+  ID IVar1;
+  dispatch_semaphore_t pdVar2;
+  ID IVar3;
+  undefined8 uVar4;
+  long lVar5;
+  long lVar6;
+  ID local_40;
+  undefined *puStack_38;
+
+  puStack_38 = PTR_PTPHostUSBTransport_1000565f0;
+  local_40 = param_1;
+  IVar1 = PTPTransport::init((ID)&local_40,PTR_s_init_1000551d8);
+  if (IVar1 != 0) {
+    pdVar2 = _dispatch_semaphore_create(0);
+    *(dispatch_semaphore_t *)(IVar1 + (long)_machRecvSemaphore) = pdVar2;
+    *(undefined2 *)(IVar1 + (long)PTPTransport::_type) = 2;
+    *(ID *)(IVar1 + (long)PTPTransport::_delegate) = param_4;
+    *(unsigned_int *)(IVar1 + (long)_locationID) = param_3;
+    IVar3 = _objc_alloc(PTR__OBJC_CLASS___NSMutableData_100056408);
+    IVar3 = NSMutableData::initWithCapacity_(IVar3,0);
+    *(ID *)(IVar1 + (long)_eventData) = IVar3;
+    lVar5 = (long)_writeBufferSize;
+    *(undefined4 *)(IVar1 + lVar5) = DAT_10003ed30;
+    lVar6 = (long)_eventDataBufferSize;
+    *(undefined4 *)(IVar1 + lVar6) = DAT_10003ed38;
+    uVar4 = _malloc_type_malloc(*(undefined4 *)(IVar1 + lVar5),0x9cb8c7fa);
+    *(undefined8 *)(IVar1 + (long)_writeBuffer) = uVar4;
+    uVar4 = _malloc_type_malloc(*(undefined4 *)(IVar1 + lVar6),0x7c486cbf);
+    *(undefined8 *)(IVar1 + (long)_eventDataBuffer) = uVar4;
+    uVar4 = _objc_alloc_init(PTR__OBJC_CLASS___NSMutableDictionary_100056418);
+    *(undefined8 *)(IVar1 + (long)_transactions) = uVar4;
+  }
+  return IVar1;
+}

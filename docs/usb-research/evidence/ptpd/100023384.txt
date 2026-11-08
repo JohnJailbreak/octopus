@@ -1,0 +1,576 @@
+===== 100023384 PTPResponder::handleRequest: =====
+XREF 10005da9d DATA null
+XREF 100034a98 DATA null
+100023384 pacibsp
+100023388 sub sp,sp,#0xd0
+10002338c stp x24,x23,[sp, #0x90]
+100023390 stp x22,x21,[sp, #0xa0]
+100023394 stp x20,x19,[sp, #0xb0]
+100023398 stp x29,x30,[sp, #0xc0]
+10002339c add x29,sp,#0xc0
+1000233a0 mov x20,x2
+1000233a4 mov x19,x0
+1000233a8 nop
+1000233ac ldr x8,0x100044518
+1000233b0 ldr x8,[x8]
+1000233b4 stur x8,[x29, #-0x38]
+1000233b8 adrp x22,0x100059000
+1000233bc ldr x21,[x22, #0x700]
+1000233c0 mov x0,x2
+1000233c4 bl 0x100031180
+1000233c8 mov w8,w0
+1000233cc str x8,[sp]
+1000233d0 adr x2,0x1000455d8
+1000233d4 nop
+1000233d8 mov x0,x21
+1000233dc bl 0x100032a40
+1000233e0 mov x21,x0
+1000233e4 bl 0x100028978
+1000233e8 mov x0,x21
+1000233ec bl 0x100030b20
+1000233f0 cmp x0,#0x15
+1000233f4 b.cc 0x100023418
+1000233f8 mov x0,x21
+1000233fc mov x2,#0x0
+100023400 mov w3,#0x12
+100023404 bl 0x100032ac0
+100023408 adr x2,0x100044d78
+10002340c nop
+100023410 bl 0x1000329e0
+100023414 mov x21,x0
+100023418 ldr x22,[x22, #0x700]
+10002341c mov x0,x20
+100023420 bl 0x100031180
+100023424 bl 0x10001df68
+100023428 str x0,[sp]
+10002342c adr x2,0x10004a8d8
+100023430 nop
+100023434 mov x0,x22
+100023438 bl 0x100032a40
+10002343c mov x23,x0
+100023440 nop
+100023444 nop
+100023448 ldr x22,0x10005a970
+10002344c mov x0,x22
+100023450 mov w1,#0x0
+100023454 bl 0x10002eba0
+100023458 cbz w0,0x1000234a4
+10002345c mov x0,x21
+100023460 bl 0x10002ed20
+100023464 mov w8,#0x202
+100023468 movk w8,#0x822, LSL #16
+10002346c stur w8,[x29, #-0x50]
+100023470 stur x0,[x29, #-0x4c]
+100023474 mov w8,#0x842
+100023478 sturh w8,[x29, #-0x44]
+10002347c stur x23,[x29, #-0x42]
+100023480 adr x0,0x100000000
+100023484 nop
+100023488 adr x3,0x10003c434
+10002348c nop
+100023490 sub x4,x29,#0x50
+100023494 mov x1,x22
+100023498 mov w2,#0x0
+10002349c mov w5,#0x16
+1000234a0 bl 0x10002e6d0
+1000234a4 mov x0,x20
+1000234a8 bl 0x100031180
+1000234ac mov w8,#0xffffefff
+1000234b0 add w16,w0,w8
+1000234b4 cmp w16,#0x22
+1000234b8 b.ls 0x1000234fc
+1000234bc mov w8,#0xffff6fff
+1000234c0 add w16,w0,w8
+1000234c4 cmp w16,#0xf
+1000234c8 b.hi 0x10002352c
+1000234cc cmp x16,#0xf
+1000234d0 csel x16,x16,xzr,ls
+1000234d4 adr x17,0x100023928
+1000234d8 nop
+1000234dc ldrsw x16,[x17, x16, LSL #0x2]
+1000234e0 adr x17,0x1000234e0
+1000234e4 add x16,x17,x16
+1000234e8 br x16
+1000234ec mov x0,x19
+1000234f0 mov x2,x20
+1000234f4 bl 0x10002fda0
+1000234f8 b 0x100023858
+1000234fc cmp x16,#0x22
+100023500 csel x16,x16,xzr,ls
+100023504 adr x17,0x10002389c
+100023508 nop
+10002350c ldrsw x16,[x17, x16, LSL #0x2]
+100023510 adr x17,0x100023510
+100023514 add x16,x17,x16
+100023518 br x16
+10002351c mov x0,x19
+100023520 mov x2,x20
+100023524 bl 0x10002fd20
+100023528 b 0x100023858
+10002352c mov w8,#0xffff67ff
+100023530 add w16,w0,w8
+100023534 cmp w16,#0x4
+100023538 b.hi 0x10002384c
+10002353c cmp x16,#0x4
+100023540 csel x16,x16,xzr,ls
+100023544 adr x17,0x100023968
+100023548 nop
+10002354c ldrsw x16,[x17, x16, LSL #0x2]
+100023550 adr x17,0x100023550
+100023554 add x16,x17,x16
+100023558 br x16
+10002355c mov x0,x19
+100023560 mov x2,x20
+100023564 bl 0x10002ff20
+100023568 b 0x100023858
+10002356c mov x0,x19
+100023570 mov x2,x20
+100023574 bl 0x10002fe80
+100023578 b 0x100023858
+10002357c ldr x0,[x19, #0x90]
+100023580 add x8,sp,#0x40
+100023584 nop
+100023588 ldr x16,0x100044508
+10002358c mov x17,x8
+100023590 movk x17,#0x6ae1, LSL #48
+100023594 pacda x16,x17
+100023598 str x16,[sp, #0x40]
+10002359c nop
+1000235a0 ldr d0,0x100042600
+1000235a4 str d0,[sp, #0x48]
+1000235a8 add x8,x8,#0x10
+1000235ac adr x9,0x100044658
+1000235b0 nop
+1000235b4 adr x16,0x10002397c
+1000235b8 nop
+1000235bc pacia x16,x8
+1000235c0 stp x16,x9,[sp, #0x50]
+1000235c4 stp x19,x20,[sp, #0x60]
+1000235c8 add x1,sp,#0x40
+1000235cc b 0x1000237c0
+1000235d0 mov x0,x19
+1000235d4 mov x2,x20
+1000235d8 bl 0x100031160
+1000235dc b 0x100023858
+1000235e0 mov x0,x19
+1000235e4 mov x2,x20
+1000235e8 bl 0x10002f440
+1000235ec ldr x0,[x19, #0x8]
+1000235f0 bl 0x100032c60
+1000235f4 cmp w0,#0x3
+1000235f8 b.ne 0x100023858
+1000235fc nop
+100023600 ldr x2,0x1000594c0
+100023604 mov x0,x19
+100023608 mov x3,#0x0
+10002360c mov w4,#0x0
+100023610 bl 0x1000313e0
+100023614 nop
+100023618 ldr x2,0x1000594d0
+10002361c mov x0,x19
+100023620 mov x3,#0x0
+100023624 mov w4,#0x0
+100023628 bl 0x1000313e0
+10002362c b 0x100023858
+100023630 mov x0,x19
+100023634 mov x2,x20
+100023638 bl 0x10002ffc0
+10002363c b 0x100023858
+100023640 mov x0,x19
+100023644 mov x2,x20
+100023648 bl 0x10002ffe0
+10002364c b 0x100023858
+100023650 mov x0,x19
+100023654 mov x2,x20
+100023658 bl 0x10002fdc0
+10002365c b 0x100023858
+100023660 mov x0,x19
+100023664 mov x2,x20
+100023668 bl 0x10002fe20
+10002366c b 0x100023858
+100023670 mov x0,x19
+100023674 mov x2,x20
+100023678 bl 0x10002fe40
+10002367c b 0x100023858
+100023680 mov x0,x19
+100023684 mov x2,x20
+100023688 bl 0x10002fde0
+10002368c b 0x100023858
+100023690 mov x0,x19
+100023694 mov x2,x20
+100023698 bl 0x10002f940
+10002369c b 0x100023858
+1000236a0 mov x0,x19
+1000236a4 mov x2,x20
+1000236a8 bl 0x1000300e0
+1000236ac b 0x100023858
+1000236b0 mov x0,x19
+1000236b4 mov x2,x20
+1000236b8 bl 0x10002fd40
+1000236bc b 0x100023858
+1000236c0 mov x0,x19
+1000236c4 mov x2,x20
+1000236c8 bl 0x10002fd60
+1000236cc b 0x100023858
+1000236d0 nop
+1000236d4 ldr x0,0x100059760
+1000236d8 bl 0x10002e920
+1000236dc mov x21,x0
+1000236e0 mov x0,x20
+1000236e4 bl 0x100032c20
+1000236e8 mov x3,x0
+1000236ec mov x0,x21
+1000236f0 mov w2,#0x2001
+1000236f4 bl 0x100030720
+1000236f8 mov x20,x0
+1000236fc ldr x0,[x19, #0x8]
+100023700 mov x2,x20
+100023704 bl 0x100031b60
+100023708 bl 0x10002ea50
+10002370c b 0x100023858
+100023710 mov x0,x19
+100023714 mov x2,x20
+100023718 bl 0x10002ff80
+10002371c b 0x100023858
+100023720 mov x0,x19
+100023724 mov x2,x20
+100023728 bl 0x100030020
+10002372c b 0x100023858
+100023730 mov x0,x19
+100023734 mov x2,x20
+100023738 bl 0x10002efe0
+10002373c b 0x100023858
+100023740 mov x0,x19
+100023744 mov x2,x20
+100023748 bl 0x10002fe00
+10002374c b 0x100023858
+100023750 mov x0,x19
+100023754 mov x2,x20
+100023758 bl 0x10002ff40
+10002375c b 0x100023858
+100023760 mov x0,x19
+100023764 mov x2,x20
+100023768 bl 0x100032660
+10002376c b 0x100023858
+100023770 ldr x0,[x19, #0x90]
+100023774 add x8,sp,#0x10
+100023778 nop
+10002377c ldr x16,0x100044508
+100023780 mov x17,x8
+100023784 movk x17,#0x6ae1, LSL #48
+100023788 pacda x16,x17
+10002378c str x16,[sp, #0x10]
+100023790 nop
+100023794 ldr d0,0x100042600
+100023798 str d0,[sp, #0x18]
+10002379c add x8,x8,#0x10
+1000237a0 adr x9,0x100044658
+1000237a4 nop
+1000237a8 adr x16,0x100023988
+1000237ac nop
+1000237b0 pacia x16,x8
+1000237b4 stp x16,x9,[sp, #0x20]
+1000237b8 stp x19,x20,[sp, #0x30]
+1000237bc add x1,sp,#0x10
+1000237c0 bl 0x10002e730
+1000237c4 b 0x100023858
+1000237c8 mov x0,x19
+1000237cc mov x2,x20
+1000237d0 bl 0x10002ff60
+1000237d4 b 0x100023858
+1000237d8 mov x0,x19
+1000237dc mov x2,x20
+1000237e0 bl 0x100030100
+1000237e4 b 0x1000237f4
+1000237e8 mov x0,x19
+1000237ec mov x2,x20
+1000237f0 bl 0x100030120
+1000237f4 mov x2,x0
+1000237f8 b 0x10002385c
+1000237fc mov x0,x19
+100023800 mov x2,x20
+100023804 bl 0x10002fe60
+100023808 b 0x100023858
+10002380c mov x0,x19
+100023810 mov x2,x20
+100023814 bl 0x100030140
+100023818 b 0x100023858
+10002381c mov x0,x19
+100023820 mov x2,x20
+100023824 bl 0x10002fec0
+100023828 b 0x100023858
+10002382c mov x0,x19
+100023830 mov x2,x20
+100023834 bl 0x10002ff00
+100023838 b 0x100023858
+10002383c mov x0,x19
+100023840 mov x2,x20
+100023844 bl 0x10002fee0
+100023848 b 0x100023858
+10002384c mov x0,x19
+100023850 mov x2,x20
+100023854 bl 0x100030180
+100023858 mov w2,#0x0
+10002385c nop
+100023860 ldr x0,0x100059740
+100023864 bl 0x100030d00
+100023868 ldur x8,[x29, #-0x38]
+10002386c nop
+100023870 ldr x9,0x100044518
+100023874 ldr x9,[x9]
+100023878 cmp x9,x8
+10002387c b.ne 0x100023898
+100023880 ldp x29,x30,[sp, #0xc0]
+100023884 ldp x20,x19,[sp, #0xb0]
+100023888 ldp x22,x21,[sp, #0xa0]
+10002388c ldp x24,x23,[sp, #0x90]
+100023890 add sp,sp,#0xd0
+100023894 retab
+100023898 bl 0x10002e690
+
+/* WARNING: Function: _objc_release_x20 replaced with injection: _objc_release_fixup */
+/* Function Stack Size: 0x18 bytes */
+
+ID PTPResponder::handleRequest_(ID param_1,SEL param_2,ID param_3)
+
+{
+  undefined *puVar1;
+  int iVar2;
+  uint uVar3;
+  ID IVar4;
+  ID IVar5;
+  undefined8 uVar6;
+  undefined8 uVar7;
+  undefined **ppuVar8;
+  ulong uVar9;
+  undefined8 in_x6;
+  undefined8 in_x7;
+  code **ppcVar10;
+  undefined *local_c0;
+  undefined8 local_b8;
+  code *local_b0;
+  undefined *puStack_a8;
+  ID local_a0;
+  ID IStack_98;
+  undefined *local_90;
+  undefined8 local_88;
+  code *local_80;
+  undefined *puStack_78;
+  ID local_70;
+  ID IStack_68;
+  undefined4 local_60;
+  ID local_5c;
+  undefined2 local_54;
+  ID local_52;
+  long local_48;
+
+  puVar1 = PTR__OBJC_CLASS___NSString_100059700;
+  local_48 = *(long *)PTR____stack_chk_guard_100044518;
+  objc_stub::operationCode(param_3);
+  IVar4 = NSString::stringWithFormat_((ID)puVar1,&cf__0x_x_);
+  ___ICOSLogCreate();
+  IVar5 = NSString::length(IVar4);
+  if (0x14 < IVar5) {
+    IVar4 = NSString::substringWithRange_(IVar4,0,0x12);
+    IVar4 = NSString::stringByAppendingString_(IVar4,&cf___);
+  }
+  puVar1 = PTR__OBJC_CLASS___NSString_100059700;
+  objc_stub::operationCode(param_3);
+  uVar6 = FUN_10001df68();
+  IVar5 = NSString::stringWithFormat_((ID)puVar1,&cf_<op>__);
+  uVar7 = __gICOSLog;
+  iVar2 = _os_log_type_enabled(__gICOSLog,0);
+  if (iVar2 != 0) {
+    local_5c = NSString::UTF8String(IVar4);
+    local_60 = 0x8220202;
+    local_54 = 0x842;
+    local_52 = IVar5;
+    __os_log_impl(0x100000000,uVar7,0,"%{public}20s | %{public}@",&local_60,0x16,in_x6,in_x7,uVar6);
+  }
+  IVar4 = objc_stub::operationCode(param_3);
+  iVar2 = (int)IVar4;
+  if (iVar2 - 0x1001U < 0x23) {
+    switch(iVar2) {
+    default:
+      getDeviceInfo_(param_1,param_3);
+      break;
+    case 0x1002:
+      openSession_(param_1,param_3);
+      break;
+    case 0x1003:
+      closeSession_(param_1,param_3);
+      IVar4 = objc_stub::type(*(ID *)(param_1 + 8));
+      if ((int)IVar4 == 3) {
+        objc_stub::performSelectorOnMainThread_withObject_waitUntilDone_
+                  (param_1,PTR_s_stop_1000594c0,0,0);
+        objc_stub::performSelectorOnMainThread_withObject_waitUntilDone_
+                  (param_1,PTR_s_stopRunLoop_1000594d0,0,0);
+      }
+      break;
+    case 0x1004:
+      getStorageIDs_(param_1,param_3);
+      break;
+    case 0x1005:
+      getStorageInfo_(param_1,param_3);
+      break;
+    case 0x1006:
+      getNumObjects_(param_1,param_3);
+      break;
+    case 0x1007:
+      getObjectHandles_(param_1,param_3);
+      break;
+    case 0x1008:
+      getObjectInfo_(param_1,param_3);
+      break;
+    case 0x1009:
+      getObject_(param_1,param_3);
+      break;
+    case 0x100a:
+switchD_1000234e8_caseD_900c:
+      uVar7 = *(undefined8 *)(param_1 + 0x90);
+      local_90 = PTR___NSConcreteStackBlock_100044508;
+      local_88 = DAT_100042600;
+      ppcVar10 = &local_80;
+      local_80 = FUN_10002397c;
+      puStack_78 = &DAT_100044658;
+      ppuVar8 = &local_90;
+      local_70 = param_1;
+      IStack_68 = param_3;
+LAB_1000237c0:
+      _dispatch_async(ppcVar10,uVar7,ppuVar8);
+      break;
+    case 0x100b:
+      deleteObject_(param_1,param_3);
+      break;
+    case 0x100c:
+    case 0x100d:
+    case 0x100e:
+    case 0x100f:
+    case 0x1011:
+    case 0x1012:
+    case 0x1013:
+    case 0x1017:
+    case 0x1018:
+    case 0x1019:
+    case 0x101a:
+    case 0x101c:
+    case 0x101d:
+    case 0x101e:
+    case 0x101f:
+    case 0x1020:
+    case 0x1021:
+    case 0x1022:
+      goto switchD_1000234e8_caseD_900d;
+    case 0x1010:
+      handleResetDevice_(param_1,param_3);
+      break;
+    case 0x1014:
+      getDevicePropDesc_(param_1,param_3);
+      break;
+    case 0x1015:
+      getDevicePropValue_(param_1,param_3);
+      break;
+    case 0x1016:
+      IVar4 = _objc_alloc(PTR_PTPOperationResponsePacket_100059760);
+      IVar5 = objc_stub::transactionID(param_3);
+      IVar4 = PTPOperationResponsePacket::initWithResponseCode_transactionID_
+                        (IVar4,0x2001,(unsigned_int)IVar5);
+      objc_stub::sendResponse_(*(ID *)(param_1 + 8),IVar4);
+      break;
+    case 0x101b:
+      getPartialObject_(param_1,param_3);
+      break;
+    case 0x1023:
+switchD_1000234e8_caseD_9002:
+      getObjectInfoForObjectsInStorage_(param_1,param_3);
+    }
+    goto LAB_100023858;
+  }
+  if (0xf < iVar2 - 0x9001U) {
+    if (iVar2 - 0x9801U < 5) {
+      switch(iVar2) {
+      default:
+        getObjectPropsSupported_(param_1,param_3);
+        break;
+      case 0x9802:
+        getObjectPropDesc_(param_1,param_3);
+        break;
+      case 0x9803:
+        getObjectPropValue_(param_1,param_3);
+        break;
+      case 0x9804:
+        goto switchD_1000234e8_caseD_900d;
+      case 0x9805:
+        getObjectPropList_(param_1,param_3);
+      }
+    }
+    else {
+switchD_1000234e8_caseD_900d:
+      handleUnsupportedRequest_(param_1,param_3);
+    }
+    goto LAB_100023858;
+  }
+  switch(iVar2) {
+  default:
+    getNumDownloadableObjects_(param_1,param_3);
+    break;
+  case 0x9002:
+  case 0x9005:
+    goto switchD_1000234e8_caseD_9002;
+  case 0x9003:
+    getUserAssignedDeviceName_(param_1,param_3);
+    break;
+  case 0x9004:
+    allowKeepAwake_(param_1,param_3);
+    break;
+  case 0x9006:
+    getObjectCompressedSize64_(param_1,param_3);
+    break;
+  case 0x9007:
+    getPartialObject64_(param_1,param_3);
+    break;
+  case 0x9008:
+    setUsingMTP_(param_1,param_3);
+    break;
+  case 0x9009:
+    uVar7 = *(undefined8 *)(param_1 + 0x90);
+    local_c0 = PTR___NSConcreteStackBlock_100044508;
+    local_b8 = DAT_100042600;
+    ppcVar10 = &local_b0;
+    local_b0 = FUN_100023988;
+    puStack_a8 = &DAT_100044658;
+    ppuVar8 = &local_c0;
+    local_a0 = param_1;
+    IStack_98 = param_3;
+    goto LAB_1000237c0;
+  case 0x900a:
+    getPartialObject64WithMD5_(param_1,param_3);
+    break;
+  case 0x900b:
+    uVar3 = handleSetHostMediaCapabilities_(param_1,param_3);
+    goto LAB_1000237f4;
+  case 0x900c:
+    goto switchD_1000234e8_caseD_900c;
+  case 0x900d:
+    goto switchD_1000234e8_caseD_900d;
+  case 0x900e:
+    uVar3 = handleSetHostSupportedFormats_(param_1,param_3);
+LAB_1000237f4:
+    uVar9 = (ulong)uVar3;
+    goto code_r0x000100023860;
+  case 0x900f:
+    getObjectInfoForNextObjectGroupInStorage_(param_1,param_3);
+    break;
+  case 0x9010:
+    handleSetHostSupportsGroups_(param_1,param_3);
+  }
+LAB_100023858:
+  uVar9 = 0;
+code_r0x000100023860:
+  IVar4 = NSNumber::numberWithBool_((ID)PTR__OBJC_CLASS___NSNumber_100059740,uVar9);
+  if (*(long *)PTR____stack_chk_guard_100044518 != local_48) {
+                    /* WARNING: Subroutine does not return */
+    ___stack_chk_fail();
+  }
+  return IVar4;
+}

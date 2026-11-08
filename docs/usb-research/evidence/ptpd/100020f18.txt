@@ -1,0 +1,125 @@
+===== 100020f18 PTPResponder::getStorageInfo: =====
+XREF 10005da6d DATA null
+XREF 1000349a8 DATA null
+XREF 100023648 CALL_OVERRIDE_UNCONDITIONAL PTPResponder::handleRequest:
+100020f18 pacibsp
+100020f1c sub sp,sp,#0x50
+100020f20 stp x24,x23,[sp, #0x10]
+100020f24 stp x22,x21,[sp, #0x20]
+100020f28 stp x20,x19,[sp, #0x30]
+100020f2c stp x29,x30,[sp, #0x40]
+100020f30 add x29,sp,#0x40
+100020f34 mov x21,x2
+100020f38 mov x19,x0
+100020f3c mov x0,x2
+100020f40 bl 0x100032c20
+100020f44 mov x20,x0
+100020f48 ldr w8,[x19, #0x40]
+100020f4c cbz w8,0x100020fcc
+100020f50 ldr w8,[x19, #0x38]
+100020f54 cmp w20,w8
+100020f58 b.ls 0x100020fd4
+100020f5c str w20,[x19, #0x38]
+100020f60 ldr x22,[x19, #0x10]
+100020f64 mov x0,x21
+100020f68 bl 0x100031220
+100020f6c mov x2,x0
+100020f70 mov x0,x22
+100020f74 bl 0x100032980
+100020f78 cbz x0,0x100020fdc
+100020f7c mov x22,x0
+100020f80 nop
+100020f84 ldr x0,0x100059758
+100020f88 bl 0x10002e920
+100020f8c mov x23,x0
+100020f90 mov x0,x21
+100020f94 bl 0x100031180
+100020f98 mov x21,x0
+100020f9c mov x0,x22
+100020fa0 bl 0x10002f4c0
+100020fa4 mov x4,x0
+100020fa8 mov x0,x23
+100020fac mov x2,x21
+100020fb0 mov x3,x20
+100020fb4 bl 0x100030680
+100020fb8 mov x2,x0
+100020fbc str x0,[sp, #0x8]
+100020fc0 ldr x0,[x19, #0x8]
+100020fc4 bl 0x100031a60
+100020fc8 b 0x100021008
+100020fcc mov w21,#0x2003
+100020fd0 b 0x100020fe0
+100020fd4 mov w21,#0x2004
+100020fd8 b 0x100020fe0
+100020fdc mov w21,#0x2008
+100020fe0 nop
+100020fe4 ldr x0,0x100059760
+100020fe8 bl 0x10002e920
+100020fec mov x2,x21
+100020ff0 mov x3,x20
+100020ff4 bl 0x100030720
+100020ff8 mov x2,x0
+100020ffc str x0,[sp, #0x8]
+100021000 ldr x0,[x19, #0x8]
+100021004 bl 0x100031b60
+100021008 ldr x0,[sp, #0x8]
+10002100c ldp x29,x30,[sp, #0x40]
+100021010 ldp x20,x19,[sp, #0x30]
+100021014 ldp x22,x21,[sp, #0x20]
+100021018 ldp x24,x23,[sp, #0x10]
+10002101c add sp,sp,#0x50
+100021020 autibsp
+100021024 eor x16,x30,x30, LSL #0x1
+100021028 tbz x16,#0x3e,0x100021030
+10002102c brk #0xc471
+100021030 b 0x10002ea20
+
+/* WARNING: Function: _objc_release replaced with injection: _objc_release_fixup */
+/* Function Stack Size: 0x18 bytes */
+
+void PTPResponder::getStorageInfo_(ID param_1,SEL param_2,ID param_3)
+
+{
+  code *pcVar1;
+  ID IVar2;
+  ID IVar3;
+  unsigned_int uVar4;
+  unsigned_short uVar5;
+  ID IVar6;
+  ulong unaff_x30;
+
+  IVar2 = objc_stub::transactionID(param_3);
+  uVar4 = (unsigned_int)IVar2;
+  if (*(int *)(param_1 + 0x40) == 0) {
+    uVar5 = 0x2003;
+  }
+  else if (*(uint *)(param_1 + 0x38) < uVar4) {
+    *(unsigned_int *)(param_1 + 0x38) = uVar4;
+    IVar6 = *(ID *)(param_1 + 0x10);
+    IVar2 = objc_stub::parameter1(param_3);
+    IVar2 = objc_stub::storageInfoDatasetForStorageID_(IVar6,IVar2);
+    if (IVar2 != 0) {
+      IVar6 = _objc_alloc(PTR_PTPDataPacket_100059758);
+      IVar3 = objc_stub::operationCode(param_3);
+      IVar2 = objc_stub::content(IVar2);
+      IVar2 = PTPDataPacket::initWithOperationCode_transactionID_andData_
+                        (IVar6,(unsigned_short)IVar3,uVar4,IVar2);
+      objc_stub::sendData_(*(ID *)(param_1 + 8),IVar2);
+      goto LAB_100021008;
+    }
+    uVar5 = 0x2008;
+  }
+  else {
+    uVar5 = 0x2004;
+  }
+  IVar2 = _objc_alloc(PTR_PTPOperationResponsePacket_100059760);
+  IVar2 = PTPOperationResponsePacket::initWithResponseCode_transactionID_(IVar2,uVar5,uVar4);
+  objc_stub::sendResponse_(*(ID *)(param_1 + 8),IVar2);
+LAB_100021008:
+  if (((unaff_x30 ^ unaff_x30 << 1) >> 0x3e & 1) != 0) {
+                    /* WARNING: Does not return */
+    pcVar1 = (code *)SoftwareBreakpoint(0xc471,0x100021030);
+    (*pcVar1)();
+  }
+  return;
+}

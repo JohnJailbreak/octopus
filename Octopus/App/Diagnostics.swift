@@ -9,6 +9,7 @@
 //
 
 import Foundation
+import CryptoKit
 import OctopusCore
 import OctopusSpawn
 
@@ -246,6 +247,8 @@ enum Diagnostics {
                                  path: deviceFiles[2].path,
                                  highlight: ["ProgramArguments", "UserName", "USBDeviceFunction", "IOProviderClass"])
             },
+            step("device.ptp_registry", "Device (read-only)", "PTP interface discovery", .local) { ptpRegistry() },
+            step("device.ptpd_identity", "Device (read-only)", "ptpd binary identity", .local) { ptpdIdentity() },
             step("device.ptpd_process", "Device (read-only)", "ptpd running now", .local) { ptpdProcess() },
             step("external.usb_transport", "External connection", "USB transport for Octopus", .external) {
                 usbTransport()
@@ -398,28 +401,68 @@ enum Diagnostics {
             return result(id, group, title, .local, .skipped, "The process table can't be read here")
         }
         return result(id, group, title, .local, .pass,
-                      pid > 0 ? "Apple's ptpd is running (pid \(pid)): launchd starts it when a computer opens the iPhone's PTP function"
-                              : "Apple's ptpd isn't running: no computer has the iPhone's PTP function open")
+                      pid > 0 ? "Apple's ptpd is running (pid \(pid)); this does not prove host attachment or Octopus USB traffic"
+                              : "Apple's ptpd was not found in this process snapshot; host state is unknown")
+    }
+
+    static func ptpRegistry() -> DiagnosticResult {
+        var probe = oct_device_probe()
+        let status = oct_device_probe_ptp(&probe)
+        return result("device.ptp_registry", "Device (read-only)", "PTP interface discovery", .local,
+                      status == OCT_OK ? .pass : .blocked, text(probe.detail), checks: status == OCT_OK ? 1 : 0)
+    }
+
+    static func ptpdIdentity() -> DiagnosticResult {
+        let id = "device.ptpd_identity", group = "Device (read-only)", title = "ptpd binary identity"
+        do {
+            let file = try FileHandle(forReadingFrom: URL(fileURLWithPath: "/usr/libexec/ptpd"))
+            defer { try? file.close() }
+            // Bound allocation; capture no binary bytes in the exported report.
+            let data = try file.read(upToCount: 8 * 1024 * 1024 + 1) ?? Data()
+            guard data.count <= 8 * 1024 * 1024 else {
+                return result(id, group, title, .local, .blocked, "ptpd exceeds the 8 MiB observation limit", checks: 0)
+            }
+            return ptpdIdentity(data: data)
+        } catch {
+            let e = error as NSError
+            return result(id, group, title, .local, .blocked,
+                          "Cannot read ptpd: \(e.domain) code \(e.code); \(redact(e.localizedDescription))", checks: 0)
+        }
+    }
+
+    static func ptpdIdentity(data: Data) -> DiagnosticResult {
+        var identity = oct_macho_identity()
+        let status = data.withUnsafeBytes { bytes in
+            oct_device_parse_identity(bytes.bindMemory(to: UInt8.self).baseAddress, bytes.count, &identity)
+        }
+        let id = "device.ptpd_identity", group = "Device (read-only)", title = "ptpd binary identity"
+        guard status == OCT_OK else {
+            return result(id, group, title, .local, .blocked, "Unsupported or malformed Mach-O identity: \(status.rawValue)", checks: 0)
+        }
+        let uuid = text(identity.uuid)
+        let digest = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+        let reference = uuid == "FFD54FC7-0508-3AB8-8D17-2F698B611E10"
+            && identity.cpu_type == 0x0100000c && identity.cpu_subtype == 0x80000002
+            && identity.file_type == 2 && identity.platform == 2 && identity.minimum_os == 0x00110000
+        let exact = digest == "a1742358da3e257204a0f190211cda26a155dfe0dabb3c9fa572117460085dcb"
+        return result(id, group, title, .local, .pass,
+                      "UUID \(uuid); SHA-256 \(digest); reference metadata match=\(reference), exact bytes=\(exact). "
+                        + "Identity observation only; native integration remains disabled. A re-signed reference may differ.")
     }
 
     // MARK: - External connection
 
     static func usbTransport() -> DiagnosticResult {
         result("external.usb_transport", "External connection", "USB transport for Octopus", .external, .blocked,
-               "This build has no USB driver for the transport adapter. The iPhone's USB PTP function belongs to "
-                   + "Apple's ptpd, which launchd starts on an IOKit match for USBDeviceFunction PTP; iOS offers no "
-                   + "supported interface for an app to serve it.", checks: 0)
+               "This build has no native USB driver registered with the transport adapter. Read-only PTP discovery "
+                   + "does not open Apple's interface or prove ownership. Private transport ABI and provider coexistence "
+                   + "still require device evidence.", checks: 0)
     }
 
     static func hostRequests(_ environment: DiagnosticsEnvironment) -> DiagnosticResult {
         let id = "external.host_requests", group = "External connection", title = "Requests from a computer"
-        if environment.transportTransactions > 0 {
-            return result(id, group, title, .external, .pass,
-                          "\(environment.transportTransactions) requests from a computer this launch; transport "
-                              + environment.transportState)
-        }
         return result(id, group, title, .external, .blocked,
-                      "No request from a computer has reached Octopus this launch: it needs the USB transport. "
+                      "No verified native USB request evidence is available. Generic transaction count: \(environment.transportTransactions). "
                           + "Transport: \(environment.transportState)"
                           + (environment.transportFailure.isEmpty ? "" : ", last failure: \(environment.transportFailure)"),
                       checks: 0)
@@ -514,10 +557,18 @@ enum Diagnostics {
         try add("build.json", try encoder.encode(report.build))
         try add("settings.json", try encoder.encode(environment.settings))
         try add("connectivity.txt", Data(connectivity(environment).utf8))
+        try add("device-observations.json", try encoder.encode(report.results.filter { $0.id.hasPrefix("device.") }))
+        var timeline = ["Saved log observations, not proof of native USB traffic."]
+
         for file in DebugLog.files() {
             let text = (try? String(contentsOf: file, encoding: .utf8)) ?? ""
             try add("logs/\(file.lastPathComponent)", Data(redact(text).utf8))
+            timeline += redact(text).components(separatedBy: "\n").filter {
+                $0.contains(" link ") || $0.contains(" service ") || $0.contains(" diagnostics ")
+            }
+
         }
+        try add("connection-timeline.txt", Data(timeline.joined(separator: "\n").utf8))
         let stamp = DateFormatter()
         stamp.locale = Locale(identifier: "en_US_POSIX")
         stamp.dateFormat = "yyyyMMdd-HHmmss"

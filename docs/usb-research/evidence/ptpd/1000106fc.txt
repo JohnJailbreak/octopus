@@ -1,0 +1,83 @@
+===== 1000106fc PTPVirtualCamera::objectForObjectHandle: =====
+XREF 10005d7cc DATA null
+XREF 1000333e8 DATA null
+XREF 100011700 CALL_OVERRIDE_UNCONDITIONAL PTPVirtualCamera::objectInfoDatasetForObjectHandle:
+XREF 100011748 CALL_OVERRIDE_UNCONDITIONAL PTPVirtualCamera::orientationForObjectHandle:
+XREF 1000117d0 CALL_OVERRIDE_UNCONDITIONAL PTPVirtualCamera::dataSourceForObjectHandle:responseCode:size:
+XREF 100011c28 CALL_OVERRIDE_UNCONDITIONAL PTPVirtualCamera::thumbnailForObjectHandle:maxPixelSize:responseCode:
+XREF 100011888 CALL_OVERRIDE_UNCONDITIONAL PTPVirtualCamera::embeddedMetadataForObjectHandle:responseCode:
+XREF 100011d44 CALL_OVERRIDE_UNCONDITIONAL PTPVirtualCamera::deleteObjectWithObjectHandle:responseCode:
+XREF 100012eb0 CALL_OVERRIDE_UNCONDITIONAL PTPVirtualCamera::objectPropValueForHandle:withObjectPropertyCode:responseCode:
+XREF 1000136fc CALL_OVERRIDE_UNCONDITIONAL PTPVirtualCamera::objectPropListForHandle:withObjectFormatCode:andPropertyCode:andPropertyGroup:andDepth:responseCode:
+1000106fc pacibsp
+100010700 stp x24,x23,[sp, #-0x40]!
+100010704 stp x22,x21,[sp, #0x10]
+100010708 stp x20,x19,[sp, #0x20]
+10001070c stp x29,x30,[sp, #0x30]
+100010710 add x29,sp,#0x30
+100010714 mov x19,x2
+100010718 ldr x0,[x0, #0x30]
+10001071c bl 0x10002efa0
+100010720 mov x20,x0
+100010724 bl 0x10002f620
+100010728 ands x23,x0,#0xffffffff
+10001072c b.eq 0x100010780
+100010730 mov x21,#0x0
+100010734 mov x0,x20
+100010738 mov x2,x21
+10001073c bl 0x100030e40
+100010740 mov x22,x0
+100010744 mov x0,x19
+100010748 bl 0x100032ca0
+10001074c mov w2,w0
+100010750 mov x0,x22
+100010754 bl 0x10002f2a0
+100010758 cbnz x0,0x100010784
+10001075c mov x0,x19
+100010760 bl 0x100032ca0
+100010764 mov w2,w0
+100010768 mov x0,x22
+10001076c bl 0x10002f280
+100010770 cbnz x0,0x100010784
+100010774 add x21,x21,#0x1
+100010778 cmp x23,x21
+10001077c b.ne 0x100010734
+100010780 mov x0,#0x0
+100010784 ldp x29,x30,[sp, #0x30]
+100010788 ldp x20,x19,[sp, #0x20]
+10001078c ldp x22,x21,[sp, #0x10]
+100010790 ldp x24,x23,[sp], #0x40
+100010794 retab
+
+/* Function Stack Size: 0x18 bytes */
+
+ID PTPVirtualCamera::objectForObjectHandle_(ID param_1,SEL param_2,ID param_3)
+
+{
+  ID self;
+  ID IVar1;
+  ID IVar2;
+  ID IVar3;
+  ulong uVar4;
+
+  self = objc_stub::allValues(*(ID *)(param_1 + 0x30));
+  IVar1 = objc_stub::count(self);
+  if ((IVar1 & 0xffffffff) != 0) {
+    uVar4 = 0;
+    do {
+      IVar2 = objc_stub::objectAtIndex_(self,uVar4);
+      IVar3 = objc_stub::unsignedIntValue(param_3);
+      IVar3 = objc_stub::cameraFolderWithObjectID_(IVar2,IVar3 & 0xffffffff);
+      if (IVar3 != 0) {
+        return IVar3;
+      }
+      IVar3 = objc_stub::unsignedIntValue(param_3);
+      IVar2 = objc_stub::cameraFileWithObjectID_(IVar2,IVar3 & 0xffffffff);
+      if (IVar2 != 0) {
+        return IVar2;
+      }
+      uVar4 = uVar4 + 1;
+    } while ((IVar1 & 0xffffffff) != uVar4);
+  }
+  return 0;
+}

@@ -1,0 +1,12 @@
+# Implemented USB boundary
+
+`Octopus/Core/oct_usb.{c,h}` is called by a future authorized native endpoint owner. It is linked into the existing core, not a disconnected sample.
+
+- Bounded configuration descriptor walking selects a specific interface/alternate 06/01/01, with exactly bulk IN/OUT and interrupt IN, real endpoint addresses and packet sizes. Rejects truncation, duplicate endpoints, malformed lengths, missing endpoints and unsupported SuperSpeed companion layout. The fixtures are synthetic USB2 layouts, not hardware evidence; speed-specific scheduling remains the native driver's responsibility.
+- Full eight-byte SETUP validation precedes any link mutation: bmRequestType, interface recipient/direction, wValue, wIndex, wLength and OUT stage length. Cancel, reset and status route into existing oct_link; IN status honors host wLength and output capacity. Unsupported operations return a stall decision for the native owner.
+- Requires attached/awake link state; never infers attachment from descriptors. Native transfer cancellation, status stage, stalls and callbacks remain the owner's responsibility.
+- `adapter.usb_boundary` runs the same real boundary implementation with loopback through existing Run Full Diagnostics and reports SIMULATED. Tests cover descriptor corruption, every bmRequestType for reset, wrong interface/value, cancellation, status truncation, suspend/detach, and state preservation after rejected requests.
+
+`oct_device` implements a read-only IOKit match and bounded Mach-O identity parser. The iOS probe dynamically resolves generic read-only APIs, returns kernel error codes, caps enumeration at 64 matches and releases each entry/iterator. Off-device it returns unsupported. It never opens or seizes an interface. Identity parsing rejects short/invalid commands, duplicate UUID/build commands and malformed command counts; output is cleared on failure. Tests exercise truncation at every prefix of a valid synthetic image.
+
+Swift diagnostics hash at most 8 MiB of `/usr/libexec/ptpd`, report UUID, architecture/platform/minimum-version match and exact reference hash match. A valid but different binary is an observation PASS with match=false, never integration authorization. `device-observations.json` and `connection-timeline.txt` supplement existing ZIP entries. Generic transaction counters and process existence no longer imply external USB traffic. No UI redesign or update mechanism change.

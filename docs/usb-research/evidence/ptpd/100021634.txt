@@ -1,0 +1,146 @@
+===== 100021634 PTPResponder::getObjectHandles: =====
+XREF 10005da75 DATA null
+XREF 1000349cc DATA null
+XREF 100023668 CALL_OVERRIDE_UNCONDITIONAL PTPResponder::handleRequest:
+100021634 pacibsp
+100021638 sub sp,sp,#0x50
+10002163c stp x24,x23,[sp, #0x10]
+100021640 stp x22,x21,[sp, #0x20]
+100021644 stp x20,x19,[sp, #0x30]
+100021648 stp x29,x30,[sp, #0x40]
+10002164c add x29,sp,#0x40
+100021650 mov x21,x2
+100021654 mov x19,x0
+100021658 mov x0,x2
+10002165c bl 0x100032c20
+100021660 mov x20,x0
+100021664 mov w8,#0x2003
+100021668 strh w8,[sp, #0xe]
+10002166c ldr w8,[x19, #0x40]
+100021670 cbz w8,0x100021760
+100021674 ldr w8,[x19, #0x38]
+100021678 cmp w20,w8
+10002167c b.ls 0x100021758
+100021680 mov x0,x21
+100021684 bl 0x100031220
+100021688 mov x22,x0
+10002168c mov x0,x21
+100021690 bl 0x100031240
+100021694 mov x23,x0
+100021698 mov x0,x21
+10002169c bl 0x100031260
+1000216a0 mov x4,x0
+1000216a4 str w20,[x19, #0x38]
+1000216a8 ldr x0,[x19, #0x10]
+1000216ac and w3,w23,#0xffff
+1000216b0 add x5,sp,#0xe
+1000216b4 mov x2,x22
+1000216b8 bl 0x100030f80
+1000216bc ldrh w8,[sp, #0xe]
+1000216c0 mov w9,#0x2001
+1000216c4 cmp w8,w9
+1000216c8 b.ne 0x100021760
+1000216cc mov x22,x0
+1000216d0 nop
+1000216d4 ldr x0,0x100059730
+1000216d8 bl 0x10002e920
+1000216dc mov x23,x0
+1000216e0 mov x0,x22
+1000216e4 bl 0x10002f620
+1000216e8 lsl x8,x0,#0x2
+1000216ec add x2,x8,#0x4
+1000216f0 mov x0,x23
+1000216f4 bl 0x1000305a0
+1000216f8 mov x23,x0
+1000216fc bl 0x100030c80
+100021700 str x0,[sp]
+100021704 mov x0,sp
+100021708 mov x1,x22
+10002170c bl 0x10001def4
+100021710 nop
+100021714 ldr x0,0x100059758
+100021718 bl 0x10002e920
+10002171c mov x22,x0
+100021720 mov x0,x21
+100021724 bl 0x100031180
+100021728 mov x2,x0
+10002172c mov x0,x22
+100021730 mov x3,x20
+100021734 mov x4,x23
+100021738 bl 0x100030680
+10002173c mov x20,x0
+100021740 ldr x0,[x19, #0x8]
+100021744 mov x2,x20
+100021748 bl 0x100031a60
+10002174c bl 0x10002ea50
+100021750 bl 0x10002ea80
+100021754 b 0x10002178c
+100021758 mov w8,#0x2004
+10002175c strh w8,[sp, #0xe]
+100021760 nop
+100021764 ldr x0,0x100059760
+100021768 bl 0x10002e920
+10002176c ldrh w2,[sp, #0xe]
+100021770 mov x3,x20
+100021774 bl 0x100030720
+100021778 mov x20,x0
+10002177c ldr x0,[x19, #0x8]
+100021780 mov x2,x20
+100021784 bl 0x100031b60
+100021788 bl 0x10002ea50
+10002178c ldp x29,x30,[sp, #0x40]
+100021790 ldp x20,x19,[sp, #0x30]
+100021794 ldp x22,x21,[sp, #0x20]
+100021798 ldp x24,x23,[sp, #0x10]
+10002179c add sp,sp,#0x50
+1000217a0 retab
+
+/* WARNING: Function: _objc_release_x20 replaced with injection: _objc_release_fixup */
+/* WARNING: Function: _objc_release_x23 replaced with injection: _objc_release_fixup */
+/* Function Stack Size: 0x18 bytes */
+
+void PTPResponder::getObjectHandles_(ID param_1,SEL param_2,ID param_3)
+
+{
+  ID IVar1;
+  ID IVar2;
+  ID IVar3;
+  unsigned_int uVar4;
+  ID local_50;
+  unsigned_short local_42;
+
+  IVar1 = objc_stub::transactionID(param_3);
+  local_42 = 0x2003;
+  uVar4 = (unsigned_int)IVar1;
+  if (*(int *)(param_1 + 0x40) != 0) {
+    if (*(uint *)(param_1 + 0x38) < uVar4) {
+      IVar1 = objc_stub::parameter1(param_3);
+      IVar2 = objc_stub::parameter2(param_3);
+      IVar3 = objc_stub::parameter3(param_3);
+      *(unsigned_int *)(param_1 + 0x38) = uVar4;
+      IVar1 = objc_stub::objectHandlesInStorage_forObjectFormatCode_inAssociation_responseCode_
+                        (*(ID *)(param_1 + 0x10),IVar1,(ulong)((uint)IVar2 & 0xffff),IVar3,&local_42
+                        );
+      if (local_42 == 0x2001) {
+        IVar2 = _objc_alloc(PTR__OBJC_CLASS___NSMutableData_100059730);
+        IVar3 = objc_stub::count(IVar1);
+        IVar2 = NSMutableData::initWithLength_(IVar2,IVar3 * 4 + 4);
+        local_50 = NSMutableData::mutableBytes(IVar2);
+        FUN_10001def4(&local_50,IVar1);
+        IVar1 = _objc_alloc(PTR_PTPDataPacket_100059758);
+        IVar3 = objc_stub::operationCode(param_3);
+        IVar1 = PTPDataPacket::initWithOperationCode_transactionID_andData_
+                          (IVar1,(unsigned_short)IVar3,uVar4,IVar2);
+        objc_stub::sendData_(*(ID *)(param_1 + 8),IVar1);
+        return;
+      }
+    }
+    else {
+      local_42 = 0x2004;
+    }
+  }
+  IVar1 = _objc_alloc(PTR_PTPOperationResponsePacket_100059760);
+  IVar1 = PTPOperationResponsePacket::initWithResponseCode_transactionID_(IVar1,local_42,uVar4);
+  objc_stub::sendResponse_(*(ID *)(param_1 + 8),IVar1);
+  return;
+}

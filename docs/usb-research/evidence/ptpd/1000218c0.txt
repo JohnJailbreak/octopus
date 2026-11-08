@@ -1,0 +1,239 @@
+===== 1000218c0 PTPResponder::getObject: =====
+XREF 10005da79 DATA null
+XREF 1000349e4 DATA null
+XREF 100023688 CALL_OVERRIDE_UNCONDITIONAL PTPResponder::handleRequest:
+1000218c0 pacibsp
+1000218c4 sub sp,sp,#0x70
+1000218c8 stp x24,x23,[sp, #0x30]
+1000218cc stp x22,x21,[sp, #0x40]
+1000218d0 stp x20,x19,[sp, #0x50]
+1000218d4 stp x29,x30,[sp, #0x60]
+1000218d8 add x29,sp,#0x60
+1000218dc mov x21,x2
+1000218e0 mov x19,x0
+1000218e4 nop
+1000218e8 ldr x8,0x100044518
+1000218ec ldr x8,[x8]
+1000218f0 str x8,[sp, #0x28]
+1000218f4 mov x0,x2
+1000218f8 bl 0x100032c20
+1000218fc mov x20,x0
+100021900 mov w8,#0x2003
+100021904 strh w8,[sp, #0xe]
+100021908 ldr w8,[x19, #0x40]
+10002190c cbz w8,0x100021aa4
+100021910 ldr w8,[x19, #0x38]
+100021914 cmp w20,w8
+100021918 b.ls 0x100021a8c
+10002191c str wzr,[sp, #0x8]
+100021920 str w20,[x19, #0x38]
+100021924 ldr x22,[x19, #0x10]
+100021928 mov x0,x21
+10002192c bl 0x100031220
+100021930 mov x2,x0
+100021934 mov x0,x22
+100021938 bl 0x100030fc0
+10002193c mov x23,x0
+100021940 bl 0x100028978
+100021944 adr x22,0x100044d58
+100021948 nop
+10002194c mov x0,x22
+100021950 bl 0x100030b20
+100021954 cmp x0,#0x15
+100021958 b.cc 0x100021980
+10002195c adr x0,0x100044d58
+100021960 nop
+100021964 mov x2,#0x0
+100021968 mov w3,#0x12
+10002196c bl 0x100032ac0
+100021970 adr x2,0x100044d78
+100021974 nop
+100021978 bl 0x1000329e0
+10002197c mov x22,x0
+100021980 nop
+100021984 ldr x24,0x100059700
+100021988 mov x0,x23
+10002198c bl 0x10002fc40
+100021990 str x0,[sp]
+100021994 adr x2,0x10004a818
+100021998 nop
+10002199c mov x0,x24
+1000219a0 bl 0x100032a40
+1000219a4 mov x24,x0
+1000219a8 nop
+1000219ac nop
+1000219b0 ldr x23,0x10005a970
+1000219b4 mov x0,x23
+1000219b8 mov w1,#0x0
+1000219bc bl 0x10002eba0
+1000219c0 cbz w0,0x100021a0c
+1000219c4 mov x0,x22
+1000219c8 bl 0x10002ed20
+1000219cc mov w8,#0x202
+1000219d0 movk w8,#0x822, LSL #16
+1000219d4 str w8,[sp, #0x10]
+1000219d8 stur x0,[sp, #0x14]
+1000219dc mov w8,#0x842
+1000219e0 strh w8,[sp, #0x1c]
+1000219e4 stur x24,[sp, #0x1e]
+1000219e8 adr x0,0x100000000
+1000219ec nop
+1000219f0 adr x3,0x10003c434
+1000219f4 nop
+1000219f8 add x4,sp,#0x10
+1000219fc mov x1,x23
+100021a00 mov w2,#0x0
+100021a04 mov w5,#0x16
+100021a08 bl 0x10002e6d0
+100021a0c ldr x22,[x19, #0x10]
+100021a10 mov x0,x21
+100021a14 bl 0x100031220
+100021a18 mov x2,x0
+100021a1c add x3,sp,#0xe
+100021a20 add x4,sp,#0x8
+100021a24 mov x0,x22
+100021a28 bl 0x10002f720
+100021a2c ldrh w8,[sp, #0xe]
+100021a30 mov w9,#0x2001
+100021a34 cmp w8,w9
+100021a38 b.ne 0x100021a94
+100021a3c mov x22,x0
+100021a40 cbz x0,0x100021a94
+100021a44 nop
+100021a48 ldr x0,0x100059758
+100021a4c bl 0x10002e920
+100021a50 mov x23,x0
+100021a54 mov x0,x21
+100021a58 bl 0x100031180
+100021a5c mov x2,x0
+100021a60 mov x0,x23
+100021a64 mov x3,x20
+100021a68 mov x4,x22
+100021a6c bl 0x1000306a0
+100021a70 cbz x0,0x100021a9c
+100021a74 mov x21,x0
+100021a78 ldr x0,[x19, #0x8]
+100021a7c mov x2,x21
+100021a80 bl 0x100031a60
+100021a84 bl 0x10002ea60
+100021a88 b 0x100021ad0
+100021a8c mov w8,#0x2004
+100021a90 b 0x100021aa0
+100021a94 mov w8,#0x2007
+100021a98 b 0x100021aa0
+100021a9c mov w8,#0x201d
+100021aa0 strh w8,[sp, #0xe]
+100021aa4 nop
+100021aa8 ldr x0,0x100059760
+100021aac bl 0x10002e920
+100021ab0 ldrh w2,[sp, #0xe]
+100021ab4 mov x3,x20
+100021ab8 bl 0x100030720
+100021abc mov x20,x0
+100021ac0 ldr x0,[x19, #0x8]
+100021ac4 mov x2,x20
+100021ac8 bl 0x100031b60
+100021acc bl 0x10002ea50
+100021ad0 ldr x8,[sp, #0x28]
+100021ad4 nop
+100021ad8 ldr x9,0x100044518
+100021adc ldr x9,[x9]
+100021ae0 cmp x9,x8
+100021ae4 b.ne 0x100021b00
+100021ae8 ldp x29,x30,[sp, #0x60]
+100021aec ldp x20,x19,[sp, #0x50]
+100021af0 ldp x22,x21,[sp, #0x40]
+100021af4 ldp x24,x23,[sp, #0x30]
+100021af8 add sp,sp,#0x70
+100021afc retab
+100021b00 bl 0x10002e690
+
+/* WARNING: Function: _objc_release_x21 replaced with injection: _objc_release_fixup */
+/* WARNING: Function: _objc_release_x20 replaced with injection: _objc_release_fixup */
+/* Function Stack Size: 0x18 bytes */
+
+void PTPResponder::getObject_(ID param_1,SEL param_2,ID param_3)
+
+{
+  undefined *self;
+  undefined8 uVar1;
+  int iVar2;
+  ID IVar3;
+  ID IVar4;
+  unsigned_int uVar5;
+  undefined8 in_x6;
+  undefined8 in_x7;
+  ID IVar6;
+  cfstringStruct *self_00;
+  undefined4 local_68;
+  unsigned_short local_62;
+  undefined4 local_60;
+  ID local_5c;
+  undefined2 local_54;
+  ID local_52;
+  long local_48;
+
+  local_48 = *(long *)PTR____stack_chk_guard_100044518;
+  IVar3 = objc_stub::transactionID(param_3);
+  local_62 = 0x2003;
+  uVar5 = (unsigned_int)IVar3;
+  if (*(int *)(param_1 + 0x40) != 0) {
+    if (*(uint *)(param_1 + 0x38) < uVar5) {
+      local_68 = 0;
+      *(unsigned_int *)(param_1 + 0x38) = uVar5;
+      IVar6 = *(ID *)(param_1 + 0x10);
+      IVar3 = objc_stub::parameter1(param_3);
+      IVar3 = objc_stub::objectInfoDatasetForObjectHandle_(IVar6,IVar3);
+      ___ICOSLogCreate();
+      self_00 = &cf___;
+      IVar6 = objc_stub::length(0x100044d58);
+      if (0x14 < IVar6) {
+        IVar6 = objc_stub::substringWithRange_(0x100044d58,0,0x12);
+        self_00 = (cfstringStruct *)objc_stub::stringByAppendingString_(IVar6,&cf___);
+      }
+      self = PTR__OBJC_CLASS___NSString_100059700;
+      IVar3 = objc_stub::filename(IVar3);
+      IVar6 = NSString::stringWithFormat_((ID)self,&cf____>getObject___);
+      uVar1 = __gICOSLog;
+      iVar2 = _os_log_type_enabled(__gICOSLog,0);
+      if (iVar2 != 0) {
+        local_5c = objc_stub::UTF8String((ID)self_00);
+        local_60 = 0x8220202;
+        local_54 = 0x842;
+        local_52 = IVar6;
+        __os_log_impl(0x100000000,uVar1,0,"%{public}20s | %{public}@",&local_60,0x16,in_x6,in_x7,
+                      IVar3);
+      }
+      IVar6 = *(ID *)(param_1 + 0x10);
+      IVar3 = objc_stub::parameter1(param_3);
+      IVar3 = objc_stub::dataSourceForObjectHandle_responseCode_size_
+                        (IVar6,IVar3,&local_62,&local_68);
+      if ((local_62 == 0x2001) && (IVar3 != 0)) {
+        IVar6 = _objc_alloc(PTR_PTPDataPacket_100059758);
+        IVar4 = objc_stub::operationCode(param_3);
+        IVar3 = PTPDataPacket::initWithOperationCode_transactionID_andDataSource_
+                          (IVar6,(unsigned_short)IVar4,uVar5,IVar3);
+        if (IVar3 != 0) {
+          objc_stub::sendData_(*(ID *)(param_1 + 8),IVar3);
+          goto LAB_100021ad0;
+        }
+        local_62 = 0x201d;
+      }
+      else {
+        local_62 = 0x2007;
+      }
+    }
+    else {
+      local_62 = 0x2004;
+    }
+  }
+  IVar3 = _objc_alloc(PTR_PTPOperationResponsePacket_100059760);
+  IVar3 = PTPOperationResponsePacket::initWithResponseCode_transactionID_(IVar3,local_62,uVar5);
+  objc_stub::sendResponse_(*(ID *)(param_1 + 8),IVar3);
+LAB_100021ad0:
+  if (*(long *)PTR____stack_chk_guard_100044518 != local_48) {
+                    /* WARNING: Subroutine does not return */
+    ___stack_chk_fail(0);
+  }
+  return;
+}

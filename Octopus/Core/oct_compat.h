@@ -32,6 +32,8 @@ oct_status oct_compat_class_requests(oct_compat_report *report);
 oct_status oct_compat_events(oct_compat_report *report);
 /* Suspend and resume, a bus reset, an unplug mid-container, and start and stop cycles. */
 oct_status oct_compat_lifecycle(oct_compat_report *report);
+/* Full USB setup validation and endpoint descriptor selection; simulated only. */
+oct_status oct_compat_usb_boundary(oct_compat_report *report);
 
 /* A synthetic file's size and SHA-256 read straight from a fresh synthetic storage, without the responder:
  * the reference a host's download must match. `folder` is NULL for the root. */

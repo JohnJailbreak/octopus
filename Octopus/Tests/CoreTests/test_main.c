@@ -23,6 +23,8 @@ int main(int argc, char **argv)
     run_service_tests();
     printf("link\n");
     run_link_tests();
+    printf("USB boundary\n");
+    run_usb_tests();
     printf("diagnostics\n");
     run_diag_tests();
     printf("%d checks, %d failures\n", test_checks, test_failures);

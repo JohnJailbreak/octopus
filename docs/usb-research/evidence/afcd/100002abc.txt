@@ -1,0 +1,148 @@
+===== 100002abc FUN_100002abc =====
+XREF 10000c984 DATA null
+XREF 100002a78 DATA FUN_1000029e0
+100002abc pacibsp
+100002ac0 sub sp,sp,#0x60
+100002ac4 stp x20,x19,[sp, #0x40]
+100002ac8 stp x29,x30,[sp, #0x50]
+100002acc add x29,sp,#0x50
+100002ad0 mov x19,x1
+100002ad4 mov x20,x0
+100002ad8 mov x0,x1
+100002adc bl 0x1000035f8
+100002ae0 nop
+100002ae4 ldr x8,0x100004270
+100002ae8 cmp x0,x8
+100002aec b.eq 0x100002b2c
+100002af0 nop
+100002af4 ldr x8,0x100004280
+100002af8 cmp x0,x8
+100002afc b.eq 0x100002bd0
+100002b00 adr x1,0x1000039e8
+100002b04 nop
+100002b08 mov w0,#0x2
+100002b0c ldp x29,x30,[sp, #0x50]
+100002b10 ldp x20,x19,[sp, #0x40]
+100002b14 add sp,sp,#0x60
+100002b18 autibsp
+100002b1c eor x16,x30,x30, LSL #0x1
+100002b20 tbz x16,#0x3e,0x100002b28
+100002b24 brk #0xc471
+100002b28 b 0x100003248
+100002b2c ldrb w20,[x20, #0x20]
+100002b30 adr x1,0x100003a04
+100002b34 nop
+100002b38 mov w0,#0x4
+100002b3c bl 0x100003248
+100002b40 add x8,sp,#0x10
+100002b44 nop
+100002b48 ldr x16,0x100004240
+100002b4c mov x17,x8
+100002b50 movk x17,#0x6ae1, LSL #48
+100002b54 pacda x16,x17
+100002b58 str x16,[sp, #0x10]
+100002b5c nop
+100002b60 ldr d0,0x100003658
+100002b64 str d0,[sp, #0x18]
+100002b68 add x8,x8,#0x10
+100002b6c adr x9,0x1000042e0
+100002b70 nop
+100002b74 adr x16,0x100002c34
+100002b78 nop
+100002b7c pacia x16,x8
+100002b80 stp x16,x9,[sp, #0x20]
+100002b84 strb w20,[sp, #0x38]
+100002b88 str x19,[sp, #0x30]
+100002b8c add x1,sp,#0x10
+100002b90 mov x0,x19
+100002b94 bl 0x1000035d8
+100002b98 adr x1,0x100003b08
+100002b9c nop
+100002ba0 mov w0,#0x5
+100002ba4 bl 0x100003248
+100002ba8 mov x0,x19
+100002bac bl 0x1000035c8
+100002bb0 adr x1,0x100003b1c
+100002bb4 nop
+100002bb8 mov w0,#0x5
+100002bbc bl 0x100003248
+100002bc0 ldp x29,x30,[sp, #0x50]
+100002bc4 ldp x20,x19,[sp, #0x40]
+100002bc8 add sp,sp,#0x60
+100002bcc retab
+100002bd0 nop
+100002bd4 ldr x8,0x100004268
+100002bd8 cmp x19,x8
+100002bdc b.ne 0x100002bf8
+100002be0 adr x1,0x10000399c
+100002be4 nop
+100002be8 mov w0,#0x4
+100002bec bl 0x100003248
+100002bf0 mov w0,#0x0
+100002bf4 bl 0x100003448
+100002bf8 nop
+100002bfc ldr x8,0x100004260
+100002c00 ldr x1,[x8]
+100002c04 mov x0,x19
+100002c08 bl 0x1000035e8
+100002c0c str x0,[sp]
+100002c10 adr x1,0x1000039bf
+100002c14 nop
+100002c18 mov w0,#0x1
+100002c1c bl 0x100003248
+100002c20 nop
+100002c24 ldr x0,0x100008060
+100002c28 bl 0x1000035a8
+100002c2c mov w0,#0x1
+100002c30 bl 0x100003448
+
+void FUN_100002abc(long param_1,undefined *param_2)
+
+{
+  undefined1 uVar1;
+  code *pcVar2;
+  undefined *puVar3;
+  ulong unaff_x30;
+  undefined *local_50;
+  undefined8 local_48;
+  code *local_40;
+  undefined *puStack_38;
+  undefined *local_30;
+  undefined1 local_28;
+
+  puVar3 = (undefined *)_xpc_get_type(param_2);
+  if (puVar3 == PTR___xpc_type_connection_100004270) {
+    uVar1 = *(undefined1 *)(param_1 + 0x20);
+    _AFCLog(4,"Handle XPC connection");
+    local_50 = PTR___NSConcreteStackBlock_100004240;
+    local_48 = DAT_100003658;
+    local_40 = FUN_100002c34;
+    puStack_38 = &DAT_1000042e0;
+    local_30 = param_2;
+    local_28 = uVar1;
+    _xpc_connection_set_event_handler(&local_40,param_2,&local_50);
+    _AFCLog(5,"Resuming connection");
+    _xpc_connection_resume(param_2);
+    _AFCLog(5,"handle connection done");
+    return;
+  }
+  if (puVar3 != PTR___xpc_type_error_100004280) {
+    if (((unaff_x30 ^ unaff_x30 << 1) >> 0x3e & 1) != 0) {
+                    /* WARNING: Does not return */
+      pcVar2 = (code *)SoftwareBreakpoint(0xc471,0x100002b28);
+      (*pcVar2)();
+    }
+    _AFCLog(2,"Unknown XPC event");
+    return;
+  }
+  if (param_2 == PTR___xpc_error_termination_imminent_100004268) {
+    _AFCLog(4,"XPC connection closing, time to go");
+                    /* WARNING: Subroutine does not return */
+    _exit(0);
+  }
+  _xpc_dictionary_get_string(param_2,*(undefined8 *)PTR___xpc_error_key_description_100004260);
+  _AFCLog(1,"Got XPC error on listener connection: %s");
+  _xpc_connection_cancel(DAT_100008060);
+                    /* WARNING: Subroutine does not return */
+  _exit(1);
+}

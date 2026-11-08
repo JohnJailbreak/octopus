@@ -1,0 +1,139 @@
+===== 100020dc8 PTPResponder::getStorageIDs: =====
+XREF 10005da6b DATA null
+XREF 10003499c DATA null
+XREF 100023638 CALL_OVERRIDE_UNCONDITIONAL PTPResponder::handleRequest:
+100020dc8 pacibsp
+100020dcc sub sp,sp,#0x50
+100020dd0 stp x24,x23,[sp, #0x10]
+100020dd4 stp x22,x21,[sp, #0x20]
+100020dd8 stp x20,x19,[sp, #0x30]
+100020ddc stp x29,x30,[sp, #0x40]
+100020de0 add x29,sp,#0x40
+100020de4 mov x21,x2
+100020de8 mov x19,x0
+100020dec mov x0,x2
+100020df0 bl 0x100032c20
+100020df4 mov x20,x0
+100020df8 ldr w8,[x19, #0x40]
+100020dfc cbz w8,0x100020eb8
+100020e00 ldr w8,[x19, #0x38]
+100020e04 cmp w20,w8
+100020e08 b.ls 0x100020ec0
+100020e0c str w20,[x19, #0x38]
+100020e10 ldr x0,[x19, #0x10]
+100020e14 bl 0x10002ef60
+100020e18 mov x22,x0
+100020e1c nop
+100020e20 ldr x0,0x100059730
+100020e24 bl 0x10002e920
+100020e28 mov x23,x0
+100020e2c mov x0,x22
+100020e30 bl 0x10002f620
+100020e34 lsl x8,x0,#0x2
+100020e38 add x2,x8,#0x4
+100020e3c mov x0,x23
+100020e40 bl 0x1000305a0
+100020e44 mov x23,x0
+100020e48 bl 0x100030c80
+100020e4c str x0,[sp, #0x8]
+100020e50 add x0,sp,#0x8
+100020e54 mov x1,x22
+100020e58 bl 0x10001def4
+100020e5c nop
+100020e60 ldr x0,0x100059758
+100020e64 bl 0x10002e920
+100020e68 mov x22,x0
+100020e6c mov x0,x21
+100020e70 bl 0x100031180
+100020e74 mov x2,x0
+100020e78 mov x0,x22
+100020e7c mov x3,x20
+100020e80 mov x4,x23
+100020e84 bl 0x100030680
+100020e88 mov x20,x0
+100020e8c ldr x0,[x19, #0x8]
+100020e90 mov x2,x20
+100020e94 bl 0x100031a60
+100020e98 bl 0x10002ea50
+100020e9c bl 0x10002ea80
+100020ea0 ldp x29,x30,[sp, #0x40]
+100020ea4 ldp x20,x19,[sp, #0x30]
+100020ea8 ldp x22,x21,[sp, #0x20]
+100020eac ldp x24,x23,[sp, #0x10]
+100020eb0 add sp,sp,#0x50
+100020eb4 retab
+100020eb8 mov w21,#0x2003
+100020ebc b 0x100020ec4
+100020ec0 mov w21,#0x2004
+100020ec4 nop
+100020ec8 ldr x0,0x100059760
+100020ecc bl 0x10002e920
+100020ed0 mov x2,x21
+100020ed4 mov x3,x20
+100020ed8 bl 0x100030720
+100020edc mov x2,x0
+100020ee0 str x0,[sp]
+100020ee4 ldr x0,[x19, #0x8]
+100020ee8 bl 0x100031b60
+100020eec ldr x0,[sp]
+100020ef0 ldp x29,x30,[sp, #0x40]
+100020ef4 ldp x20,x19,[sp, #0x30]
+100020ef8 ldp x22,x21,[sp, #0x20]
+100020efc ldp x24,x23,[sp, #0x10]
+100020f00 add sp,sp,#0x50
+100020f04 autibsp
+100020f08 eor x16,x30,x30, LSL #0x1
+100020f0c tbz x16,#0x3e,0x100020f14
+100020f10 brk #0xc471
+100020f14 b 0x10002ea20
+
+/* WARNING: Function: _objc_release_x20 replaced with injection: _objc_release_fixup */
+/* WARNING: Function: _objc_release_x23 replaced with injection: _objc_release_fixup */
+/* WARNING: Function: _objc_release replaced with injection: _objc_release_fixup */
+/* Function Stack Size: 0x18 bytes */
+
+void PTPResponder::getStorageIDs_(ID param_1,SEL param_2,ID param_3)
+
+{
+  code *pcVar1;
+  ID IVar2;
+  ID IVar3;
+  ID IVar4;
+  unsigned_int uVar5;
+  unsigned_short uVar6;
+  ulong unaff_x30;
+  ID local_48;
+
+  IVar2 = objc_stub::transactionID(param_3);
+  uVar5 = (unsigned_int)IVar2;
+  if (*(int *)(param_1 + 0x40) == 0) {
+    uVar6 = 0x2003;
+  }
+  else {
+    if (*(uint *)(param_1 + 0x38) < uVar5) {
+      *(unsigned_int *)(param_1 + 0x38) = uVar5;
+      IVar2 = objc_stub::allStorageIDs(*(ID *)(param_1 + 0x10));
+      IVar3 = _objc_alloc(PTR__OBJC_CLASS___NSMutableData_100059730);
+      IVar4 = objc_stub::count(IVar2);
+      IVar3 = NSMutableData::initWithLength_(IVar3,IVar4 * 4 + 4);
+      local_48 = NSMutableData::mutableBytes(IVar3);
+      FUN_10001def4(&local_48,IVar2);
+      IVar2 = _objc_alloc(PTR_PTPDataPacket_100059758);
+      IVar4 = objc_stub::operationCode(param_3);
+      IVar2 = PTPDataPacket::initWithOperationCode_transactionID_andData_
+                        (IVar2,(unsigned_short)IVar4,uVar5,IVar3);
+      objc_stub::sendData_(*(ID *)(param_1 + 8),IVar2);
+      return;
+    }
+    uVar6 = 0x2004;
+  }
+  IVar2 = _objc_alloc(PTR_PTPOperationResponsePacket_100059760);
+  IVar2 = PTPOperationResponsePacket::initWithResponseCode_transactionID_(IVar2,uVar6,uVar5);
+  objc_stub::sendResponse_(*(ID *)(param_1 + 8),IVar2);
+  if (((unaff_x30 ^ unaff_x30 << 1) >> 0x3e & 1) != 0) {
+                    /* WARNING: Does not return */
+    pcVar1 = (code *)SoftwareBreakpoint(0xc471,0x100020f14);
+    (*pcVar1)();
+  }
+  return;
+}

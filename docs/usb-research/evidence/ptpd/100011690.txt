@@ -1,0 +1,43 @@
+===== 100011690 PTPVirtualCamera::storageInfoDatasetForStorageID: =====
+XREF 10005d7e8 DATA null
+XREF 1000334cc DATA null
+100011690 pacibsp
+100011694 stp x20,x19,[sp, #-0x20]!
+100011698 stp x29,x30,[sp, #0x10]
+10001169c add x29,sp,#0x10
+1000116a0 ldr x19,[x0, #0x30]
+1000116a4 nop
+1000116a8 ldr x0,0x100059740
+1000116ac bl 0x100030dc0
+1000116b0 mov x2,x0
+1000116b4 mov x0,x19
+1000116b8 bl 0x100030ec0
+1000116bc ldp x29,x30,[sp, #0x10]
+1000116c0 ldp x20,x19,[sp], #0x20
+1000116c4 autibsp
+1000116c8 eor x16,x30,x30, LSL #0x1
+1000116cc tbz x16,#0x3e,0x1000116d4
+1000116d0 brk #0xc471
+1000116d4 b 0x100032960
+
+/* Function Stack Size: 0x14 bytes */
+
+ID PTPVirtualCamera::storageInfoDatasetForStorageID_(ID param_1,SEL param_2,unsigned_int param_3)
+
+{
+  code *pcVar1;
+  ID IVar2;
+  ID self;
+  ulong unaff_x30;
+
+  self = *(ID *)(param_1 + 0x30);
+  IVar2 = NSNumber::numberWithUnsignedInt_((ID)PTR__OBJC_CLASS___NSNumber_100059740,(ulong)param_3);
+  IVar2 = objc_stub::objectForKey_(self,IVar2);
+  if (((unaff_x30 ^ unaff_x30 << 1) >> 0x3e & 1) != 0) {
+                    /* WARNING: Does not return */
+    pcVar1 = (code *)SoftwareBreakpoint(0xc471,0x1000116d4);
+    (*pcVar1)();
+  }
+  IVar2 = objc_stub::storageInfoDataset(IVar2);
+  return IVar2;
+}

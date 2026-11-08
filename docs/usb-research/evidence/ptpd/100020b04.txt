@@ -1,0 +1,82 @@
+===== 100020b04 PTPResponder::closeSession: =====
+XREF 10005da65 DATA null
+XREF 10003496c DATA null
+XREF 1000235e8 CALL_OVERRIDE_UNCONDITIONAL PTPResponder::handleRequest:
+100020b04 pacibsp
+100020b08 sub sp,sp,#0x40
+100020b0c stp x22,x21,[sp, #0x10]
+100020b10 stp x20,x19,[sp, #0x20]
+100020b14 stp x29,x30,[sp, #0x30]
+100020b18 add x29,sp,#0x30
+100020b1c mov x19,x0
+100020b20 mov x0,x2
+100020b24 bl 0x100032c20
+100020b28 mov x20,x0
+100020b2c ldr w8,[x19, #0x40]
+100020b30 cbz w8,0x100020b50
+100020b34 ldr w8,[x19, #0x38]
+100020b38 cmp w20,w8
+100020b3c b.ls 0x100020b58
+100020b40 ldr x0,[x19, #0x10]
+100020b44 bl 0x10002f420
+100020b48 str wzr,[x19, #0x38]
+100020b4c str wzr,[x19, #0x40]
+100020b50 mov w21,#0x2001
+100020b54 b 0x100020b5c
+100020b58 mov w21,#0x2004
+100020b5c nop
+100020b60 ldr x0,0x100059760
+100020b64 bl 0x10002e920
+100020b68 mov x2,x21
+100020b6c mov x3,x20
+100020b70 bl 0x100030720
+100020b74 mov x2,x0
+100020b78 str x0,[sp, #0x8]
+100020b7c ldr x0,[x19, #0x8]
+100020b80 bl 0x100031b60
+100020b84 ldr x0,[sp, #0x8]
+100020b88 ldp x29,x30,[sp, #0x30]
+100020b8c ldp x20,x19,[sp, #0x20]
+100020b90 ldp x22,x21,[sp, #0x10]
+100020b94 add sp,sp,#0x40
+100020b98 autibsp
+100020b9c eor x16,x30,x30, LSL #0x1
+100020ba0 tbz x16,#0x3e,0x100020ba8
+100020ba4 brk #0xc471
+100020ba8 b 0x10002ea20
+
+/* WARNING: Function: _objc_release replaced with injection: _objc_release_fixup */
+/* Function Stack Size: 0x18 bytes */
+
+void PTPResponder::closeSession_(ID param_1,SEL param_2,ID param_3)
+
+{
+  code *pcVar1;
+  ID IVar2;
+  ID IVar3;
+  unsigned_short uVar4;
+  ulong unaff_x30;
+
+  IVar2 = objc_stub::transactionID(param_3);
+  if (*(int *)(param_1 + 0x40) != 0) {
+    if ((unsigned_int)IVar2 <= *(uint *)(param_1 + 0x38)) {
+      uVar4 = 0x2004;
+      goto code_r0x000100020b60;
+    }
+    objc_stub::closeSession(*(ID *)(param_1 + 0x10));
+    *(undefined4 *)(param_1 + 0x38) = 0;
+    *(undefined4 *)(param_1 + 0x40) = 0;
+  }
+  uVar4 = 0x2001;
+code_r0x000100020b60:
+  IVar3 = _objc_alloc(PTR_PTPOperationResponsePacket_100059760);
+  IVar2 = PTPOperationResponsePacket::initWithResponseCode_transactionID_
+                    (IVar3,uVar4,(unsigned_int)IVar2);
+  objc_stub::sendResponse_(*(ID *)(param_1 + 8),IVar2);
+  if (((unaff_x30 ^ unaff_x30 << 1) >> 0x3e & 1) != 0) {
+                    /* WARNING: Does not return */
+    pcVar1 = (code *)SoftwareBreakpoint(0xc471,0x100020ba8);
+    (*pcVar1)();
+  }
+  return;
+}

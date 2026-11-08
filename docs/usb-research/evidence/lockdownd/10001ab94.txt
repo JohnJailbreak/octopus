@@ -1,0 +1,533 @@
+===== 10001ab94 FUN_10001ab94 =====
+XREF 100125c3c DATA null
+XREF 10001ab54 DATA FUN_10001aac8
+10001ab94 pacibsp
+10001ab98 sub sp,sp,#0x120
+10001ab9c stp x28,x27,[sp, #0xc0]
+10001aba0 stp x26,x25,[sp, #0xd0]
+10001aba4 stp x24,x23,[sp, #0xe0]
+10001aba8 stp x22,x21,[sp, #0xf0]
+10001abac stp x20,x19,[sp, #0x100]
+10001abb0 stp x29,x30,[sp, #0x110]
+10001abb4 add x29,sp,#0x110
+10001abb8 mov x19,x0
+10001abbc sub x8,x29,#0x80
+10001abc0 stp xzr,x8,[x29, #-0x80]
+10001abc4 nop
+10001abc8 ldr d0,0x1000e44e0
+10001abcc stur d0,[x29, #-0x70]
+10001abd0 add x9,x8,#0x18
+10001abd4 adr x16,0x1000162f0
+10001abd8 nop
+10001abdc pacia x16,x9
+10001abe0 stur x16,[x29, #-0x68]
+10001abe4 add x8,x8,#0x20
+10001abe8 adr x16,0x100016300
+10001abec nop
+10001abf0 pacia x16,x8
+10001abf4 stp x16,xzr,[x29, #-0x60]
+10001abf8 add x8,sp,#0x70
+10001abfc stp xzr,x8,[sp, #0x70]
+10001ac00 nop
+10001ac04 ldr d0,0x1000e44c8
+10001ac08 str d0,[sp, #0x80]
+10001ac0c str xzr,[sp, #0x88]
+10001ac10 adrp x8,0x10011e000
+10001ac14 ldrb w8,[x8, #0x680]
+10001ac18 tbz w8,#0x0,0x10001ac3c
+10001ac1c ldr x0,[x19, #0x28]
+10001ac20 cbz x0,0x10001ac5c
+10001ac24 adr x1,0x10010b8f8
+10001ac28 nop
+10001ac2c bl 0x1000a3780
+10001ac30 cmp w0,#0x0
+10001ac34 cset w20,ne
+10001ac38 b 0x10001ac60
+10001ac3c add x19,x19,#0x20
+10001ac40 adr x8,0x1000fef90
+10001ac44 nop
+10001ac48 ldr x8,[x8]
+10001ac4c ldr x9,[x19]
+10001ac50 ldr x9,[x9, #0x8]
+10001ac54 str x8,[x9, #0x18]
+10001ac58 b 0x10001ac98
+10001ac5c mov w20,#0x0
+10001ac60 adrp x8,0x10011e000
+10001ac64 ldr x8,[x8, #0x698]
+10001ac68 adrp x26,0x10011d000
+10001ac6c cbz x8,0x10001acd8
+10001ac70 ldr x9,[x26, #0xcd0]
+10001ac74 cmp x8,x9
+10001ac78 b.ne 0x10001acd8
+10001ac7c adr x1,0x1000b0e63
+10001ac80 nop
+10001ac84 str x8,[sp]
+10001ac88 adr x2,0x10010bc58
+10001ac8c nop
+10001ac90 mov w0,#0x0
+10001ac94 bl 0x10001d088
+10001ac98 add x0,sp,#0x70
+10001ac9c mov w1,#0x8
+10001aca0 bl 0x1000a44d0
+10001aca4 sub x0,x29,#0x80
+10001aca8 mov w1,#0x8
+10001acac bl 0x1000a44d0
+10001acb0 ldur x8,[x29, #-0x58]
+10001acb4 bl 0x1000a4e50
+10001acb8 ldp x29,x30,[sp, #0x110]
+10001acbc ldp x20,x19,[sp, #0x100]
+10001acc0 ldp x22,x21,[sp, #0xf0]
+10001acc4 ldp x24,x23,[sp, #0xe0]
+10001acc8 ldp x26,x25,[sp, #0xd0]
+10001accc ldp x28,x27,[sp, #0xc0]
+10001acd0 add sp,sp,#0x120
+10001acd4 retab
+10001acd8 adrp x21,0x10011e000
+10001acdc ldr x8,[x21, #0x6a0]
+10001ace0 cbz x8,0x10001ad9c
+10001ace4 bl 0x100029ad0
+10001ace8 ldr x8,[sp, #0x78]
+10001acec str x0,[x8, #0x18]
+10001acf0 ldr x8,[x21, #0x6a0]
+10001acf4 ldr x9,[x26, #0xcd0]
+10001acf8 cmp x8,x9
+10001acfc b.ne 0x10001ad20
+10001ad00 adr x1,0x1000b0e63
+10001ad04 nop
+10001ad08 str x8,[sp]
+10001ad0c adr x2,0x10010bc78
+10001ad10 nop
+10001ad14 mov w0,#0x0
+10001ad18 bl 0x10001d088
+10001ad1c b 0x10001ad54
+10001ad20 adrp x10,0x10011e000
+10001ad24 ldr x10,[x10, #0x6a8]
+10001ad28 sub x10,x0,x10
+10001ad2c cmp x10,#0x9
+10001ad30 b.hi 0x10001ad78
+10001ad34 stp x9,x8,[sp, #0x8]
+10001ad38 adr x1,0x1000b0e63
+10001ad3c nop
+10001ad40 str x10,[sp]
+10001ad44 adr x2,0x10010bc98
+10001ad48 nop
+10001ad4c mov w0,#0x0
+10001ad50 bl 0x10001d088
+10001ad54 ldr x8,[x19, #0x20]
+10001ad58 ldr x8,[x8, #0x8]
+10001ad5c str xzr,[x8, #0x18]
+10001ad60 tbnz w20,#0x0,0x10001ac98
+10001ad64 nop
+10001ad68 nop
+10001ad6c ldr x0,0x1000fda80
+10001ad70 bl 0x10001318c
+10001ad74 b 0x10001ac98
+10001ad78 stp x9,x8,[sp, #0x8]
+10001ad7c adr x1,0x1000b0e63
+10001ad80 nop
+10001ad84 str x10,[sp]
+10001ad88 adr x2,0x10010bcb8
+10001ad8c nop
+10001ad90 mov w0,#0x0
+10001ad94 bl 0x10001d088
+10001ad98 bl 0x10001795c
+10001ad9c ldr x0,[x19, #0x28]
+10001ada0 cbz x0,0x10001adb4
+10001ada4 adr x1,0x10010b8f8
+10001ada8 nop
+10001adac bl 0x1000a3780
+10001adb0 cbnz w0,0x10001ac98
+10001adb4 nop
+10001adb8 nop
+10001adbc ldr x8,0x1000feef8
+10001adc0 ldr x9,[x19, #0x20]!
+10001adc4 ldr x9,[x9, #0x8]
+10001adc8 str x8,[x9, #0x18]
+10001adcc adrp x27,0x10011e000
+10001add0 ldr x8,[x27, #0x678]
+10001add4 cbnz x8,0x10001ac98
+10001add8 tbz w20,#0x0,0x10001ade8
+10001addc adr x8,0x1000feee0
+10001ade0 nop
+10001ade4 b 0x10001ac48
+10001ade8 nop
+10001adec ldr x2,0x1000fd280
+10001adf0 nop
+10001adf4 ldr x3,0x1000fd288
+10001adf8 mov x0,#0x0
+10001adfc mov x1,#0x0
+10001ae00 bl 0x1000a3700
+10001ae04 mov x20,x0
+10001ae08 cbz x0,0x10001b07c
+10001ae0c adr x0,0x10010bcd8
+10001ae10 nop
+10001ae14 adr x1,0x10010bcf8
+10001ae18 nop
+10001ae1c bl 0x100029c30
+10001ae20 mov x22,x0
+10001ae24 adr x0,0x10010bd18
+10001ae28 nop
+10001ae2c mov x1,#0x0
+10001ae30 bl 0x1000a4030
+10001ae34 adr x8,0x10010bd38
+10001ae38 nop
+10001ae3c cmp x0,#0x0
+10001ae40 csel x23,x8,x0,eq
+10001ae44 adrp x8,0x10011b000
+10001ae48 ldr x0,[x8, #0xa08]
+10001ae4c str x23,[sp]
+10001ae50 adr x3,0x100108238
+10001ae54 nop
+10001ae58 mov x2,x22
+10001ae5c mov x4,#0x0
+10001ae60 bl 0x1000a8000
+10001ae64 bl 0x1000a4ce0
+10001ae68 mov x21,x0
+10001ae6c mov x0,x23
+10001ae70 bl 0x1000a3960
+10001ae74 cbz x22,0x10001ae80
+10001ae78 mov x0,x22
+10001ae7c bl 0x1000a3960
+10001ae80 cbz x21,0x10001b098
+10001ae84 adr x0,0x10010bd58
+10001ae88 nop
+10001ae8c adr x1,0x10010bcf8
+10001ae90 nop
+10001ae94 bl 0x100029c30
+10001ae98 mov x24,x0
+10001ae9c adr x0,0x10010bd78
+10001aea0 nop
+10001aea4 adr x1,0x10010bcf8
+10001aea8 nop
+10001aeac bl 0x100029c30
+10001aeb0 mov x22,x0
+10001aeb4 adr x0,0x10010bd98
+10001aeb8 nop
+10001aebc adr x1,0x10010bcf8
+10001aec0 nop
+10001aec4 bl 0x100029c30
+10001aec8 mov x23,x0
+10001aecc nop
+10001aed0 ldr x8,0x1000fd298
+10001aed4 ldr x1,[x8]
+10001aed8 mov x0,x20
+10001aedc mov x2,x24
+10001aee0 bl 0x1000a3770
+10001aee4 nop
+10001aee8 ldr x8,0x1000fd2a0
+10001aeec ldr x1,[x8]
+10001aef0 mov x0,x20
+10001aef4 mov x2,x21
+10001aef8 bl 0x1000a3770
+10001aefc nop
+10001af00 ldr x8,0x1000fd2b0
+10001af04 ldr x1,[x8]
+10001af08 mov x0,x20
+10001af0c mov x2,x22
+10001af10 bl 0x1000a3770
+10001af14 nop
+10001af18 ldr x8,0x1000fd2a8
+10001af1c ldr x1,[x8]
+10001af20 mov x0,x20
+10001af24 mov x2,x23
+10001af28 bl 0x1000a3770
+10001af2c nop
+10001af30 ldr x8,0x1000fd110
+10001af34 ldr x1,[x8]
+10001af38 nop
+10001af3c ldr x8,0x1000fd218
+10001af40 ldr x25,[x8]
+10001af44 mov x0,x20
+10001af48 mov x2,x25
+10001af4c bl 0x1000a3770
+10001af50 nop
+10001af54 ldr x8,0x1000fd118
+10001af58 ldr x1,[x8]
+10001af5c mov x0,x20
+10001af60 mov x2,x25
+10001af64 bl 0x1000a3770
+10001af68 cbz x24,0x10001af74
+10001af6c mov x0,x24
+10001af70 bl 0x1000a3960
+10001af74 mov x0,x21
+10001af78 bl 0x1000a3960
+10001af7c cbz x22,0x10001af88
+10001af80 mov x0,x22
+10001af84 bl 0x1000a3960
+10001af88 cbz x23,0x10001af94
+10001af8c mov x0,x23
+10001af90 bl 0x1000a3960
+10001af94 adr x1,0x1000b0e63
+10001af98 nop
+10001af9c adr x2,0x10010bdb8
+10001afa0 nop
+10001afa4 mov w0,#0x0
+10001afa8 bl 0x10001d088
+10001afac movi d0,#0x0
+10001afb0 mov x0,#0x0
+10001afb4 mov w1,#0x3
+10001afb8 mov x2,#0x0
+10001afbc mov x3,x20
+10001afc0 bl 0x1000a3c80
+10001afc4 mov x21,x0
+10001afc8 cbz x0,0x10001b0b4
+10001afcc str x21,[x27, #0x678]
+10001afd0 mov x0,x21
+10001afd4 bl 0x1000a3970
+10001afd8 ldr x23,[x26, #0xcd0]
+10001afdc adr x0,0x1000aa53f
+10001afe0 nop
+10001afe4 bl 0x1000a5060
+10001afe8 ldur x8,[x29, #-0x78]
+10001afec ldr x9,[x8, #0x28]
+10001aff0 str x0,[x8, #0x28]
+10001aff4 bl 0x1000a4e60
+10001aff8 mov x0,#0x0
+10001affc mov x1,#0x0
+10001b000 bl 0x1000a4740
+10001b004 bl 0x1000a4ce0
+10001b008 mov x22,x0
+10001b00c add x8,sp,#0x20
+10001b010 nop
+10001b014 ldr x16,0x1000fd168
+10001b018 mov x17,x8
+10001b01c movk x17,#0x6ae1, LSL #48
+10001b020 pacda x16,x17
+10001b024 str x16,[sp, #0x20]
+10001b028 nop
+10001b02c ldr d0,0x1000e44d0
+10001b030 str d0,[sp, #0x28]
+10001b034 add x8,x8,#0x10
+10001b038 adr x16,0x10001b118
+10001b03c nop
+10001b040 pacia x16,x8
+10001b044 adr x8,0x1000fdeb8
+10001b048 nop
+10001b04c stp x16,x8,[sp, #0x30]
+10001b050 add x8,sp,#0x70
+10001b054 stp x21,x23,[sp, #0x58]
+10001b058 ldr x9,[x19]
+10001b05c stp x8,x9,[sp, #0x40]
+10001b060 strb wzr,[sp, #0x68]
+10001b064 sub x8,x29,#0x80
+10001b068 str x8,[sp, #0x50]
+10001b06c add x1,sp,#0x20
+10001b070 bl 0x1000a4730
+10001b074 bl 0x1000a4de0
+10001b078 b 0x10001b0cc
+10001b07c adr x1,0x1000b0e63
+10001b080 nop
+10001b084 adr x2,0x100105b18
+10001b088 nop
+10001b08c mov w0,#0x0
+10001b090 bl 0x10001d088
+10001b094 b 0x10001ac98
+10001b098 adr x1,0x1000b0e63
+10001b09c nop
+10001b0a0 adr x2,0x10010ba58
+10001b0a4 nop
+10001b0a8 mov w0,#0x0
+10001b0ac bl 0x10001d088
+10001b0b0 b 0x10001b0cc
+10001b0b4 adr x1,0x1000b0e63
+10001b0b8 nop
+10001b0bc adr x2,0x10010baf8
+10001b0c0 nop
+10001b0c4 mov w0,#0x0
+10001b0c8 bl 0x10001d088
+10001b0cc mov x0,x20
+10001b0d0 bl 0x1000a3960
+10001b0d4 b 0x10001ac98
+
+void FUN_10001ab94(long param_1)
+
+{
+  cfstringStruct *pcVar1;
+  bool bVar2;
+  int iVar3;
+  long lVar4;
+  long lVar5;
+  cfstringStruct *pcVar6;
+  long lVar7;
+  long lVar8;
+  long lVar9;
+  undefined **ppuVar10;
+  undefined8 uVar11;
+  undefined *local_100;
+  undefined8 local_f8;
+  code *local_f0;
+  undefined *puStack_e8;
+  undefined8 *local_e0;
+  long lStack_d8;
+  undefined8 *local_d0;
+  long local_c8;
+  long lStack_c0;
+  undefined1 local_b8;
+  undefined8 local_b0;
+  undefined8 *local_a8;
+  undefined8 local_a0;
+  undefined8 local_98;
+  undefined8 local_90;
+  undefined8 *local_88;
+  undefined8 local_80;
+  code *local_78;
+  code *local_70;
+  undefined8 local_68;
+
+  local_88 = &local_90;
+  local_90 = 0;
+  local_80 = DAT_1000e44e0;
+  local_78 = FUN_1000162f0;
+  local_70 = FUN_100016300;
+  local_68 = 0;
+  local_a8 = &local_b0;
+  local_b0 = 0;
+  local_a0 = DAT_1000e44c8;
+  local_98 = 0;
+  if ((DAT_10011e680 & 1) == 0) {
+    ppuVar10 = &PTR_cf_ServiceProhibited_1000fef90;
+  }
+  else {
+    if (*(long *)(param_1 + 0x28) == 0) {
+      bVar2 = false;
+    }
+    else {
+      iVar3 = _CFEqual(*(long *)(param_1 + 0x28),&cf_com_apple_SystemConfiguration_InterfaceNamer);
+      bVar2 = iVar3 != 0;
+    }
+    if ((DAT_10011e698 != 0) && (DAT_10011e698 == DAT_10011dcd0)) {
+      FUN_10001d088(0,"ask_user_to_trust_ptp_block_invoke",
+                    &cf_Deniedptpaccessfromconnection_llusincewe_restillonthatconnection_);
+      goto LAB_10001ac98;
+    }
+    if (DAT_10011e6a0 != 0) {
+      lVar4 = FUN_100029ad0();
+      local_a8[3] = lVar4;
+      if (DAT_10011e6a0 == DAT_10011dcd0) {
+        FUN_10001d088(0,"ask_user_to_trust_ptp_block_invoke",
+                      &cf_Allowingptpfromconnection_llusincewe_restillonthatconnection_);
+      }
+      else {
+        if (9 < (ulong)(lVar4 - DAT_10011e6a8)) {
+          FUN_10001d088(0,"ask_user_to_trust_ptp_block_invoke",
+                        &
+                        cf_Ignoringuser_allowedptpfromconnection_llusince_llusecondshaveelapsedsincetheusersaidtrustfromconnection_llu_
+                       );
+          FUN_10001795c();
+          goto LAB_10001ad9c;
+        }
+        FUN_10001d088(0,"ask_user_to_trust_ptp_block_invoke",
+                      &
+                      cf_Allowingptpfromconnnection_llusinceonly_llusecondshaveelapsedsincetheusersaidtrustfromconnection_llu_
+                     );
+      }
+      *(undefined8 *)(*(long *)(*(long *)(param_1 + 0x20) + 8) + 0x18) = 0;
+      if (!bVar2) {
+        FUN_10001318c(PTR_cf_com_apple_mobile_lockdown_trusted_ptp_attached_1000fda80);
+      }
+      goto LAB_10001ac98;
+    }
+LAB_10001ad9c:
+    if ((*(long *)(param_1 + 0x28) != 0) &&
+       (iVar3 = _CFEqual(*(long *)(param_1 + 0x28),&cf_com_apple_SystemConfiguration_InterfaceNamer)
+       , iVar3 != 0)) goto LAB_10001ac98;
+    *(undefined **)(*(long *)(*(long *)(param_1 + 0x20) + 8) + 0x18) =
+         PTR_cf_PTPDialogResponsePending_1000feef8;
+    if (DAT_10011e678 != 0) goto LAB_10001ac98;
+    if (!bVar2) {
+      lVar4 = _CFDictionaryCreateMutable
+                        (0,0,PTR__kCFTypeDictionaryKeyCallBacks_1000fd280,
+                         PTR__kCFTypeDictionaryValueCallBacks_1000fd288);
+      if (lVar4 == 0) {
+        FUN_10001d088(0,"ask_user_to_trust_ptp_block_invoke",&cf_Failedtocreatedictionary_);
+      }
+      else {
+        lVar5 = FUN_100029c30(&cf_PTP_DIALOG_MESSAGE,&cf_PTP);
+        pcVar6 = (cfstringStruct *)_MGCopyAnswer(&cf_device_name_localized,0);
+        pcVar1 = &cf_iOSdevice;
+        if (pcVar6 != (cfstringStruct *)0x0) {
+          pcVar1 = pcVar6;
+        }
+        NSString::stringWithValidatedFormat_validFormatSpecifiers_error_
+                  ((ID)PTR__OBJC_CLASS___NSString_10011ba08,lVar5,&cf___,0);
+        lVar7 = _objc_claimAutoreleasedReturnValue();
+        _CFRelease(pcVar1);
+        if (lVar5 != 0) {
+          _CFRelease(lVar5);
+        }
+        if (lVar7 == 0) {
+          FUN_10001d088(0,"ask_user_to_trust_ptp_block_invoke",&cf_Failedtovalidateformatstring_);
+        }
+        else {
+          lVar5 = FUN_100029c30(&cf_PTP_DIALOG_HEADER,&cf_PTP);
+          lVar8 = FUN_100029c30(&cf_PTP_DIALOG_DENY_TRUST,&cf_PTP);
+          lVar9 = FUN_100029c30(&cf_PTP_DIALOG_ALLOW_TRUST,&cf_PTP);
+          _CFDictionarySetValue
+                    (lVar4,*(undefined8 *)PTR__kCFUserNotificationAlertHeaderKey_1000fd298,lVar5);
+          _CFDictionarySetValue
+                    (lVar4,*(undefined8 *)PTR__kCFUserNotificationAlertMessageKey_1000fd2a0,lVar7);
+          _CFDictionarySetValue
+                    (lVar4,*(undefined8 *)PTR__kCFUserNotificationDefaultButtonTitleKey_1000fd2b0,
+                     lVar8);
+          _CFDictionarySetValue
+                    (lVar4,*(undefined8 *)PTR__kCFUserNotificationAlternateButtonTitleKey_1000fd2a8,
+                     lVar9);
+          uVar11 = *(undefined8 *)PTR__kCFBooleanTrue_1000fd218;
+          _CFDictionarySetValue
+                    (lVar4,*(undefined8 *)PTR__SBUserNotificationAllowInSetupKey_1000fd110,uVar11);
+          _CFDictionarySetValue
+                    (lVar4,*(undefined8 *)PTR__SBUserNotificationPendWhileKeyBagLockedKey_1000fd118,
+                     uVar11);
+          if (lVar5 != 0) {
+            _CFRelease(lVar5);
+          }
+          _CFRelease(lVar7);
+          if (lVar8 != 0) {
+            _CFRelease(lVar8);
+          }
+          if (lVar9 != 0) {
+            _CFRelease(lVar9);
+          }
+          FUN_10001d088(0,"ask_user_to_trust_ptp_block_invoke",
+                        &cf_Askingtheuseriftheywanttoallowptp_);
+          lVar5 = _CFUserNotificationCreate(0,0,3,0,lVar4);
+          if (lVar5 == 0) {
+            FUN_10001d088(0,"ask_user_to_trust_ptp_block_invoke",&cf_Failedtocreateusernotification_
+                         );
+          }
+          else {
+            DAT_10011e678 = lVar5;
+            _CFRetain(lVar5);
+            lVar7 = DAT_10011dcd0;
+            uVar11 = _os_transaction_create("com.apple.mobile.lockdown");
+            local_88[5] = uVar11;
+            _objc_release_x9();
+            _dispatch_get_global_queue(0,0);
+            uVar11 = _objc_claimAutoreleasedReturnValue();
+            local_100 = PTR___NSConcreteStackBlock_1000fd168;
+            local_f8 = DAT_1000e44d0;
+            local_f0 = FUN_10001b118;
+            puStack_e8 = &DAT_1000fdeb8;
+            local_e0 = &local_b0;
+            lStack_c0 = lVar7;
+            lStack_d8 = *(long *)(param_1 + 0x20);
+            local_b8 = 0;
+            local_d0 = &local_90;
+            local_c8 = lVar5;
+            _dispatch_async(uVar11,&local_100);
+            _objc_release_x22();
+          }
+        }
+        _CFRelease(lVar4);
+      }
+      goto LAB_10001ac98;
+    }
+    ppuVar10 = &PTR_cf_UserDeniedPairing_1000feee0;
+  }
+  *(undefined **)(*(long *)(*(long *)(param_1 + 0x20) + 8) + 0x18) = *ppuVar10;
+LAB_10001ac98:
+  __Block_object_dispose(&local_b0,8);
+  __Block_object_dispose(&local_90,8);
+  _objc_release_x8(local_68);
+  return;
+}

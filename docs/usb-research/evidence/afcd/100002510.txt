@@ -1,0 +1,504 @@
+===== 100002510 entry =====
+XREF Entry Point EXTERNAL null
+XREF 10000c980 DATA null
+100002510 pacibsp
+100002514 stp x28,x27,[sp, #-0x50]!
+100002518 stp x24,x23,[sp, #0x10]
+10000251c stp x22,x21,[sp, #0x20]
+100002520 stp x20,x19,[sp, #0x30]
+100002524 stp x29,x30,[sp, #0x40]
+100002528 add x29,sp,#0x40
+10000252c sub sp,sp,#0x4b0
+100002530 mov x19,x1
+100002534 mov x20,x0
+100002538 nop
+10000253c ldr x8,0x100004248
+100002540 ldr x8,[x8]
+100002544 stur x8,[x29, #-0x48]
+100002548 add x0,sp,#0xa8
+10000254c mov w1,#0x400
+100002550 bl 0x1000033b8
+100002554 movi v0.2D,#0x0
+100002558 stp q0,q0,[sp, #0x80]
+10000255c stp q0,q0,[sp, #0x60]
+100002560 stp q0,q0,[sp, #0x40]
+100002564 stp q0,q0,[sp, #0x20]
+100002568 str q0,[sp, #0x10]
+10000256c bl 0x100003258
+100002570 adr x1,0x10000367a
+100002574 nop
+100002578 mov w0,#0x4
+10000257c bl 0x100003248
+100002580 mov w0,#0xd
+100002584 mov w1,#0x1
+100002588 bl 0x100003568
+10000258c adr x21,0x100003688
+100002590 nop
+100002594 adr x22,0x100008000
+100002598 nop
+10000259c adrp x23,0x100008000
+1000025a0 adr x24,0x100003699
+1000025a4 nop
+1000025a8 mov x0,x20
+1000025ac mov x1,x19
+1000025b0 mov x2,x21
+1000025b4 mov x3,x22
+1000025b8 mov x4,#0x0
+1000025bc bl 0x100003478
+1000025c0 cmp w0,#0x72
+1000025c4 b.ne 0x1000025d0
+1000025c8 str x24,[x23, #0x40]
+1000025cc b 0x1000025a8
+1000025d0 cmn w0,#0x1
+1000025d4 b.ne 0x1000028f8
+1000025d8 ldr x0,[x23, #0x40]
+1000025dc cbnz x0,0x1000025ec
+1000025e0 adr x0,0x1000036b9
+1000025e4 nop
+1000025e8 str x0,[x23, #0x40]
+1000025ec adr x1,0x100003699
+1000025f0 nop
+1000025f4 bl 0x100003578
+1000025f8 cbz w0,0x100002608
+1000025fc adr x19,0x100003660
+100002600 nop
+100002604 b 0x1000026d0
+100002608 mov x0,#0x0
+10000260c mov x1,#0x0
+100002610 bl 0x100003368
+100002614 cbz x0,0x1000026c8
+100002618 mov x19,x0
+10000261c nop
+100002620 ldr x8,0x1000042b0
+100002624 ldr x1,[x8]
+100002628 bl 0x1000032f8
+10000262c cbz x0,0x1000026c0
+100002630 mov x20,x0
+100002634 bl 0x100003308
+100002638 mov x21,x0
+10000263c bl 0x100003358
+100002640 cmp x21,x0
+100002644 b.ne 0x1000026c0
+100002648 nop
+10000264c ldr x8,0x1000042b8
+100002650 ldr x1,[x8]
+100002654 mov x0,x20
+100002658 mov x2,#0x0
+10000265c bl 0x100003328
+100002660 mov x20,x0
+100002664 mov x0,x19
+100002668 bl 0x100003318
+10000266c cbnz x20,0x1000026c8
+100002670 adr x1,0x1000036c8
+100002674 nop
+100002678 mov x0,#0x0
+10000267c mov x2,#0x0
+100002680 bl 0x1000033c8
+100002684 cbz x0,0x1000029d4
+100002688 mov x20,x0
+10000268c add x19,sp,#0xa8
+100002690 add x0,sp,#0xa8
+100002694 mov x1,x20
+100002698 mov w2,#0x400
+10000269c bl 0x1000033a8
+1000026a0 adr x1,0x10000372f
+1000026a4 nop
+1000026a8 add x0,sp,#0xa8
+1000026ac mov w2,#0x400
+1000026b0 bl 0x100003398
+1000026b4 mov x0,x20
+1000026b8 bl 0x100003458
+1000026bc b 0x1000026d0
+1000026c0 mov x0,x19
+1000026c4 bl 0x100003318
+1000026c8 adr x19,0x10000374f
+1000026cc nop
+1000026d0 bl 0x100003488
+1000026d4 cmn w0,#0x1
+1000026d8 b.eq 0x100002938
+1000026dc add x1,sp,#0x10
+1000026e0 mov x0,x19
+1000026e4 bl 0x1000034d8
+1000026e8 tbnz w0,#0x1f,0x10000270c
+1000026ec ldrh w8,[sp, #0x14]
+1000026f0 and w8,w8,#0xf000
+1000026f4 cmp w8,#0xa, LSL #12
+1000026f8 b.ne 0x10000271c
+1000026fc str x19,[sp]
+100002700 adr x1,0x1000037ab
+100002704 nop
+100002708 b 0x1000028b8
+10000270c bl 0x100003378
+100002710 ldr w8,[x0]
+100002714 cmp w8,#0x2
+100002718 b.ne 0x100002828
+10000271c mov x0,x19
+100002720 mov x1,#0x0
+100002724 bl 0x1000034f8
+100002728 adrp x20,0x100008000
+10000272c str x0,[x20, #0x48]
+100002730 cbnz x0,0x100002760
+100002734 bl 0x100003378
+100002738 ldr w8,[x0]
+10000273c cmp w8,#0x2
+100002740 b.ne 0x100002950
+100002744 mov x0,x19
+100002748 mov w1,#0x1ed
+10000274c bl 0x1000034e8
+100002750 tbnz w0,#0x1f,0x100002850
+100002754 mov x0,x19
+100002758 bl 0x100003588
+10000275c str x0,[x20, #0x48]
+100002760 str x0,[sp]
+100002764 adr x1,0x1000037fd
+100002768 nop
+10000276c mov w0,#0x4
+100002770 bl 0x100003248
+100002774 ldr x0,[x20, #0x48]
+100002778 add x1,sp,#0x10
+10000277c bl 0x1000034d8
+100002780 ldr x19,[x20, #0x48]
+100002784 tbnz w0,#0x1f,0x100002828
+100002788 ldrh w8,[sp, #0x14]
+10000278c stp x19,x8,[sp]
+100002790 adr x1,0x100003812
+100002794 nop
+100002798 mov w0,#0x5
+10000279c bl 0x100003248
+1000027a0 ldrh w8,[sp, #0x14]
+1000027a4 and w8,w8,#0xf000
+1000027a8 ldr x1,[x20, #0x48]
+1000027ac cmp w8,#0x4, LSL #12
+1000027b0 b.ne 0x100002840
+1000027b4 str xzr,[sp, #0xa0]
+1000027b8 adr x0,0x1000038d3
+1000027bc nop
+1000027c0 mov w2,#0x0
+1000027c4 bl 0x100003518
+1000027c8 cbz x0,0x100002868
+1000027cc mov x19,x0
+1000027d0 adr x0,0x10000390e
+1000027d4 nop
+1000027d8 add x2,sp,#0xa0
+1000027dc mov w1,#0x2
+1000027e0 bl 0x100003538
+1000027e4 tbnz w0,#0x1f,0x100002888
+1000027e8 mov x0,x19
+1000027ec bl 0x100003508
+1000027f0 tbz x0,#0x3f,0x10000296c
+1000027f4 bl 0x100003378
+1000027f8 ldr w20,[x0]
+1000027fc ldr x0,[sp, #0xa0]
+100002800 cbnz x0,0x100002810
+100002804 bl 0x100003378
+100002808 ldr w0,[x0]
+10000280c bl 0x100003598
+100002810 stp x20,x0,[sp]
+100002814 adr x1,0x10000393b
+100002818 nop
+10000281c mov w0,#0x1
+100002820 bl 0x100003248
+100002824 b 0x1000028a8
+100002828 bl 0x100003378
+10000282c ldr w8,[x0]
+100002830 stp x19,x8,[sp]
+100002834 adr x1,0x10000378b
+100002838 nop
+10000283c b 0x1000028b8
+100002840 str x1,[sp]
+100002844 adr x1,0x10000382c
+100002848 nop
+10000284c b 0x1000028b8
+100002850 bl 0x100003378
+100002854 ldr w8,[x0]
+100002858 stp x19,x8,[sp]
+10000285c adr x1,0x1000037c1
+100002860 nop
+100002864 b 0x1000028b8
+100002868 bl 0x100003378
+10000286c ldr w8,[x0]
+100002870 str x8,[sp]
+100002874 adr x1,0x1000038e6
+100002878 nop
+10000287c mov w0,#0x1
+100002880 bl 0x100003248
+100002884 b 0x1000028b0
+100002888 ldr x8,[sp, #0xa0]
+10000288c str x8,[sp]
+100002890 adr x1,0x100003913
+100002894 nop
+100002898 mov w0,#0x1
+10000289c bl 0x100003248
+1000028a0 ldr x0,[sp, #0xa0]
+1000028a4 bl 0x100003528
+1000028a8 mov x0,x19
+1000028ac bl 0x100003458
+1000028b0 adr x1,0x100003847
+1000028b4 nop
+1000028b8 mov w0,#0x1
+1000028bc bl 0x100003248
+1000028c0 ldur x8,[x29, #-0x48]
+1000028c4 nop
+1000028c8 ldr x9,0x100004248
+1000028cc ldr x9,[x9]
+1000028d0 cmp x9,x8
+1000028d4 b.ne 0x10000294c
+1000028d8 mov w0,#0x1
+1000028dc add sp,sp,#0x4b0
+1000028e0 ldp x29,x30,[sp, #0x40]
+1000028e4 ldp x20,x19,[sp, #0x30]
+1000028e8 ldp x22,x21,[sp, #0x20]
+1000028ec ldp x24,x23,[sp, #0x10]
+1000028f0 ldp x28,x27,[sp], #0x50
+1000028f4 retab
+1000028f8 nop
+1000028fc ldr x19,0x100004250
+100002900 ldr x3,[x19]
+100002904 adr x0,0x100003885
+100002908 nop
+10000290c mov w1,#0x11
+100002910 mov w2,#0x1
+100002914 bl 0x100003468
+100002918 ldr x3,[x19]
+10000291c adr x0,0x100003897
+100002920 nop
+100002924 mov w1,#0x3b
+100002928 mov w2,#0x1
+10000292c bl 0x100003468
+100002930 mov w0,#0x1
+100002934 bl 0x100003448
+100002938 adr x1,0x10000377e
+10000293c nop
+100002940 mov w0,#0x1
+100002944 bl 0x100003248
+100002948 b 0x100002930
+10000294c bl 0x100003388
+100002950 bl 0x100003378
+100002954 ldr w0,[x0]
+100002958 bl 0x100003598
+10000295c stp x19,x0,[sp]
+100002960 adr x1,0x1000037e4
+100002964 nop
+100002968 b 0x100002940
+10000296c mov x0,x19
+100002970 bl 0x100003458
+100002974 bl 0x1000033f8
+100002978 adrp x8,0x100008000
+10000297c str x0,[x8, #0x50]
+100002980 adr x0,0x10000385e
+100002984 nop
+100002988 mov x1,#0x0
+10000298c bl 0x100003428
+100002990 mov x19,x0
+100002994 adrp x20,0x100008000
+100002998 str x0,[x20, #0x58]
+10000299c mov w0,#0x2
+1000029a0 mov x1,#0x0
+1000029a4 bl 0x1000033d8
+1000029a8 mov x1,x0
+1000029ac mov x0,x19
+1000029b0 bl 0x100003438
+1000029b4 adr x1,0x100003876
+1000029b8 nop
+1000029bc mov w0,#0x4
+1000029c0 bl 0x100003248
+1000029c4 ldr x0,[x23, #0x40]
+1000029c8 ldr x1,[x20, #0x58]
+1000029cc bl 0x1000029e0
+1000029d0 bl 0x100003418
+1000029d4 adr x1,0x1000036ea
+1000029d8 nop
+1000029dc b 0x100002940
+
+undefined8 entry(undefined8 param_1,undefined8 param_2)
+
+{
+  undefined *puVar1;
+  int iVar2;
+  long lVar3;
+  long lVar4;
+  long lVar5;
+  int *piVar6;
+  void *pvVar7;
+  long lVar8;
+  dispatch_object_t object;
+  dispatch_queue_t queue;
+  char *pcVar9;
+  stat local_4f0;
+  char *local_460;
+  char acStack_458 [1024];
+  long local_58;
+
+  local_58 = *(long *)PTR____stack_chk_guard_100004248;
+  _bzero(acStack_458,0x400);
+  local_4f0.st_gen = 0;
+  local_4f0.st_lspare = 0;
+  local_4f0.st_blksize = 0;
+  local_4f0.st_flags = 0;
+  local_4f0.st_qspare[1] = 0;
+  local_4f0.st_qspare[0] = 0;
+  local_4f0.st_birthtimespec.tv_nsec = 0;
+  local_4f0.st_birthtimespec.tv_sec = 0;
+  local_4f0.st_blocks = 0;
+  local_4f0.st_size = 0;
+  local_4f0.st_mtimespec.tv_nsec = 0;
+  local_4f0.st_mtimespec.tv_sec = 0;
+  local_4f0.st_ctimespec.tv_nsec = 0;
+  local_4f0.st_ctimespec.tv_sec = 0;
+  local_4f0.st_rdev = 0;
+  local_4f0._28_4_ = 0;
+  local_4f0.st_uid = 0;
+  local_4f0.st_gid = 0;
+  local_4f0.st_atimespec.tv_nsec = 0;
+  local_4f0.st_atimespec.tv_sec = 0;
+  local_4f0.st_ino = 0;
+  local_4f0.st_dev = 0;
+  local_4f0.st_mode = 0;
+  local_4f0.st_nlink = 0;
+  _AFCPlatformInitialize();
+  _AFCLog(4,"afcd starting");
+  _signal(0xd);
+  while (iVar2 = _getopt_long(param_1,param_2,"r",&PTR_s_crash_reporter_100008000,0),
+        puVar1 = PTR____stderrp_100004250, iVar2 == 0x72) {
+    DAT_100008040 = "com.apple.crashreportcopymobile";
+  }
+  if (iVar2 != -1) {
+    _fwrite("usage: afcd [-r]\n",0x11,1,*(FILE **)PTR____stderrp_100004250);
+    _fwrite("  -r | --crash-reporter      : run afcd for crash reporter\n",0x3b,1,*(FILE **)puVar1);
+    goto LAB_100002930;
+  }
+  if (DAT_100008040 == (char *)0x0) {
+    DAT_100008040 = "com.apple.afcd";
+  }
+  iVar2 = _strcmp(DAT_100008040,"com.apple.crashreportcopymobile");
+  if (iVar2 == 0) {
+    lVar8 = _MKBUserTypeDeviceMode(0,0);
+    if (lVar8 == 0) {
+LAB_1000026c8:
+      pcVar9 = "/private/var/mobile/Library/Logs/CrashReporter";
+      goto LAB_1000026d0;
+    }
+    lVar3 = _CFDictionaryGetValue(lVar8,*(undefined8 *)PTR__kMKBDeviceModeKey_1000042b0);
+    if (lVar3 == 0) {
+LAB_1000026c0:
+      _CFRelease(lVar8);
+      goto LAB_1000026c8;
+    }
+    lVar4 = _CFGetTypeID();
+    lVar5 = _CFStringGetTypeID();
+    if (lVar4 != lVar5) goto LAB_1000026c0;
+    lVar3 = _CFStringCompare(lVar3,*(undefined8 *)PTR__kMKBDeviceModeMultiUser_1000042b8,0);
+    _CFRelease(lVar8);
+    if (lVar3 != 0) goto LAB_1000026c8;
+    pvVar7 = (void *)_container_system_group_path_for_identifier
+                               (0,"systemgroup.com.apple.osanalytics",0);
+    if (pvVar7 != (void *)0x0) {
+      pcVar9 = acStack_458;
+      ___strcpy_chk(acStack_458,pvVar7,0x400);
+      ___strcat_chk(acStack_458,"/Library/Logs/DiagnosticReports",0x400);
+      _free(pvVar7);
+      goto LAB_1000026d0;
+    }
+LAB_1000029d4:
+    pcVar9 = "Failed to retrieve group container systemgroup.com.apple.osanalytics";
+  }
+  else {
+    pcVar9 = "/private/var/mobile/Media";
+LAB_1000026d0:
+    iVar2 = _kqueue();
+    if (iVar2 != -1) {
+      iVar2 = _lstat(pcVar9,&local_4f0);
+      if (iVar2 < 0) {
+        piVar6 = ___error();
+        if (*piVar6 == 2) goto LAB_10000271c;
+      }
+      else {
+        if ((local_4f0.st_mode & 0xf000) == 0xa000) {
+          pcVar9 = "Path %s is a symlink.";
+          goto LAB_1000028b8;
+        }
+LAB_10000271c:
+        DAT_100008048 = (char *)_realpath_DARWIN_EXTSN(pcVar9,0);
+        if (DAT_100008048 == (char *)0x0) {
+          piVar6 = ___error();
+          if (*piVar6 != 2) {
+            piVar6 = ___error();
+            _strerror(*piVar6);
+            pcVar9 = "realpath(%s) failure: %s";
+            goto LAB_100002940;
+          }
+          iVar2 = _mkdir(pcVar9,0x1ed);
+          if (iVar2 < 0) {
+            ___error();
+            pcVar9 = "could not create directory %s (%d)";
+            goto LAB_1000028b8;
+          }
+          DAT_100008048 = _strdup(pcVar9);
+        }
+        _AFCLog(4,"Serving directory %s");
+        iVar2 = _lstat(DAT_100008048,&local_4f0);
+        if (-1 < iVar2) {
+          _AFCLog(5,"directory %s mode is 0x%x");
+          if ((local_4f0.st_mode & 0xf000) != 0x4000) {
+            pcVar9 = "path %s is not a directory";
+            goto LAB_1000028b8;
+          }
+          local_460 = (char *)0x0;
+          pvVar7 = (void *)_sandbox_extension_issue_file("com.apple.afc.root",DAT_100008048,0);
+          if (pvVar7 == (void *)0x0) {
+            ___error();
+            _AFCLog(1,"sandbox_extension_issue_file failed: %d");
+          }
+          else {
+            iVar2 = _sandbox_init("afcd",2,&local_460);
+            if (iVar2 < 0) {
+              _AFCLog(1,"Could not load afcd sandbox profile: %s");
+              _sandbox_free_error(local_460);
+            }
+            else {
+              lVar8 = _sandbox_extension_consume(pvVar7);
+              if (-1 < lVar8) {
+                _free(pvVar7);
+                DAT_100008050 = _dispatch_group_create();
+                object._os_obj =
+                     (_os_object_s *)
+                     _dispatch_queue_create("afcd xpc listener",(dispatch_queue_attr_t)0x0);
+                DAT_100008058._os_obj = object._os_obj;
+                queue = _dispatch_get_global_queue(2,0);
+                _dispatch_set_target_queue(object,queue);
+                _AFCLog(4,"Ready to start");
+                FUN_1000029e0(DAT_100008040,DAT_100008058._os_obj);
+                _dispatch_main();
+                goto LAB_1000029d4;
+              }
+              ___error();
+              if (local_460 == (char *)0x0) {
+                piVar6 = ___error();
+                _strerror(*piVar6);
+              }
+              _AFCLog(1,"sandbox_extension_consume failed (%d): %s");
+            }
+            _free(pvVar7);
+          }
+          pcVar9 = "failed to load sandbox";
+          goto LAB_1000028b8;
+        }
+      }
+      ___error();
+      pcVar9 = "could not stat directory %s: %d";
+LAB_1000028b8:
+      _AFCLog(1,pcVar9);
+      if (*(long *)PTR____stack_chk_guard_100004248 == local_58) {
+        return 1;
+      }
+                    /* WARNING: Subroutine does not return */
+      ___stack_chk_fail();
+    }
+    pcVar9 = "kqueue(): %m";
+  }
+LAB_100002940:
+  _AFCLog(1,pcVar9);
+LAB_100002930:
+                    /* WARNING: Subroutine does not return */
+  _exit(1);
+}

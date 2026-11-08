@@ -1,0 +1,859 @@
+===== 1000215fc FUN_1000215fc =====
+XREF 100125ca3 DATA null
+XREF 1000224b4 UNCONDITIONAL_CALL FUN_100021fb4
+1000215fc pacibsp
+100021600 sub sp,sp,#0xe0
+100021604 stp x28,x27,[sp, #0x80]
+100021608 stp x26,x25,[sp, #0x90]
+10002160c stp x24,x23,[sp, #0xa0]
+100021610 stp x22,x21,[sp, #0xb0]
+100021614 stp x20,x19,[sp, #0xc0]
+100021618 stp x29,x30,[sp, #0xd0]
+10002161c add x29,sp,#0xd0
+100021620 str xzr,[sp, #0x40]
+100021624 strb wzr,[sp, #0x3f]
+100021628 cbz x0,0x1000216d8
+10002162c ldr x20,[x29, #0x20]
+100021630 cbz x20,0x1000216d8
+100021634 mov x25,x7
+100021638 mov x26,x6
+10002163c mov x22,x5
+100021640 mov x23,x4
+100021644 mov x27,x3
+100021648 mov x28,x2
+10002164c mov x21,x1
+100021650 mov x24,x0
+100021654 bl 0x100028d28
+100021658 cbz x0,0x1000216f0
+10002165c mov x19,x0
+100021660 str x21,[sp, #0x30]
+100021664 ldr x0,[x24, #0x28]
+100021668 cbz x0,0x100021698
+10002166c adr x1,0x100105558
+100021670 nop
+100021674 bl 0x1000a3750
+100021678 mov x21,x0
+10002167c bl 0x100012c18
+100021680 cbz x0,0x100021968
+100021684 adr x1,0x100105558
+100021688 nop
+10002168c mov x0,x19
+100021690 mov x2,x21
+100021694 bl 0x1000a3770
+100021698 nop
+10002169c ldr x21,0x10011ba40
+1000216a0 ldr x0,[x24, #0x18]
+1000216a4 bl 0x100005e20
+1000216a8 mov x2,x0
+1000216ac mov x0,x21
+1000216b0 bl 0x1000a7280
+1000216b4 mov x2,x0
+1000216b8 adr x1,0x10010cd78
+1000216bc nop
+1000216c0 mov x0,x19
+1000216c4 bl 0x1000a3770
+1000216c8 ldr x8,[x24, #0x20]
+1000216cc cbz x8,0x100021708
+1000216d0 mov x21,#0x0
+1000216d4 b 0x100021734
+1000216d8 adr x1,0x1000b224c
+1000216dc nop
+1000216e0 adr x2,0x100105698
+1000216e4 nop
+1000216e8 mov w0,#0x0
+1000216ec b 0x100021700
+1000216f0 adr x1,0x1000b224c
+1000216f4 nop
+1000216f8 adr x2,0x100107e98
+1000216fc nop
+100021700 bl 0x10001d088
+100021704 b 0x100021cd4
+100021708 ldr x0,[x24, #0x18]
+10002170c bl 0x100005e0c
+100021710 add x1,sp,#0x3f
+100021714 bl 0x100012f74
+100021718 mov x21,x0
+10002171c cbz x0,0x100021734
+100021720 adr x1,0x10010cd98
+100021724 nop
+100021728 mov x0,x19
+10002172c mov x2,x21
+100021730 bl 0x1000a3770
+100021734 cbz x28,0x10002174c
+100021738 adr x1,0x10010cdb8
+10002173c nop
+100021740 mov x0,x19
+100021744 mov x2,x28
+100021748 bl 0x1000a3770
+10002174c cbz x27,0x100021764
+100021750 adr x1,0x10010cdd8
+100021754 nop
+100021758 mov x0,x19
+10002175c mov x2,x27
+100021760 bl 0x1000a3770
+100021764 cbz x26,0x1000217b0
+100021768 cbz x25,0x1000217b0
+10002176c ldr x27,[x29, #0x10]
+100021770 cbz x27,0x1000217b0
+100021774 adr x1,0x10010cdf8
+100021778 nop
+10002177c mov x0,x19
+100021780 mov x2,x26
+100021784 bl 0x1000a3770
+100021788 adr x1,0x10010cc78
+10002178c nop
+100021790 mov x0,x19
+100021794 mov x2,x25
+100021798 bl 0x1000a3770
+10002179c adr x1,0x10010ce18
+1000217a0 nop
+1000217a4 mov x0,x19
+1000217a8 mov x2,x27
+1000217ac bl 0x1000a3770
+1000217b0 cbz x23,0x1000217f8
+1000217b4 cbz x22,0x1000217f8
+1000217b8 adr x1,0x10010ce38
+1000217bc nop
+1000217c0 mov x0,x19
+1000217c4 mov x2,x22
+1000217c8 bl 0x1000a3770
+1000217cc adr x1,0x10010ce58
+1000217d0 nop
+1000217d4 mov x0,x19
+1000217d8 mov x2,x23
+1000217dc bl 0x1000a3770
+1000217e0 add x3,sp,#0x40
+1000217e4 mov x0,#0x0
+1000217e8 mov x1,x23
+1000217ec mov x2,x22
+1000217f0 bl 0x1000122f4
+1000217f4 tbz w0,#0x0,0x100021984
+1000217f8 ldr x0,[x24]
+1000217fc nop
+100021800 nop
+100021804 ldr x1,0x1000fec48
+100021808 nop
+10002180c nop
+100021810 ldr x2,0x1000fece0
+100021814 bl 0x100010c54
+100021818 mov x22,x0
+10002181c ldr x0,[x24, #0x18]
+100021820 bl 0x100005e20
+100021824 cmp w0,#0x3
+100021828 b.ne 0x10002183c
+10002182c nop
+100021830 ldr x8,0x1000fd218
+100021834 ldr x23,[x8]
+100021838 b 0x100021864
+10002183c mov x0,x22
+100021840 bl 0x100012c90
+100021844 cbz x0,0x100021878
+100021848 nop
+10002184c ldr x8,0x1000fd218
+100021850 ldr x23,[x8]
+100021854 mov x0,x22
+100021858 mov x1,x23
+10002185c bl 0x1000a3780
+100021860 cbz w0,0x100021878
+100021864 adr x1,0x10010ce98
+100021868 nop
+10002186c mov x0,x19
+100021870 mov x2,x23
+100021874 bl 0x1000a36a0
+100021878 ldr x0,[sp, #0x30]
+10002187c bl 0x100012c18
+100021880 ldrb w25,[sp, #0x3f]
+100021884 stur wzr,[x29, #-0x54]
+100021888 cbz x0,0x100021910
+10002188c ldr x23,[x24, #0x8]
+100021890 cbz x23,0x100021910
+100021894 mov x26,x0
+100021898 bl 0x100012c18
+10002189c mov x1,x0
+1000218a0 mov x0,x23
+1000218a4 bl 0x10001c774
+1000218a8 cbz x0,0x1000219a4
+1000218ac mov x23,x0
+1000218b0 adr x1,0x10010d978
+1000218b4 nop
+1000218b8 bl 0x1000a3750
+1000218bc bl 0x100012c90
+1000218c0 cbz x0,0x1000218d8
+1000218c4 nop
+1000218c8 ldr x8,0x1000fd210
+1000218cc ldr x1,[x8]
+1000218d0 bl 0x1000a3780
+1000218d4 cbz w0,0x100021a38
+1000218d8 ldr x0,[x24]
+1000218dc nop
+1000218e0 nop
+1000218e4 ldr x2,0x1000fe7c0
+1000218e8 mov x1,#0x0
+1000218ec bl 0x100010c54
+1000218f0 mov x27,x0
+1000218f4 bl 0x100012c90
+1000218f8 cbz x0,0x1000219cc
+1000218fc nop
+100021900 ldr x8,0x1000fd218
+100021904 ldr x1,[x8]
+100021908 mov x0,x27
+10002190c b 0x1000219fc
+100021910 adr x1,0x1000b2fc7
+100021914 nop
+100021918 adr x2,0x100105698
+10002191c nop
+100021920 mov w0,#0x0
+100021924 bl 0x10001d088
+100021928 adr x8,0x10010c5f8
+10002192c nop
+100021930 ldr x9,[sp, #0x30]
+100021934 cmp x9,#0x0
+100021938 csel x9,x8,x9,eq
+10002193c ldr x10,[sp, #0x40]
+100021940 cmp x10,#0x0
+100021944 csel x8,x8,x10,eq
+100021948 adr x1,0x1000b224c
+10002194c nop
+100021950 stp x9,x8,[sp]
+100021954 adr x2,0x10010ceb8
+100021958 nop
+10002195c mov w0,#0x0
+100021960 bl 0x10001d088
+100021964 b 0x100021cb4
+100021968 adr x1,0x1000b224c
+10002196c nop
+100021970 adr x2,0x10010cd58
+100021974 nop
+100021978 bl 0x10001d088
+10002197c mov x0,x19
+100021980 b 0x100021cd0
+100021984 adr x1,0x1000b224c
+100021988 nop
+10002198c adr x2,0x10010ce78
+100021990 nop
+100021994 mov w0,#0x0
+100021998 bl 0x10001d088
+10002199c mov x22,#0x0
+1000219a0 b 0x100021cb4
+1000219a4 adr x1,0x1000b2fc7
+1000219a8 nop
+1000219ac adr x2,0x10010d958
+1000219b0 nop
+1000219b4 bl 0x10001d088
+1000219b8 nop
+1000219bc nop
+1000219c0 ldr x8,0x1000fef40
+1000219c4 str x8,[sp, #0x40]
+1000219c8 b 0x100021928
+1000219cc adr x1,0x1000b2fc7
+1000219d0 nop
+1000219d4 adr x2,0x10010d998
+1000219d8 nop
+1000219dc bl 0x10001d088
+1000219e0 cbz x27,0x1000219ec
+1000219e4 mov x0,x27
+1000219e8 bl 0x1000a3960
+1000219ec nop
+1000219f0 ldr x8,0x1000fd218
+1000219f4 ldr x1,[x8]
+1000219f8 mov x0,x1
+1000219fc str x0,[sp, #0x28]
+100021a00 bl 0x1000a3780
+100021a04 cbz w0,0x100021a3c
+100021a08 mov x0,x26
+100021a0c bl 0x100012c18
+100021a10 adr x8,0x10010c5f8
+100021a14 nop
+100021a18 cmp x0,#0x0
+100021a1c csel x8,x8,x26,eq
+100021a20 adr x1,0x1000b2fc7
+100021a24 nop
+100021a28 str x8,[sp]
+100021a2c adr x2,0x10010d9b8
+100021a30 nop
+100021a34 b 0x100021c54
+100021a38 str xzr,[sp, #0x28]
+100021a3c adr x1,0x100106878
+100021a40 nop
+100021a44 mov x0,x23
+100021a48 bl 0x1000a3750
+100021a4c bl 0x100012c90
+100021a50 cbz x0,0x100021a70
+100021a54 nop
+100021a58 ldr x8,0x1000fd218
+100021a5c ldr x1,[x8]
+100021a60 bl 0x1000a3780
+100021a64 cbz w0,0x100021a70
+100021a68 bl 0x10000f52c
+100021a6c tbz w0,#0x0,0x100021b8c
+100021a70 ldr w8,[x24, #0x10]
+100021a74 cmp w8,#0x4
+100021a78 b.ne 0x100021a90
+100021a7c adr x1,0x1000b2fc7
+100021a80 nop
+100021a84 adr x2,0x10010d9f8
+100021a88 nop
+100021a8c b 0x100021c54
+100021a90 adr x1,0x10010da18
+100021a94 nop
+100021a98 mov x0,x23
+100021a9c bl 0x1000a3750
+100021aa0 mov x27,x0
+100021aa4 bl 0x100012c90
+100021aa8 cbz x0,0x100021ad0
+100021aac nop
+100021ab0 ldr x8,0x1000fd218
+100021ab4 ldr x1,[x8]
+100021ab8 mov x0,x27
+100021abc bl 0x1000a3780
+100021ac0 cbz w0,0x100021ad0
+100021ac4 ldr w8,[x24, #0x10]
+100021ac8 cmp w8,#0x1
+100021acc b.ne 0x100021c28
+100021ad0 adr x1,0x10010da58
+100021ad4 nop
+100021ad8 mov x0,x23
+100021adc bl 0x1000a3750
+100021ae0 mov x28,x0
+100021ae4 bl 0x100012b64
+100021ae8 cbz x0,0x100021bbc
+100021aec stur xzr,[x29, #-0x5c]
+100021af0 ldr x27,[x24, #0x8]
+100021af4 sub x2,x29,#0x58
+100021af8 mov x0,x28
+100021afc mov w1,#0x9
+100021b00 bl 0x1000a38a0
+100021b04 mov x28,x0
+100021b08 mov x0,x26
+100021b0c bl 0x100012c18
+100021b10 mov x1,x0
+100021b14 cbz w28,0x100021cf8
+100021b18 ldur w2,[x29, #-0x58]
+100021b1c sub x3,x29,#0x5c
+100021b20 mov x0,x27
+100021b24 bl 0x10001c8cc
+100021b28 tbz w0,#0x0,0x100021db8
+100021b2c add x8,sp,#0x48
+100021b30 nop
+100021b34 ldr x16,0x1000fd168
+100021b38 mov x17,x8
+100021b3c movk x17,#0x6ae1, LSL #48
+100021b40 pacda x16,x17
+100021b44 str x16,[sp, #0x48]
+100021b48 nop
+100021b4c ldr d0,0x1000e44d0
+100021b50 str d0,[sp, #0x50]
+100021b54 add x8,x8,#0x10
+100021b58 adr x16,0x10002511c
+100021b5c nop
+100021b60 pacia x16,x8
+100021b64 adr x8,0x1000fdfc0
+100021b68 nop
+100021b6c stp x16,x8,[sp, #0x58]
+100021b70 str x27,[sp, #0x68]
+100021b74 ldur w8,[x29, #-0x5c]
+100021b78 str w8,[sp, #0x70]
+100021b7c add x0,sp,#0x48
+100021b80 bl 0x1000a4eb0
+100021b84 mov x27,x0
+100021b88 b 0x100021bc0
+100021b8c mov x0,x26
+100021b90 bl 0x100012c18
+100021b94 adr x8,0x10010c5f8
+100021b98 nop
+100021b9c cmp x0,#0x0
+100021ba0 csel x8,x8,x26,eq
+100021ba4 adr x1,0x1000b2fc7
+100021ba8 nop
+100021bac str x8,[sp]
+100021bb0 adr x2,0x10010d9d8
+100021bb4 nop
+100021bb8 b 0x100021c54
+100021bbc mov x27,#0x0
+100021bc0 adr x1,0x10010dab8
+100021bc4 nop
+100021bc8 mov x0,x23
+100021bcc bl 0x1000a3750
+100021bd0 mov x28,x0
+100021bd4 bl 0x100012c18
+100021bd8 str x0,[sp, #0x20]
+100021bdc cbz x0,0x100021d04
+100021be0 mov x0,x28
+100021be4 bl 0x1000a3970
+100021be8 adr x1,0x10010dad8
+100021bec nop
+100021bf0 mov x0,x23
+100021bf4 bl 0x1000a3750
+100021bf8 mov x26,x0
+100021bfc bl 0x100012c90
+100021c00 cbz x0,0x100021d1c
+100021c04 nop
+100021c08 ldr x8,0x1000fd218
+100021c0c ldr x1,[x8]
+100021c10 mov x0,x26
+100021c14 bl 0x1000a3780
+100021c18 cmp w0,#0x0
+100021c1c cset w8,ne
+100021c20 str w8,[sp, #0x1c]
+100021c24 b 0x100021d20
+100021c28 mov x0,x26
+100021c2c bl 0x100012c18
+100021c30 adr x8,0x10010c5f8
+100021c34 nop
+100021c38 cmp x0,#0x0
+100021c3c csel x8,x8,x26,eq
+100021c40 adr x1,0x1000b2fc7
+100021c44 nop
+100021c48 str x8,[sp]
+100021c4c adr x2,0x10010da38
+100021c50 nop
+100021c54 mov w0,#0x0
+100021c58 bl 0x10001d088
+100021c5c mov w20,#0x0
+100021c60 mov x28,#0x0
+100021c64 mov x27,#0x0
+100021c68 adr x8,0x1000fef90
+100021c6c nop
+100021c70 ldr x8,[x8]
+100021c74 str x8,[sp, #0x40]
+100021c78 mov w26,#0xffffffff
+100021c7c ldr x0,[sp, #0x28]
+100021c80 cbz x0,0x100021c88
+100021c84 bl 0x1000a3960
+100021c88 mov x0,x23
+100021c8c bl 0x1000a3960
+100021c90 cbz x28,0x100021c9c
+100021c94 mov x0,x28
+100021c98 bl 0x1000a3960
+100021c9c cmn w26,#0x1
+100021ca0 b.eq 0x100021cac
+100021ca4 mov x0,x26
+100021ca8 bl 0x1000a46d0
+100021cac bl 0x1000a4e30
+100021cb0 tbz w20,#0x0,0x100021928
+100021cb4 mov x0,x19
+100021cb8 bl 0x1000a3960
+100021cbc cbz x21,0x100021cc8
+100021cc0 mov x0,x21
+100021cc4 bl 0x1000a3960
+100021cc8 cbz x22,0x100021cd4
+100021ccc mov x0,x22
+100021cd0 bl 0x1000a3960
+100021cd4 ldr x0,[sp, #0x40]
+100021cd8 ldp x29,x30,[sp, #0xd0]
+100021cdc ldp x20,x19,[sp, #0xc0]
+100021ce0 ldp x22,x21,[sp, #0xb0]
+100021ce4 ldp x24,x23,[sp, #0xa0]
+100021ce8 ldp x26,x25,[sp, #0x90]
+100021cec ldp x28,x27,[sp, #0x80]
+100021cf0 add sp,sp,#0xe0
+100021cf4 retab
+100021cf8 adr x2,0x10010da78
+100021cfc nop
+100021d00 b 0x100021dcc
+100021d04 mov x0,x26
+100021d08 bl 0x100012c18
+100021d0c mov x1,x23
+100021d10 bl 0x10002512c
+100021d14 cbz x0,0x100021e2c
+100021d18 mov x28,x0
+100021d1c str wzr,[sp, #0x1c]
+100021d20 ldr w26,[x29, #0x18]
+100021d24 cmn w26,#0x1
+100021d28 b.ne 0x100021d50
+100021d2c cmp w25,#0x0
+100021d30 mov w8,#0x1e
+100021d34 mov w9,#0x2
+100021d38 csel w1,w9,w8,eq
+100021d3c sub x0,x29,#0x54
+100021d40 bl 0x1000072b0
+100021d44 mov x26,x0
+100021d48 cmn w0,#0x1
+100021d4c b.eq 0x100021e88
+100021d50 ldr x8,[sp, #0x20]
+100021d54 cmp x8,#0x0
+100021d58 cset w25,eq
+100021d5c mov x0,x26
+100021d60 bl 0x100012ccc
+100021d64 mov x0,x26
+100021d68 bl 0x100012d48
+100021d6c add x7,sp,#0x40
+100021d70 mov x0,x24
+100021d74 mov x1,x28
+100021d78 mov x2,x26
+100021d7c mov x3,x19
+100021d80 mov x4,x25
+100021d84 ldr w5,[sp, #0x1c]
+100021d88 mov x6,x27
+100021d8c bl 0x1000255a0
+100021d90 cbz w0,0x100021e08
+100021d94 adr x1,0x1000b2fc7
+100021d98 nop
+100021d9c str x28,[sp]
+100021da0 adr x2,0x10010db38
+100021da4 nop
+100021da8 mov w0,#0x0
+100021dac bl 0x10001d088
+100021db0 mov w20,#0x0
+100021db4 b 0x100021c7c
+100021db8 mov x0,x26
+100021dbc bl 0x100012c18
+100021dc0 mov x1,x0
+100021dc4 adr x2,0x10010da98
+100021dc8 nop
+100021dcc adr x8,0x10010c5f8
+100021dd0 nop
+100021dd4 cmp x1,#0x0
+100021dd8 csel x8,x8,x26,eq
+100021ddc str x8,[sp]
+100021de0 adr x1,0x1000b2fc7
+100021de4 nop
+100021de8 mov w0,#0x0
+100021dec bl 0x10001d088
+100021df0 mov w20,#0x0
+100021df4 mov x28,#0x0
+100021df8 mov x27,#0x0
+100021dfc adr x8,0x1000fef48
+100021e00 nop
+100021e04 b 0x100021c70
+100021e08 nop
+100021e0c ldr x8,0x1000fd1f8
+100021e10 ldr x0,[x8]
+100021e14 sub x2,x29,#0x54
+100021e18 mov w1,#0x9
+100021e1c bl 0x1000a3870
+100021e20 str x0,[x20]
+100021e24 mov w20,#0x1
+100021e28 b 0x100021c7c
+100021e2c cbz x27,0x100021e40
+100021e30 mov x8,x27
+100021e34 ldr x9,[x8, #0x10]!
+100021e38 mov x0,x27
+100021e3c blraa x9,x8
+100021e40 mov x0,x26
+100021e44 bl 0x100012c18
+100021e48 adr x8,0x10010c5f8
+100021e4c nop
+100021e50 cmp x0,#0x0
+100021e54 csel x8,x8,x26,eq
+100021e58 adr x1,0x1000b2fc7
+100021e5c nop
+100021e60 str x8,[sp]
+100021e64 adr x2,0x10010daf8
+100021e68 nop
+100021e6c mov w0,#0x0
+100021e70 bl 0x10001d088
+100021e74 mov w20,#0x0
+100021e78 mov x28,#0x0
+100021e7c adr x8,0x1000fef40
+100021e80 nop
+100021e84 b 0x100021c70
+100021e88 adr x1,0x1000b2fc7
+100021e8c nop
+100021e90 adr x2,0x10010db18
+100021e94 nop
+100021e98 mov w0,#0x0
+100021e9c bl 0x10001d088
+100021ea0 mov w20,#0x0
+100021ea4 nop
+100021ea8 nop
+100021eac ldr x8,0x1000fef50
+100021eb0 str x8,[sp, #0x40]
+100021eb4 b 0x100021c7c
+
+undefined *
+FUN_1000215fc(undefined8 *param_1,undefined8 param_2,long param_3,long param_4,long param_5,
+             long param_6,long param_7,long param_8,long param_9,uint param_10,undefined8 *param_11)
+
+{
+  undefined *self;
+  char cVar1;
+  bool bVar2;
+  int iVar3;
+  uint uVar4;
+  long lVar5;
+  undefined8 uVar6;
+  long lVar7;
+  ID IVar8;
+  ulong uVar9;
+  long lVar10;
+  long lVar11;
+  long lVar12;
+  long lVar13;
+  long lVar14;
+  ulong uVar15;
+  cfstringStruct *pcVar16;
+  undefined4 uVar17;
+  undefined **ppuVar18;
+  long lVar19;
+  undefined8 uVar20;
+  long local_b8;
+  char local_a1;
+  undefined *local_a0;
+  undefined *local_98;
+  undefined8 local_90;
+  code *local_88;
+  undefined *puStack_80;
+  undefined8 local_78;
+  undefined4 local_70;
+  undefined8 local_6c;
+  undefined4 local_64;
+
+  local_a0 = (undefined *)0x0;
+  local_a1 = '\0';
+  if ((param_1 == (undefined8 *)0x0) || (param_11 == (undefined8 *)0x0)) {
+    pcVar16 = &cf_Invalidinput_;
+LAB_100021700:
+    FUN_10001d088(0,"spawn_and_handle_checkin",pcVar16);
+    return local_a0;
+  }
+  lVar5 = FUN_100028d28();
+  if (lVar5 == 0) {
+    pcVar16 = &cf_Failedtoallocatedictionary_;
+    goto LAB_100021700;
+  }
+  if (param_1[5] != 0) {
+    uVar6 = _CFDictionaryGetValue(param_1[5],&cf_HostID);
+    lVar7 = FUN_100012c18();
+    if (lVar7 == 0) {
+      FUN_10001d088(0,"spawn_and_handle_checkin",&cf_InvalidormissinghostID_);
+      lVar10 = lVar5;
+      goto LAB_100021cd0;
+    }
+    _CFDictionarySetValue(lVar5,&cf_HostID,uVar6);
+  }
+  self = PTR__OBJC_CLASS___NSNumber_10011ba40;
+  uVar6 = FUN_100005e20(param_1[3]);
+  IVar8 = NSNumber::numberWithUnsignedInt_((ID)self,uVar6);
+  _CFDictionarySetValue(lVar5,&cf_HostConnectionType,IVar8);
+  if (param_1[4] == 0) {
+    uVar6 = FUN_100005e0c(param_1[3]);
+    lVar7 = FUN_100012f74(uVar6,&local_a1);
+    if (lVar7 != 0) {
+      _CFDictionarySetValue(lVar5,&cf_HostIP,lVar7);
+    }
+  }
+  else {
+    lVar7 = 0;
+  }
+  if (param_3 != 0) {
+    _CFDictionarySetValue(lVar5,&cf_HostSideClientName,param_3);
+  }
+  if (param_4 != 0) {
+    _CFDictionarySetValue(lVar5,&cf_HostSideHostName,param_4);
+  }
+  if (((param_7 != 0) && (param_8 != 0)) && (param_9 != 0)) {
+    _CFDictionarySetValue(lVar5,&cf_DevicePrivateKey,param_7);
+    _CFDictionarySetValue(lVar5,&cf_DeviceCertificate,param_8);
+    _CFDictionarySetValue(lVar5,&cf_HostRootCertificate,param_9);
+  }
+  if ((param_5 == 0) || (param_6 == 0)) {
+LAB_1000217f8:
+    lVar10 = FUN_100010c54(*param_1,PTR_cf_com_apple_mobile_debug_1000fec48,
+                           PTR_cf_ForceHeartbeat_1000fece0);
+    iVar3 = FUN_100005e20(param_1[3]);
+    if (iVar3 == 3) {
+      uVar6 = *(undefined8 *)PTR__kCFBooleanTrue_1000fd218;
+LAB_100021864:
+      _CFDictionaryAddValue(lVar5,&cf_UseHostTracker,uVar6);
+    }
+    else {
+      lVar11 = FUN_100012c90(lVar10);
+      if (lVar11 != 0) {
+        uVar6 = *(undefined8 *)PTR__kCFBooleanTrue_1000fd218;
+        iVar3 = _CFEqual(lVar10,uVar6);
+        if (iVar3 != 0) goto LAB_100021864;
+      }
+    }
+    lVar11 = FUN_100012c18(param_2);
+    cVar1 = local_a1;
+    local_64 = 0;
+    if ((lVar11 == 0) || (lVar19 = param_1[1], lVar19 == 0)) {
+      FUN_10001d088(0,"spawn_service_agent",&cf_Invalidinput_);
+    }
+    else {
+      uVar6 = FUN_100012c18();
+      lVar19 = FUN_10001c774(lVar19,uVar6);
+      if (lVar19 == 0) {
+        FUN_10001d088(0,"spawn_service_agent",&cf_Failedtolookupserviceinthemap_);
+        local_a0 = PTR_cf_InvalidService_1000fef40;
+      }
+      else {
+        _CFDictionaryGetValue(lVar19,&cf_AllowUnactivatedService);
+        lVar12 = FUN_100012c90();
+        if ((lVar12 == 0) ||
+           (iVar3 = _CFEqual(lVar12,*(undefined8 *)PTR__kCFBooleanFalse_1000fd210), iVar3 != 0)) {
+          local_b8 = FUN_100010c54(*param_1,0,PTR_cf_BrickState_1000fe7c0);
+          lVar12 = FUN_100012c90();
+          if (lVar12 == 0) {
+            FUN_10001d088(0,"spawn_service_agent",&cf_Failedtolookupbrickstate_assumingunactivated_)
+            ;
+            if (local_b8 != 0) {
+              _CFRelease(local_b8);
+            }
+            local_b8 = *(long *)PTR__kCFBooleanTrue_1000fd218;
+            lVar12 = local_b8;
+          }
+          else {
+            lVar12 = *(long *)PTR__kCFBooleanTrue_1000fd218;
+          }
+          iVar3 = _CFEqual(local_b8,lVar12);
+          if (iVar3 == 0) goto LAB_100021a3c;
+          FUN_100012c18(lVar11);
+          pcVar16 = &cf_Service____iscurrentlyprohibitedfromrunning_deviceisnotactivated__;
+LAB_100021c54:
+          FUN_10001d088(0,"spawn_service_agent",pcVar16);
+          ppuVar18 = &PTR_cf_ServiceProhibited_1000fef90;
+LAB_100021c70:
+          lVar13 = 0;
+          bVar2 = false;
+          local_a0 = *ppuVar18;
+          uVar9 = 0xffffffff;
+        }
+        else {
+          local_b8 = 0;
+LAB_100021a3c:
+          _CFDictionaryGetValue(lVar19,&cf_DeveloperModeRequired);
+          lVar12 = FUN_100012c90();
+          if (((lVar12 != 0) &&
+              (iVar3 = _CFEqual(lVar12,*(undefined8 *)PTR__kCFBooleanTrue_1000fd218), iVar3 != 0))
+             && (uVar9 = FUN_10000f52c(), (uVar9 & 1) == 0)) {
+            FUN_100012c18(lVar11);
+            pcVar16 = &cf_Service____iscurrentlyprohibitedfromrunning_developermodenotenabled__;
+            goto LAB_100021c54;
+          }
+          if (*(int *)(param_1 + 2) == 4) {
+            pcVar16 = &cf_Internalclientsareprohibitedfromstartingservices_;
+            goto LAB_100021c54;
+          }
+          uVar6 = _CFDictionaryGetValue(lVar19,&cf_USBOnlyService);
+          lVar12 = FUN_100012c90();
+          if (((lVar12 != 0) &&
+              (iVar3 = _CFEqual(uVar6,*(undefined8 *)PTR__kCFBooleanTrue_1000fd218), iVar3 != 0)) &&
+             (*(int *)(param_1 + 2) != 1)) {
+            FUN_100012c18(lVar11);
+            pcVar16 = &cf_Service____isonlyallowedtorunoverUSB_;
+            goto LAB_100021c54;
+          }
+          uVar6 = _CFDictionaryGetValue(lVar19,&cf_InstanceLimit);
+          lVar12 = FUN_100012b64();
+          if (lVar12 != 0) {
+            local_6c = 0;
+            uVar20 = param_1[1];
+            iVar3 = _CFNumberGetValue(uVar6,9,(long)&local_6c + 4);
+            uVar6 = FUN_100012c18(lVar11);
+            if (iVar3 == 0) {
+              pcVar16 = &cf_Invalidinstancelimitspecifiedfor____;
+            }
+            else {
+              uVar9 = FUN_10001c8cc(uVar20,uVar6,local_6c._4_4_,&local_6c);
+              if ((uVar9 & 1) != 0) {
+                local_98 = PTR___NSConcreteStackBlock_1000fd168;
+                local_90 = DAT_1000e44d0;
+                local_88 = FUN_10002511c;
+                puStack_80 = &DAT_1000fdfc0;
+                local_70 = (undefined4)local_6c;
+                local_78 = uVar20;
+                lVar12 = _objc_retainBlock(&local_98);
+                goto LAB_100021bc0;
+              }
+              FUN_100012c18(lVar11);
+              pcVar16 = &cf_Toomanyinstancesofservice____alreadyrunning_;
+            }
+            FUN_10001d088(0,"spawn_service_agent",pcVar16);
+            ppuVar18 = &PTR_cf_ServiceLimit_1000fef48;
+            goto LAB_100021c70;
+          }
+          lVar12 = 0;
+LAB_100021bc0:
+          lVar13 = _CFDictionaryGetValue(lVar19,&cf_XPCServiceName);
+          lVar14 = FUN_100012c18();
+          if (lVar14 == 0) {
+            uVar6 = FUN_100012c18(lVar11);
+            lVar13 = FUN_10002512c(uVar6,lVar19);
+            if (lVar13 == 0) {
+              if (lVar12 != 0) {
+                (**(code **)(lVar12 + 0x10))(lVar12);
+              }
+              FUN_100012c18(lVar11);
+              FUN_10001d088(0,"spawn_service_agent",&cf_Failedtoregisterservice____withlaunchd_);
+              ppuVar18 = &PTR_cf_InvalidService_1000fef40;
+              goto LAB_100021c70;
+            }
+LAB_100021d1c:
+            bVar2 = false;
+          }
+          else {
+            _CFRetain(lVar13);
+            uVar6 = _CFDictionaryGetValue(lVar19,&cf_MultipleInstances);
+            lVar11 = FUN_100012c90();
+            if (lVar11 == 0) goto LAB_100021d1c;
+            iVar3 = _CFEqual(uVar6,*(undefined8 *)PTR__kCFBooleanTrue_1000fd218);
+            bVar2 = iVar3 != 0;
+          }
+          uVar9 = (ulong)param_10;
+          if (param_10 == 0xffffffff) {
+            uVar17 = 2;
+            if (cVar1 != '\0') {
+              uVar17 = 0x1e;
+            }
+            uVar9 = FUN_1000072b0(&local_64,uVar17);
+            if ((int)uVar9 != -1) goto LAB_100021d50;
+            FUN_10001d088(0,"spawn_service_agent",&cf_Failedtocreateasocketforthehosttoconnectto_);
+            bVar2 = false;
+            local_a0 = PTR_cf_CheckinSetupFailed_1000fef50;
+          }
+          else {
+LAB_100021d50:
+            FUN_100012ccc(uVar9);
+            FUN_100012d48(uVar9);
+            iVar3 = FUN_1000255a0(param_1,lVar13,uVar9,lVar5,lVar14 == 0,bVar2,lVar12,&local_a0);
+            if (iVar3 == 0) {
+              uVar6 = _CFNumberCreate(*(undefined8 *)PTR__kCFAllocatorDefault_1000fd1f8,9,&local_64)
+              ;
+              *param_11 = uVar6;
+              bVar2 = true;
+            }
+            else {
+              FUN_10001d088(0,"spawn_service_agent",&cf_FailedtospawnXPCserviceagentfor___);
+              bVar2 = false;
+            }
+          }
+        }
+        if (local_b8 != 0) {
+          _CFRelease();
+        }
+        uVar15 = _CFRelease(lVar19);
+        if (lVar13 != 0) {
+          uVar15 = _CFRelease(lVar13);
+        }
+        if ((int)uVar9 != -1) {
+          uVar4 = _close((int)uVar9);
+          uVar15 = (ulong)uVar4;
+        }
+        _objc_release_x27(uVar15);
+        if (bVar2) goto LAB_100021cb4;
+      }
+    }
+    FUN_10001d088(0,"spawn_and_handle_checkin",&cf_Failedtospawn____serviceagent___);
+  }
+  else {
+    _CFDictionarySetValue(lVar5,&cf_EscrowSecret,param_6);
+    _CFDictionarySetValue(lVar5,&cf_EscrowBag,param_5);
+    uVar9 = FUN_1000122f4(0,param_5,param_6,&local_a0);
+    if ((uVar9 & 1) != 0) goto LAB_1000217f8;
+    FUN_10001d088(0,"spawn_and_handle_checkin",&cf_Failedtounlockescrowbag_);
+    lVar10 = 0;
+  }
+LAB_100021cb4:
+  _CFRelease(lVar5);
+  if (lVar7 != 0) {
+    _CFRelease(lVar7);
+  }
+  if (lVar10 == 0) {
+    return local_a0;
+  }
+LAB_100021cd0:
+  _CFRelease(lVar10);
+  return local_a0;
+}

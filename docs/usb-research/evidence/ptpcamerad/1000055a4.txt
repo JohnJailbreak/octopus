@@ -1,0 +1,482 @@
+===== 1000055a4 PTPHostUSBTransport::readResponseData:withTimeout: =====
+XREF 100059be7 DATA null
+XREF 10002e680 DATA null
+XREF 100003d28 CALL_OVERRIDE_UNCONDITIONAL PTPHostUSBTransport::sendTransaction:timeout:
+1000055a4 pacibsp
+1000055a8 sub sp,sp,#0x120
+1000055ac stp d9,d8,[sp, #0xb0]
+1000055b0 stp x28,x27,[sp, #0xc0]
+1000055b4 stp x26,x25,[sp, #0xd0]
+1000055b8 stp x24,x23,[sp, #0xe0]
+1000055bc stp x22,x21,[sp, #0xf0]
+1000055c0 stp x20,x19,[sp, #0x100]
+1000055c4 stp x29,x30,[sp, #0x110]
+1000055c8 add x29,sp,#0x110
+1000055cc mov x20,x2
+1000055d0 mov x21,x0
+1000055d4 nop
+1000055d8 ldr x8,0x100040570
+1000055dc ldr x8,[x8]
+1000055e0 stur x8,[x29, #-0x70]
+1000055e4 add x8,sp,#0x60
+1000055e8 stp xzr,x8,[sp, #0x60]
+1000055ec nop
+1000055f0 ldr d0,0x10003ed08
+1000055f4 str d0,[sp, #0x70]
+1000055f8 mov w8,#0x1
+1000055fc strb w8,[sp, #0x78]
+100005600 mov w2,#0x0
+100005604 bl 0x10002da80
+100005608 mov x0,x20
+10000560c bl 0x10002e0a0
+100005610 str x0,[sp, #0x8]
+100005614 add x8,sp,#0x18
+100005618 add x22,x8,#0x10
+10000561c add x8,x8,#0x38
+100005620 str x8,[sp, #0x10]
+100005624 nop
+100005628 ldr d8,0x10003ed00
+10000562c mov x0,x21
+100005630 bl 0x10002ab60
+100005634 cbz w0,0x1000059f8
+100005638 mov x0,x21
+10000563c bl 0x10002dfe0
+100005640 tbnz w0,#0x0,0x1000059f8
+100005644 mov x0,x20
+100005648 bl 0x10002e060
+10000564c tbnz w0,#0x0,0x1000059f8
+100005650 mov x0,#0x0
+100005654 bl 0x100029d20
+100005658 mov x24,x0
+10000565c add x0,sp,#0x58
+100005660 mov x1,x21
+100005664 bl 0x100029f20
+100005668 add x8,sp,#0x18
+10000566c nop
+100005670 ldr x16,0x100040560
+100005674 mov x17,x8
+100005678 movk x17,#0x6ae1, LSL #48
+10000567c pacda x16,x17
+100005680 str x16,[sp, #0x18]
+100005684 str d8,[sp, #0x20]
+100005688 adr x16,0x100005af4
+10000568c nop
+100005690 pacia x16,x22
+100005694 adr x8,0x100040690
+100005698 nop
+10000569c stp x16,x8,[sp, #0x28]
+1000056a0 add x1,sp,#0x58
+1000056a4 ldr x0,[sp, #0x10]
+1000056a8 bl 0x100029ed0
+1000056ac add x8,sp,#0x60
+1000056b0 stp x24,x8,[sp, #0x40]
+1000056b4 ldr x8,[sp, #0x8]
+1000056b8 str x8,[sp, #0x38]
+1000056bc add x0,sp,#0x18
+1000056c0 bl 0x10002ad40
+1000056c4 mov x28,x0
+1000056c8 mov x0,x20
+1000056cc bl 0x10002a800
+1000056d0 mov x26,x0
+1000056d4 mov x0,x20
+1000056d8 bl 0x10002a820
+1000056dc cbz x26,0x10000584c
+1000056e0 mov x27,x0
+1000056e4 bl 0x100001954
+1000056e8 mov w0,#0x4
+1000056ec bl 0x1000107b8
+1000056f0 cbz x0,0x1000057b4
+1000056f4 adr x0,0x1000410c8
+1000056f8 nop
+1000056fc bl 0x10002c020
+100005700 adr x23,0x1000410c8
+100005704 nop
+100005708 cmp x0,#0x15
+10000570c b.cc 0x100005734
+100005710 adr x0,0x1000410c8
+100005714 nop
+100005718 mov x2,#0x0
+10000571c mov w3,#0x12
+100005720 bl 0x10002dec0
+100005724 adr x2,0x100040f88
+100005728 nop
+10000572c bl 0x10002dde0
+100005730 mov x23,x0
+100005734 nop
+100005738 ldr x0,0x100056420
+10000573c str x27,[sp]
+100005740 adr x2,0x1000414c8
+100005744 nop
+100005748 bl 0x10002de20
+10000574c mov x19,x0
+100005750 nop
+100005754 nop
+100005758 ldr x25,0x100057958
+10000575c mov x0,x25
+100005760 mov w1,#0x0
+100005764 bl 0x10002a140
+100005768 cbz w0,0x1000057b4
+10000576c mov x0,x23
+100005770 bl 0x10002a2c0
+100005774 mov w8,#0x202
+100005778 movk w8,#0x822, LSL #16
+10000577c str w8,[sp, #0x80]
+100005780 stur x0,[sp, #0x84]
+100005784 mov w8,#0x842
+100005788 strh w8,[sp, #0x8c]
+10000578c stur x19,[sp, #0x8e]
+100005790 add x4,sp,#0x80
+100005794 adr x0,0x100000000
+100005798 nop
+10000579c mov x1,x25
+1000057a0 mov w2,#0x0
+1000057a4 adr x3,0x10003f12c
+1000057a8 nop
+1000057ac mov w5,#0x16
+1000057b0 bl 0x100029c80
+1000057b4 nop
+1000057b8 ldrsw x8,0x100056758
+1000057bc ldr x0,[x21, x8#0x0]
+1000057c0 ldr x8,[x0]
+1000057c4 ldr x8,[x8, #0x148]
+1000057c8 nop
+1000057cc ldrsw x9,0x10005675c
+1000057d0 ldrb w1,[x21, x9]
+1000057d4 adr x16,0x100005f98
+1000057d8 nop
+1000057dc paciza x16
+1000057e0 mov x6,x16
+1000057e4 mov x2,x26
+1000057e8 mov x3,x27
+1000057ec mov w4,#0xbf20
+1000057f0 movk w4,#0x2, LSL #16
+1000057f4 mov w5,#0x27c0
+1000057f8 movk w5,#0x9, LSL #16
+1000057fc mov x7,x28
+100005800 blraaz x8
+100005804 mov x26,x0
+100005808 cbnz w0,0x10000588c
+10000580c mov x0,#0x0
+100005810 mov x1,#0x5800
+100005814 movk x1,#0xf847, LSL #16
+100005818 movk x1,#0xd, LSL #32
+10000581c bl 0x100029db0
+100005820 mov x1,x0
+100005824 mov x0,x24
+100005828 bl 0x100029d40
+10000582c cbnz x0,0x1000058cc
+100005830 mov x0,x24
+100005834 bl 0x100029d00
+100005838 ldr x0,[sp, #0x10]
+10000583c bl 0x100029ee0
+100005840 add x0,sp,#0x58
+100005844 bl 0x100029ee0
+100005848 b 0x10000562c
+10000584c bl 0x100001954
+100005850 adr x0,0x1000410c8
+100005854 nop
+100005858 bl 0x10002c020
+10000585c cmp x0,#0x15
+100005860 b.cc 0x10000590c
+100005864 adr x0,0x1000410c8
+100005868 nop
+10000586c mov x2,#0x0
+100005870 mov w3,#0x12
+100005874 bl 0x10002dec0
+100005878 adr x2,0x100040f88
+10000587c nop
+100005880 bl 0x10002dde0
+100005884 mov x20,x0
+100005888 b 0x100005914
+10000588c bl 0x100001954
+100005890 adr x0,0x1000410c8
+100005894 nop
+100005898 bl 0x10002c020
+10000589c cmp x0,#0x15
+1000058a0 b.cc 0x100005950
+1000058a4 adr x0,0x1000410c8
+1000058a8 nop
+1000058ac mov x2,#0x0
+1000058b0 mov w3,#0x12
+1000058b4 bl 0x10002dec0
+1000058b8 adr x2,0x100040f88
+1000058bc nop
+1000058c0 bl 0x10002dde0
+1000058c4 mov x20,x0
+1000058c8 b 0x100005958
+1000058cc bl 0x100001954
+1000058d0 adr x0,0x1000410c8
+1000058d4 nop
+1000058d8 bl 0x10002c020
+1000058dc cmp x0,#0x15
+1000058e0 b.cc 0x1000059ac
+1000058e4 adr x0,0x1000410c8
+1000058e8 nop
+1000058ec mov x2,#0x0
+1000058f0 mov w3,#0x12
+1000058f4 bl 0x10002dec0
+1000058f8 adr x2,0x100040f88
+1000058fc nop
+100005900 bl 0x10002dde0
+100005904 mov x20,x0
+100005908 b 0x1000059b4
+10000590c adr x20,0x1000410c8
+100005910 nop
+100005914 nop
+100005918 ldr x0,0x100056420
+10000591c adr x2,0x1000414a8
+100005920 nop
+100005924 bl 0x10002de20
+100005928 mov x21,x0
+10000592c nop
+100005930 nop
+100005934 ldr x19,0x100057958
+100005938 mov x0,x19
+10000593c mov w1,#0x10
+100005940 bl 0x10002a140
+100005944 cbnz w0,0x100005a44
+100005948 bl 0x10002a030
+10000594c b 0x1000059e8
+100005950 adr x20,0x1000410c8
+100005954 nop
+100005958 nop
+10000595c ldr x0,0x100056420
+100005960 str x26,[sp]
+100005964 adr x2,0x100041508
+100005968 nop
+10000596c bl 0x10002de20
+100005970 mov x21,x0
+100005974 nop
+100005978 nop
+10000597c ldr x19,0x100057958
+100005980 mov x0,x19
+100005984 mov w1,#0x10
+100005988 bl 0x10002a140
+10000598c cbz w0,0x1000059e8
+100005990 mov x0,x20
+100005994 bl 0x10002a2c0
+100005998 add x2,sp,#0x80
+10000599c mov x1,x21
+1000059a0 mov x3,x19
+1000059a4 bl 0x100028fcc
+1000059a8 b 0x1000059e8
+1000059ac adr x20,0x1000410c8
+1000059b0 nop
+1000059b4 nop
+1000059b8 ldr x0,0x100056420
+1000059bc adr x2,0x1000414e8
+1000059c0 nop
+1000059c4 bl 0x10002de20
+1000059c8 mov x21,x0
+1000059cc nop
+1000059d0 nop
+1000059d4 ldr x19,0x100057958
+1000059d8 mov x0,x19
+1000059dc mov w1,#0x10
+1000059e0 bl 0x10002a140
+1000059e4 cbnz w0,0x100005a60
+1000059e8 ldr x0,[sp, #0x10]
+1000059ec bl 0x100029ee0
+1000059f0 add x0,sp,#0x58
+1000059f4 bl 0x100029ee0
+1000059f8 add x0,sp,#0x60
+1000059fc mov w1,#0x8
+100005a00 bl 0x100029c10
+100005a04 ldur x8,[x29, #-0x70]
+100005a08 nop
+100005a0c ldr x9,0x100040570
+100005a10 ldr x9,[x9]
+100005a14 cmp x9,x8
+100005a18 b.ne 0x100005a7c
+100005a1c mov w0,#0x0
+100005a20 ldp x29,x30,[sp, #0x110]
+100005a24 ldp x20,x19,[sp, #0x100]
+100005a28 ldp x22,x21,[sp, #0xf0]
+100005a2c ldp x24,x23,[sp, #0xe0]
+100005a30 ldp x26,x25,[sp, #0xd0]
+100005a34 ldp x28,x27,[sp, #0xc0]
+100005a38 ldp d9,d8,[sp, #0xb0]
+100005a3c add sp,sp,#0x120
+100005a40 retab
+100005a44 mov x0,x20
+100005a48 bl 0x10002a2c0
+100005a4c add x2,sp,#0x80
+100005a50 mov x1,x21
+100005a54 mov x3,x19
+100005a58 bl 0x100028f74
+100005a5c b 0x100005948
+100005a60 mov x0,x20
+100005a64 bl 0x10002a2c0
+100005a68 add x2,sp,#0x80
+100005a6c mov x1,x21
+100005a70 mov x3,x19
+100005a74 bl 0x100028fa0
+100005a78 b 0x1000059e8
+100005a7c bl 0x100029c50
+
+/* Function Stack Size: 0x1c bytes */
+
+int PTPHostUSBTransport::readResponseData_withTimeout_
+              (ID param_1,SEL param_2,ID param_3,unsigned_int param_4)
+
+{
+  undefined8 uVar1;
+  undefined8 uVar2;
+  bool bVar3;
+  int iVar4;
+  ID IVar5;
+  ID IVar6;
+  dispatch_object_t object;
+  ID IVar7;
+  ID IVar8;
+  long lVar9;
+  ID IVar10;
+  dispatch_time_t timeout;
+  cfstringStruct *pcVar11;
+  undefined *local_108;
+  undefined8 local_100;
+  code *local_f8;
+  undefined *puStack_f0;
+  ID local_e8;
+  dispatch_object_t local_e0;
+  undefined8 *puStack_d8;
+  undefined1 auStack_d0 [8];
+  undefined1 auStack_c8 [8];
+  undefined8 local_c0;
+  undefined8 *puStack_b8;
+  undefined8 local_b0;
+  undefined1 local_a8;
+  undefined4 local_a0;
+  ID local_9c;
+  undefined2 local_94;
+  ID local_92;
+  long local_80;
+
+  local_80 = *(long *)PTR____stack_chk_guard_100040570;
+  puStack_b8 = &local_c0;
+  local_c0 = 0;
+  local_b0 = DAT_10003ed08;
+  local_a8 = 1;
+  PTPTransport::setTimedOut_(param_1,0);
+  IVar5 = objc_stub::txID(param_3);
+  uVar1 = DAT_10003ed00;
+  while( true ) {
+    bVar3 = connected(param_1);
+    if (((bVar3 == 0) || (bVar3 = PTPTransport::timedOut(param_1), (bVar3 & 1) != 0)) ||
+       (IVar6 = objc_stub::txComplete(param_3), (IVar6 & 1) != 0)) goto LAB_1000059f8;
+    object._os_obj = (_os_object_s *)_dispatch_semaphore_create(0);
+    _objc_initWeak(auStack_c8,param_1);
+    local_108 = PTR___NSConcreteStackBlock_100040560;
+    local_100 = uVar1;
+    local_f8 = FUN_100005af4;
+    puStack_f0 = &DAT_100040690;
+    _objc_copyWeak(auStack_d0,auStack_c8);
+    puStack_d8 = &local_c0;
+    local_e8 = IVar5;
+    local_e0._os_obj = object._os_obj;
+    IVar6 = objc_stub::copy((ID)&local_108);
+    IVar7 = objc_stub::bufMutableBytes(param_3);
+    IVar8 = objc_stub::bufSize(param_3);
+    if (IVar7 == 0) break;
+    ___ICOSLogCreate();
+    lVar9 = ___ICLogTypeEnabled(4);
+    if (lVar9 != 0) {
+      IVar10 = objc_stub::length(0x1000410c8);
+      pcVar11 = &cf_HostUSB;
+      if (0x14 < IVar10) {
+        IVar10 = objc_stub::substringWithRange_(0x1000410c8,0,0x12);
+        pcVar11 = (cfstringStruct *)objc_stub::stringByAppendingString_(IVar10,&cf___);
+      }
+      IVar10 = NSString::stringWithFormat_
+                         ((ID)PTR__OBJC_CLASS___NSString_100056420,&cf_ReadPipeAsyncTO__dbytes);
+      uVar2 = __gICOSLog;
+      iVar4 = _os_log_type_enabled(__gICOSLog,0);
+      if (iVar4 != 0) {
+        local_9c = objc_stub::UTF8String((ID)pcVar11);
+        local_a0 = 0x8220202;
+        local_94 = 0x842;
+        local_92 = IVar10;
+        __os_log_impl(0x100000000,uVar2,0,"%{public}20s | %{public}@",&local_a0,0x16);
+      }
+    }
+    iVar4 = (**(code **)(**(long **)(param_1 + (long)_interfaceInterfaceRef) + 0x148))
+                      (*(long **)(param_1 + (long)_interfaceInterfaceRef),
+                       *(undefined1 *)(param_1 + (long)_bulkPipeIn),IVar7,IVar8,180000,600000,
+                       FUN_100005f98,IVar6);
+    if (iVar4 != 0) {
+      ___ICOSLogCreate();
+      IVar5 = objc_stub::length(0x1000410c8);
+      if (IVar5 < 0x15) {
+        pcVar11 = &cf_HostUSB;
+      }
+      else {
+        IVar5 = objc_stub::substringWithRange_(0x1000410c8,0,0x12);
+        pcVar11 = (cfstringStruct *)objc_stub::stringByAppendingString_(IVar5,&cf___);
+      }
+      IVar5 = NSString::stringWithFormat_
+                        ((ID)PTR__OBJC_CLASS___NSString_100056420,
+                         &cf_ReadPipeAsyncTOreturned_x__bailing);
+      uVar1 = __gICOSLog;
+      iVar4 = _os_log_type_enabled(__gICOSLog,0x10);
+      if (iVar4 != 0) {
+        IVar6 = objc_stub::UTF8String((ID)pcVar11);
+        FUN_100028fcc(IVar6,IVar5,&local_a0,uVar1);
+      }
+      goto LAB_1000059e8;
+    }
+    timeout = _dispatch_time(0,60000000000);
+    lVar9 = _dispatch_semaphore_wait((dispatch_semaphore_t)object._os_obj,timeout);
+    if (lVar9 != 0) {
+      ___ICOSLogCreate();
+      IVar5 = objc_stub::length(0x1000410c8);
+      if (IVar5 < 0x15) {
+        pcVar11 = &cf_HostUSB;
+      }
+      else {
+        IVar5 = objc_stub::substringWithRange_(0x1000410c8,0,0x12);
+        pcVar11 = (cfstringStruct *)objc_stub::stringByAppendingString_(IVar5,&cf___);
+      }
+      IVar5 = NSString::stringWithFormat_
+                        ((ID)PTR__OBJC_CLASS___NSString_100056420,
+                         &cf_ReadPipeAsyncTOtimedout__bailing);
+      uVar1 = __gICOSLog;
+      iVar4 = _os_log_type_enabled(__gICOSLog,0x10);
+      if (iVar4 != 0) {
+        IVar6 = objc_stub::UTF8String((ID)pcVar11);
+        FUN_100028fa0(IVar6,IVar5,&local_a0,uVar1);
+      }
+      goto LAB_1000059e8;
+    }
+    _dispatch_release(object);
+    _objc_destroyWeak(auStack_d0);
+    _objc_destroyWeak(auStack_c8);
+  }
+  ___ICOSLogCreate();
+  IVar5 = objc_stub::length(0x1000410c8);
+  if (IVar5 < 0x15) {
+    pcVar11 = &cf_HostUSB;
+  }
+  else {
+    IVar5 = objc_stub::substringWithRange_(0x1000410c8,0,0x12);
+    pcVar11 = (cfstringStruct *)objc_stub::stringByAppendingString_(IVar5,&cf___);
+  }
+  IVar5 = NSString::stringWithFormat_
+                    ((ID)PTR__OBJC_CLASS___NSString_100056420,&cf_bufprovidedisNULL);
+  uVar1 = __gICOSLog;
+  iVar4 = _os_log_type_enabled(__gICOSLog,0x10);
+  if (iVar4 != 0) {
+    IVar6 = objc_stub::UTF8String((ID)pcVar11);
+    FUN_100028f74(IVar6,IVar5,&local_a0,uVar1);
+  }
+  _objc_release_x28();
+LAB_1000059e8:
+  _objc_destroyWeak(auStack_d0);
+  _objc_destroyWeak(auStack_c8);
+LAB_1000059f8:
+  __Block_object_dispose(&local_c0,8);
+  if (*(long *)PTR____stack_chk_guard_100040570 == local_80) {
+    return 0;
+  }
+                    /* WARNING: Subroutine does not return */
+  ___stack_chk_fail();
+}
