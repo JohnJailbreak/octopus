@@ -7,54 +7,36 @@ the app's changelog.
 
 ## v0.5
 
-### Core: Unix socket bridge transport (oct_bridge)
+A socket transport for the responder, so a component outside the app can carry PTP to it, and a diagnostic that
+runs that transport on the phone.
 
-- New `oct_bridge` module: a Unix domain socket transport that connects Octopus's PTP
-  responder to an external integration client without IOKit, driver registration, or
-  USB descriptor conflicts.
-- Wire protocol: 5-byte header (1 type + 4 length LE), 12 message types covering
-  host attach/detach, bulk data, interrupt events, bus reset, suspend/resume, class
-  requests and keepalive ping/pong.
-- Default socket path: `/var/mobile/Library/Caches/Octopus/octopus-bridge.sock`.
-- 8 new test suites: wire encoding, ping/pong, full MTP round-trip, class requests,
-  lifecycle messages, unknown message drop, client disconnect/reconnect, stop/start cycle.
-- Fixed a heap-buffer-overflow in the HOST_DETACHED log path (reason string was not
-  null-terminated before printf).
-
-### Diagnostics: bridge socket probe
-
-- New `adapter.bridge` check: connects to the bridge socket and sends a PING.
-  Reports PASS (integration active), BLOCKED (socket not present — tweak not installed)
-  or FAIL (socket exists but no response).
-
-### ptpd integration: OctopusBridge tweak
-
-- New `Octopus/Bridge/OctopusBridge.m` Logos tweak (Theos, rootless Dopamine, ARM64e).
-- Before hooking anything, verifies the running ptpd binary's UUID and SHA-256 against
-  the analysed reference (`FFD54FC7-0508-3AB8-8D17-2F698B611E10`). Silently exits on
-  mismatch to protect Photos.
-- Hooks `PTPVirtualCamera initWithName:andPath:` to call `addStorage:` with an
-  `OctopusPTPStorage` proxy (storage ID 0x00020001), registering Octopus as a second
-  PTP storage in ptpd's routing table.
-- Hooks `storageInfoDatasetForStorageID:`, `objectHandlesInStorage:...`,
-  `dataSourceForObjectHandle:responseCode:size:` to serve Octopus objects for handle
-  range 0x80000001–0x8FFFFFFF, fetching bytes from the bridge socket.
-- Hooks `PTPResponder transportActivated` / `transportDeactivated` to send
-  HOST_ATTACHED and HOST_DETACHED to the Octopus app.
-
-### Docs
-
-- `docs/usb-research/runtime-validation.md`: four physical-device diagnostic captures
-  (stages 01–04, v0.4.9, iPhone 13 / iOS 17.0) analysed and documented. Key findings:
-  ptpd UUID and SHA-256 confirmed at runtime; IOKit PTP match is a config-descriptor
-  registration, not a live-connection indicator; `addStorage:` insert proceeds even when
-  the "two storages cannot co-exist" log fires.
-
-### Tests
-
-- C core: 3,470 checks, 0 failures.
-- ASan/UBSan (make sanitize): 0 errors.
-- TSan (make tsan): 0 data-race warnings.
+- **The bridge transport** (`oct_bridge`): the responder's USB pipes over a Unix socket. The app side listens;
+  a client reports a host attaching and detaching, forwards bulk-OUT bytes, class requests, bus resets, suspend
+  and resume, and receives bulk-IN data and interrupt events. Frames are a type byte, a 4-byte little-endian
+  length and the payload; a class request's reply starts with a byte saying completed or stall, so a Device Reset
+  that succeeds is told apart from a stall. One client at a time; another waits until it leaves.
+- **Built to survive its peer.** One thread owns the client socket and is the only code that closes it; every frame
+  is written whole under a lock, so frames from the responder and from events never interleave; a write that fails
+  or stalls for 5 seconds disconnects the client instead of leaving half a frame behind; stopping wakes the thread
+  through a pipe and returns at once; and a peer that goes away is an error, never SIGPIPE, which would end the
+  app or, on the client side, ptpd.
+- **Run Full Diagnostics** gains **Bridge socket transport** (`adapter.bridge`, simulated): a server and a client on
+  a private socket in /tmp, /var/tmp or Octopus's caches folder, through a ping, a session with GetStorageIDs,
+  Get Device Status, a stalled request, an unknown frame, a client that leaves, a reconnect and the stop. When no
+  folder takes a socket, it says which folders refused and why.
+- **Not connected yet.** The app doesn't start the bridge server, so nothing listens at
+  `/var/mobile/Library/Caches/Octopus/octopus-bridge.sock` and Windows still can't see Octopus.
+- **The ptpd tweak** (`Octopus/Bridge`) is a draft that has never been compiled and isn't built by CI. Before
+  hooking it checks the running ptpd's UUID against the analysed build. Don't install it: what ptpd calls on a
+  second storage is unobserved, and an unimplemented call would crash ptpd and Photos import with it.
+- **Docs.** `docs/usb-research/runtime-validation.md` records the four v0.4.9 diagnostic captures: ptpd's identity
+  matched the analysed binary, the IOKit PTP match is present with the cable unplugged (a configuration, not a
+  connection), ptpd starts on connect and stays after unplugging, and nothing reached Octopus.
+- **Tests.** 3,617 C checks: the bridge's wire format, sessions, class requests, lifecycle messages, unknown frames,
+  reconnects, restarts, a client leaving just before the stop (the order ThreadSanitizer caught racing), stopping
+  with a client connected, clients that leave before reading their replies, two writers sharing the socket, a client
+  that stops reading, and the diagnostics self-test. Clean under AddressSanitizer, UndefinedBehaviorSanitizer,
+  LeakSanitizer and ThreadSanitizer.
 
 ## v0.4
 

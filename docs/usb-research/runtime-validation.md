@@ -105,8 +105,7 @@ this as an IOKit registry observation, not a live-connection indicator.
 The transport was `OCT_TRANSPORT_UNAVAILABLE` in every stage. No PTP commands, data phases, or
 response containers were handled by oct_service. This is expected: v0.4.x builds provide no
 means for an external host to route USB traffic to the Octopus responder. The Windows–Photos
-copy in stage 03 went exclusively through ptpd's existing PTP/IP transport — Octopus was
-not involved.
+copy in stage 03 went through ptpd's own PTP-over-USB interface; Octopus was not involved.
 
 ### Clarified inferences (not directly observed)
 
@@ -124,15 +123,29 @@ The `addStorage:` decompilation at offset `0x10000daf0` shows that when the stor
 dictionary already contains 1 entry, ptpd logs "Two storages cannot co-exist, should quit"
 but **still executes the dictionary insert** (the `b.ne` at `0x10000db40` checks count==1
 but both branches converge at the actual insert). Registering a second storage does not
-hard-crash ptpd and does not prevent Photos from functioning. This evidence supports the
-`OctopusBridge addStorage:` injection strategy used in v0.5.
+hard-crash ptpd at the insert. It does not show that ptpd can then serve a second storage
+correctly: what ptpd calls on the inserted object afterwards is unobserved (see below).
 
 ### Remaining unknown
 
 The exact set of Objective-C methods ptpd calls on a PTPStorage object when routing
 GetObjectHandles, GetObjectInfo and GetObject is not directly observable from the binary
-analysis alone. The OctopusBridge v0.5 implementation intercepts at the PTPVirtualCamera
-dispatch methods (confirmed decompiled) rather than relying on a complete PTPStorage
-protocol conformance. If ptpd calls storage-object methods not intercepted by the hooks, a
-Frida runtime observation inside a live ptpd process would identify them. This remains the
-primary open evidence item before full end-to-end validation.
+analysis alone. The draft OctopusBridge tweak (Octopus/Bridge, v0.5) hooks PTPVirtualCamera
+methods whose class is confirmed in the decompiled evidence (initWithName:andPath:,
+addStorage:, objectHandlesInStorage:..., storageInfoDatasetForStorageID:,
+dataSourceForObjectHandle:responseCode:size:) rather than conforming to the whole PTPStorage
+protocol. Any other selector ptpd sends to the inserted storage object would raise an
+unrecognized-selector exception inside ptpd. A Frida observation inside a live ptpd process
+would list those calls; it is one of the open items below.
+
+### Open items before an end-to-end test (v0.5)
+
+- The Octopus app does not start the bridge server yet: nothing creates the socket at
+  `/var/mobile/Library/Caches/Octopus/octopus-bridge.sock` on the phone, so a client has
+  nothing to connect to. The transport itself is covered by the C tests and by the simulated
+  `adapter.bridge` check in Run Full Diagnostics, which runs a server and client on a private
+  socket on the phone.
+- The OctopusBridge tweak has never been compiled. Its draft serves requests over short-lived
+  connections while also holding a long-lived one, but the server accepts one client at a time,
+  so those requests would wait behind the long-lived connection. Do not install it.
+- The PTPStorage calls described above.

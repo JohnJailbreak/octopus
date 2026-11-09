@@ -20,7 +20,7 @@ final class DiagnosticsTests: XCTestCase {
 
     func testTheCoreChecksPassAndSayWhichAreSimulated() {
         let core = CoreDiagnostics()
-        XCTAssertEqual(core.count, 18)
+        XCTAssertEqual(core.count, 19)
         for index in 0..<core.count {
             let result = core.run(index)
             XCTAssertEqual(result.status, .pass, "\(result.id): \(result.detail)")

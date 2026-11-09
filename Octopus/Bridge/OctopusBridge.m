@@ -1,6 +1,14 @@
 /*
  * OctopusBridge.m — rootless Logos tweak loaded into ptpd on iOS 17 / Dopamine.
  *
+ * DRAFT. DO NOT INSTALL. This file has never been compiled and CI doesn't build it. Known gaps:
+ *   • The Octopus app doesn't start the bridge server yet, so there is nothing to connect to.
+ *   • The server accepts one client at a time, but this draft holds a long-lived connection
+ *     (g_client) and also opens short-lived ones per request; those would wait behind it.
+ *   • OctopusPTPStorage implements a handful of selectors. What else ptpd sends to a storage
+ *     object is unobserved; any unimplemented one raises inside ptpd and takes Photos import
+ *     down with it.
+ *
  * Before installing any hooks, this code verifies the running ptpd binary's UUID
  * against the analysed reference copy. Any mismatch aborts silently, leaving ptpd and
  * Photos unaffected.
@@ -126,22 +134,26 @@ static void bridge_connect_async(void)
     });
 }
 
-/* Sends a message to the bridge; returns true when the client is connected and the write succeeds. */
-static bool bridge_send(uint8_t type, const void *payload, size_t length)
+/* g_client is only touched on g_bridge_queue. */
+static bool bridge_connected(void)
 {
-    if (!g_client) return false;
-    uint8_t *buf = oct_bridge_alloc(type, payload, length, NULL);
-    if (!buf) return false;
-    size_t buf_len = OCT_BRIDGE_HEADER_SIZE + length;
-    bool ok = write(g_client->fd, buf, buf_len) == (ssize_t)buf_len;
-    free(buf);
-    return ok;
+    __block bool connected = false;
+    dispatch_sync(g_bridge_queue, ^{ connected = g_client != NULL; });
+    return connected;
+}
+
+/* Reports a host attaching or detaching on the long-lived connection. `reason` must be a literal. */
+static void bridge_host_event(bool attached, const char *reason)
+{
+    dispatch_async(g_bridge_queue, ^{
+        if (g_client) oct_bridge_client_host_event(g_client, attached, reason);
+    });
 }
 
 /* Reads from the bridge socket and returns the bytes for a known Octopus handle, or nil. */
 static NSData *fetch_object_data(uint32_t oct_handle)
 {
-    if (!g_client) return nil;
+    if (!bridge_connected()) return nil;
     /* Use a one-shot client connection (the main client may be in use on another thread). */
     oct_bridge_client *c = NULL;
     if (oct_bridge_client_connect(OCT_BRIDGE_DEFAULT_SOCKET, 500, &c) != OCT_OK) return nil;
@@ -152,7 +164,6 @@ static NSData *fetch_object_data(uint32_t oct_handle)
     }
     /* Build containers manually using oct_bridge wire protocol. */
     /* OpenSession */
-    uint8_t cmd[32];
     uint32_t session = 0xBEEF;
     oct_buf b;
     oct_buf_init(&b, 0);
@@ -267,6 +278,11 @@ static NSData *fetch_object_data(uint32_t oct_handle)
 
 /* ---- Logos hooks ------------------------------------------------------------------------- */
 
+/* ptpd's own class, declared for the one call made on it outside the hooks. */
+@interface PTPVirtualCamera : NSObject
+- (void)addStorage:(id)storage;
+@end
+
 static OctopusPTPStorage *g_octopus_storage = nil;
 
 %hook PTPVirtualCamera
@@ -303,7 +319,7 @@ static OctopusPTPStorage *g_octopus_storage = nil;
             inAssociation:(uint32_t)association
              responseCode:(uint16_t *)responseCode {
     if (storageID != OCTOPUS_STORAGE_ID) return %orig;
-    if (!g_client) {
+    if (!bridge_connected()) {
         if (responseCode) *responseCode = 0x2001; /* OK: empty list, we're not ready */
         return @[];
     }
@@ -384,14 +400,13 @@ static OctopusPTPStorage *g_octopus_storage = nil;
     %orig;
     oct_logf(OCT_LOG_INFO, BRIDGE_COMPONENT, "transport_activated",
              "PTPResponder transportActivated: Windows connected the PTP interface");
-    bridge_send(OCT_BRIDGE_MSG_HOST_ATTACHED, NULL, 0);
+    bridge_host_event(true, NULL);
 }
 
 - (void)transportDeactivated {
     oct_logf(OCT_LOG_INFO, BRIDGE_COMPONENT, "transport_deactivated",
              "PTPResponder transportDeactivated: Windows disconnected");
-    const char *reason = "Windows disconnected";
-    bridge_send(OCT_BRIDGE_MSG_HOST_DETACHED, reason, strlen(reason));
+    bridge_host_event(false, "Windows disconnected");
     %orig;
 }
 

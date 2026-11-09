@@ -22,19 +22,24 @@
  *   0x08  RESUME           client → server: USB bus resumed
  *   0x09  CLASS_REQUEST    client → server: a class request; byte 0 is the bRequest code,
  *                            bytes 1–N are the OUT data stage (empty for device→host requests)
- *   0x0A  CLASS_RESPONSE   server → client: class-request reply (4 bytes for GetDeviceStatus,
- *                            empty to signal "stall this request")
+ *   0x0A  CLASS_RESPONSE   server → client: the reply to a CLASS_REQUEST. Byte 0 is the outcome:
+ *                            0x00 completed (acknowledge the status stage), 0x01 stall. Any further
+ *                            bytes are the IN data stage (4 for Get Device Status).
  *   0x0B  PING             client → server: liveness probe; server replies with PONG
  *   0x0C  PONG             server → client: reply to PING; payload is the socket path
  *
- * Both sides drop the connection on framing errors. The server closes the socket when the
- * transport stops; a new client can reconnect.
+ * Both sides drop the connection on framing errors. The server serves one client at a time: a
+ * second connection waits in the listen backlog until the first client leaves. The server closes
+ * the client when the transport stops; a new client can then reconnect. Neither side raises
+ * SIGPIPE when its peer goes away.
  *
- * Not an IOKit driver. No code here runs in ptpd; that is OctopusBridge.h.
+ * Not an IOKit driver. The client half is plain C so the ptpd integration (Octopus/Bridge) can
+ * link it; nothing in this file hooks or loads into ptpd.
  */
 #ifndef OCT_BRIDGE_H
 #define OCT_BRIDGE_H
 
+#include "oct_compat.h"
 #include "oct_link.h"
 #include "oct_service.h"
 
@@ -55,6 +60,8 @@ extern "C" {
 #define OCT_BRIDGE_MSG_PING             0x0Bu
 #define OCT_BRIDGE_MSG_PONG             0x0Cu
 #define OCT_BRIDGE_HEADER_SIZE          5u /* 1 type + 4 length */
+#define OCT_BRIDGE_CLASS_COMPLETED      0x00u /* CLASS_RESPONSE byte 0 */
+#define OCT_BRIDGE_CLASS_STALL          0x01u
 #define OCT_BRIDGE_MAX_PAYLOAD          (8u * 1024u * 1024u)
 /* The socket path the Octopus app creates. The ptpd integration client connects to it. */
 #define OCT_BRIDGE_DEFAULT_SOCKET       "/var/mobile/Library/Caches/Octopus/octopus-bridge.sock"
@@ -63,8 +70,8 @@ extern "C" {
 
 typedef struct oct_bridge oct_bridge;
 
-/* Creates the socket listener at `path` (NULL → OCT_BRIDGE_DEFAULT_SOCKET). The server is
- * idle until oct_bridge_transport fills `out_transport`, which the app passes to the service. */
+/* Prepares a server for the socket at `path` (NULL → OCT_BRIDGE_DEFAULT_SOCKET; at most 103 bytes).
+ * Nothing listens until the service starts the transport made by oct_bridge_link_create. */
 oct_status  oct_bridge_create(const char *path, oct_bridge **out);
 void        oct_bridge_destroy(oct_bridge *bridge);
 /* Creates an oct_link backed by the bridge driver and fills `out_transport` with the
@@ -83,14 +90,19 @@ typedef struct oct_bridge_client oct_bridge_client;
 oct_status  oct_bridge_client_connect(const char *path, uint32_t timeout_ms,
                                        oct_bridge_client **out);
 void        oct_bridge_client_destroy(oct_bridge_client *client);
+/* The client is not thread-safe: use it from one thread at a time.
+ * Sends any frame as is: for tests, and for message types newer than this header. */
+oct_status  oct_bridge_client_send_frame(oct_bridge_client *client, uint8_t type, const void *payload,
+                                          size_t length);
 /* Sends a HOST_ATTACHED or HOST_DETACHED message. reason is for HOST_DETACHED only (may be NULL). */
 oct_status  oct_bridge_client_host_event(oct_bridge_client *client, bool attached,
                                           const char *reason);
 /* Sends a BULK_FROM_HOST message (bytes from Windows on the bulk OUT endpoint). */
 oct_status  oct_bridge_client_send_bulk(oct_bridge_client *client, const uint8_t *bytes,
                                          size_t length);
-/* Sends a CLASS_REQUEST. `out_reply` and `capacity` are for class requests that have a
- * device→host data stage (Get Device Status). `out_stall` is set when the server says stall. */
+/* Sends a CLASS_REQUEST and waits for its CLASS_RESPONSE. `out_reply` and `capacity` are for
+ * requests with a device→host data stage (Get Device Status); OCT_E_TOO_LARGE when the reply
+ * doesn't fit. `out_stall` is set when the server says stall. */
 oct_status  oct_bridge_client_class_request(oct_bridge_client *client, uint8_t request,
                                              const uint8_t *data, size_t length,
                                              uint8_t *out_reply, size_t capacity,
@@ -101,8 +113,10 @@ oct_status  oct_bridge_client_lifecycle(oct_bridge_client *client, uint8_t type)
  * NULL). `timeout_ms` is for the reply (0 → 2000). Returns OCT_E_STATE when no server answers. */
 oct_status  oct_bridge_client_ping(oct_bridge_client *client, char *info, size_t capacity,
                                    uint32_t timeout_ms);
-/* Reads one BULK_TO_HOST or INTERRUPT_EVENT from the server. `type` gets the message type,
- * `out_data` and `out_length` the payload (caller-owned, freeable with free()). */
+/* Reads the next frame from the server (BULK_TO_HOST or INTERRUPT_EVENT, normally). `type` gets
+ * the message type, `out_data` and `out_length` the payload (caller-owned, freeable with free(),
+ * NULL when empty). `timeout_ms` 0 waits indefinitely. OCT_E_STATE when nothing arrived in time,
+ * OCT_E_IO when the connection closed or the frame was malformed. */
 oct_status  oct_bridge_client_receive(oct_bridge_client *client, uint8_t *type,
                                        uint8_t **out_data, size_t *out_length,
                                        uint32_t timeout_ms);
@@ -115,6 +129,14 @@ size_t oct_bridge_encode(uint8_t type, const void *payload, size_t length,
                           uint8_t *buf, size_t capacity);
 /* Encode a bridge message in a freshly allocated buffer. Caller frees it. */
 uint8_t *oct_bridge_alloc(uint8_t type, const void *payload, size_t length, size_t *out_length);
+
+/* ---- Self-test ---------------------------------------------------------------------------- */
+
+/* Runs a server and a client against each other on a private socket in `directory` (NULL tries
+ * /tmp, /var/tmp, then /var/mobile/Library/Caches/Octopus), with the synthetic read-only storage:
+ * a ping, a session with GetStorageIDs, class requests, an unknown frame, a client that leaves
+ * and one that reconnects, and the stop. Fills `report` like the oct_compat checks. */
+oct_status oct_bridge_self_test(const char *directory, oct_compat_report *report);
 
 #ifdef __cplusplus
 }

@@ -1,12 +1,11 @@
 Package: com.parv.octopusbridge
 Name: OctopusBridge
-Depends: mobilesubstrate, com.parv.octopus (>= 0.5)
+Depends: mobilesubstrate
 Version: 0.5.0
 Architecture: iphoneos-arm64
-Description: Bridges the ptpd PTP responder to the Octopus iPhone file manager.
- Injects into ptpd on iOS 17 and registers Octopus as a second PTP storage volume.
- Requires the Octopus app to be running. Verifies the ptpd binary UUID before
- installing any hooks — will silently unload on an unrecognised build.
+Description: Draft bridge between ptpd's PTP responder and the Octopus app. Not ready to install.
+ Would inject into ptpd on iOS 17 and register Octopus as a second PTP storage. It checks
+ ptpd's UUID before hooking and does nothing on an unrecognised build. Octopus itself is
+ a TrollStore app, not a package, so it is not listed as a dependency.
 Maintainer: Parv Tahiliani <pat113@pitt.edu>
 Section: Tweaks
-Tag: compatible_min::ios=17.0, role::tweak, purpose::file-transfer
