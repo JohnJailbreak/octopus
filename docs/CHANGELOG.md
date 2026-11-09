@@ -19,7 +19,7 @@ without touching it.
 - **The bridge is split in two**, so the component injected into ptpd carries none of the app's
   file-serving code. `oct_bridge_io.c` holds the framing and socket primitives,
   `oct_bridge_client.c` the client, and `oct_bridge.c` the server and its self-test. The client
-  links against libc and the logger alone — three translation units, no storage engine, responder,
+  links against libc, the logger and status names alone — four translation units, no storage engine, responder,
   diagnostics or ZIP writer — and carries its own PTP container encoder, since the storage engine's
   serializer depends on the storage engine.
 - **The ptpd component observes and changes nothing.** Every hook calls Apple's implementation and
@@ -47,6 +47,11 @@ without touching it.
   artifact. It runs independently of the app job, so a successful IPA is never reported as proof the
   component compiles. The source is `OctopusBridge.x`, not `.m`: Theos runs the Logos preprocessor
   only on `.x` and `.xm` files, and handed a `.m` straight to clang, which rejected `%hook`.
+- **The tweak compiles without Clang modules.** Theos enables them, and Clang then found the app's
+  own `Octopus/module.modulemap` one directory above `Core/` and built module `OctopusCore` from it;
+  mixed with the plain includes the bridge files use, every type was defined twice.
+- **`oct_status_name` has its own file**, `oct_status.c`. It lived in `oct_store.c`, so the tweak —
+  which reports statuses but must not link the storage engine — would have failed to link on it.
 - **Every hook matches Apple's recorded type encoding**, listed in the tweak's header and checked
   against the ptpd function table by class and full selector. `-[PTPResponder handleRequest:]`
   returns the response object (`@24@0:8@16`); an earlier draft declared it `void`, which would have

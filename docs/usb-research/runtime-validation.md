@@ -225,12 +225,17 @@ stops working until ptpd is clean again. In increasing order of severity:
    launchd starts it again on the next USB connection, which is also the fastest way to reload the
    tweak after reinstalling it.
 2. **Uninstall the package** in Sileo, then `killall -9 ptpd`.
-3. **Remove the files by hand**, when Sileo can't:
+3. **Remove the files by hand**, when Sileo can't. Theos's rootless scheme installs to
+   `/var/jb/Library/MobileSubstrate/DynamicLibraries/`, and Dopamine also exposes tweaks at
+   `/var/jb/usr/lib/TweakInject/`; one is a link to the other. Removing from both is safe either way:
    ```sh
-   rm -f /var/jb/usr/lib/TweakInject/OctopusBridge.dylib \
+   rm -f /var/jb/Library/MobileSubstrate/DynamicLibraries/OctopusBridge.dylib \
+         /var/jb/Library/MobileSubstrate/DynamicLibraries/OctopusBridge.plist \
+         /var/jb/usr/lib/TweakInject/OctopusBridge.dylib \
          /var/jb/usr/lib/TweakInject/OctopusBridge.plist
    killall -9 ptpd
    ```
+   The exact installed paths are in the `tweak` CI job's log, which prints `dpkg-deb --contents`.
 4. **Boot without the jailbreak.** Rootless tweaks load only while jailbroken, so a plain reboot
    without re-running Dopamine runs stock ptpd with nothing injected. This is the guaranteed way
    out: it needs no working SSH, no Sileo, and no filesystem access.

@@ -195,7 +195,7 @@ class ZipTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.driver = build('zip', ['Octopus/Tests/HelperTests/zip_driver.c', 'Octopus/Core/oct_zip.c',
-                                   'Octopus/Protocol/oct_ptp.c', 'Octopus/Core/oct_store.c',
+                                   'Octopus/Protocol/oct_ptp.c', 'Octopus/Core/oct_store.c', 'Octopus/Core/oct_status.c',
                                    'Octopus/Core/oct_backend_memory.c', 'Octopus/Core/oct_backend_directory.c'])
 
     def test_python_reads_every_entry(self):

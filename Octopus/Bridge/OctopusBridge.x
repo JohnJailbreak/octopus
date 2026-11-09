@@ -60,8 +60,9 @@
  *
  * RECOVERY — if ptpd misbehaves, see docs/usb-research/runtime-validation.md. Briefly:
  *   killall -9 ptpd           (launchd restarts it clean)
- *   Uninstall OctopusBridge in Sileo, or delete the dylib and plist under
- *   /var/jb/usr/lib/TweakInject/, then: killall -9 ptpd
+ *   Uninstall OctopusBridge in Sileo, or delete OctopusBridge.dylib and .plist from
+ *   /var/jb/Library/MobileSubstrate/DynamicLibraries/ and /var/jb/usr/lib/TweakInject/, then:
+ *   killall -9 ptpd
  *   Last resort: reboot and do not re-jailbreak. Rootless tweaks load only when jailbroken,
  *   so an unjailbroken boot runs stock ptpd with nothing injected.
  */

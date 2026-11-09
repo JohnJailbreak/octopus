@@ -18,16 +18,21 @@ include $(THEOS)/makefiles/common.mk
 
 TWEAK_NAME := OctopusBridge
 
-# Only the bridge's client half and the logger. These three depend on libc alone: none of the
+# The bridge's client half, the logger, and status names. These depend on libc alone: none of the
 # app's storage engine, responder or diagnostics is linked into ptpd.
 OctopusBridge_FILES := \
     OctopusBridge.x \
     ../Core/oct_bridge_io.c \
     ../Core/oct_bridge_client.c \
-    ../Core/oct_log.c
+    ../Core/oct_log.c \
+    ../Core/oct_status.c
 
-OctopusBridge_CFLAGS     := -I../Core -I../Protocol -fno-objc-arc
-OctopusBridge_CONLYFLAGS := -std=gnu11
+# -fno-modules: Theos turns Clang modules on, and Clang then finds the app's own module map one
+# directory above Core/ (Octopus/module.modulemap) and builds module OctopusCore from it. Mixed with
+# the plain includes these files use, that defines every type twice. Plain includes with their
+# guards are all this needs. Theos's remaining module flags become unused, hence the second flag.
+OctopusBridge_CFLAGS     := -I../Core -I../Protocol -fno-objc-arc -fno-modules \
+                            -Wno-unused-command-line-argument
 OctopusBridge_FRAMEWORKS := Foundation
 
 include $(THEOS)/makefiles/tweak.mk
