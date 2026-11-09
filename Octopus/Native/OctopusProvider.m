@@ -11,9 +11,7 @@ static pthread_mutex_t coreLock = PTHREAD_MUTEX_INITIALIZER;
 static oct_store *store;
 static oct_responder *encoder;
 static uint32_t localTransaction;
-/* 0 not yet probed, 1 the reserved range is free, 2 it collides and the overlay stays off.
- * Set once, on the first provider call, which is the first point a camera is in hand. */
-static _Atomic(int) rangeProbe;
+
 static atomic_bool installed;
 
 static IMP originalIDs, originalStorage, originalInfo, originalHandles;
@@ -108,7 +106,7 @@ static NSData *query(uint16_t operation, const uint32_t *params, uint32_t count,
  */
 static BOOL isSynthetic(uint32_t handle) {
     if (handle < OCT_NATIVE_FIRST_HANDLE) return NO;
-    oct_object_info info;
+    oct_object_info info = { 0 }; /* defined on every path: clang -Wsometimes-uninitialized */
     pthread_mutex_lock(&coreLock);
     oct_status status = store ? oct_store_get(store, handle, &info) : OCT_E_STATE;
     pthread_mutex_unlock(&coreLock);
@@ -116,15 +114,16 @@ static BOOL isSynthetic(uint32_t handle) {
 }
 
 /*
- * Never shadow an Apple storage. The storage check runs per call because Apple can add a storage
- * at any time; the saved original IMP keeps it out of our own hook.
+ * Never shadow an Apple storage or object, even if one appears after we started serving: Apple can
+ * add a storage, or allocate a handle in our range, at any time, so both are rechecked on every
+ * call. The saved original IMPs keep these lookups out of our own hooks.
  *
- * Handle collisions are checked once, at install, over the range we reserve rather than per call
- * over a list. Checking per handle per call meant a message into Apple's code for every object we
- * own on every provider call, which is affordable for six objects and is not for a filesystem.
- * Apple's allocator at 0x100004224 hands out a monotonically increasing uint32 from a low start,
- * so a collision needs billions of objects; the install-time probe catches a device that has
- * somehow already reached our range, and the storage check still runs every time.
+ * The handle check asks about one handle, OCT_NATIVE_FIRST_HANDLE, rather than every handle we
+ * own. Apple's object handles come from FUN_100004224, which increments a global counter and
+ * returns the new value, and whose only callers are the PTPFolder and PTPFile initializers. It only
+ * counts upward, so Apple cannot hold any handle in our range without first having allocated the
+ * base of it. Asking about each owned handle meant one message into Apple's code per object per
+ * call, which a filesystem makes unbounded; this is one message per call, whatever we serve.
  */
 static BOOL available(id camera) {
     if (!atomic_load_explicit(&installed, memory_order_acquire) || !OCTNativeProviderEnabled()) return NO;
@@ -133,19 +132,12 @@ static BOOL available(id camera) {
         OCTNativeProviderEvent("provider-storage-collision", OCT_NATIVE_STORAGE_ID, OCT_RC_ACCESS_DENIED);
         return NO;
     }
-    int probe = atomic_load_explicit(&rangeProbe, memory_order_acquire);
-    if (probe == 0) {
-        /* Ask Apple for the first handle we would ever hand out. If it owns that, its allocator
-         * has reached our range and the overlay must stay off. Two threads may both probe; they
-         * ask the same question and write the same answer. */
-        BOOL taken = ((id (*)(id,SEL,id))originalLookup)(camera, sel_registerName("objectForObjectHandle:"),
-                                                         @(OCT_NATIVE_FIRST_HANDLE)) != nil;
-        probe = taken ? 2 : 1;
-        atomic_store_explicit(&rangeProbe, probe, memory_order_release);
-        OCTNativeProviderEvent(taken ? "provider-range-collision" : "provider-range-free",
-                               OCT_NATIVE_FIRST_HANDLE, taken ? OCT_RC_ACCESS_DENIED : OCT_RC_OK);
+    if (((id (*)(id,SEL,id))originalLookup)(camera, sel_registerName("objectForObjectHandle:"),
+                                            @(OCT_NATIVE_FIRST_HANDLE))) {
+        OCTNativeProviderEvent("provider-handle-collision", OCT_NATIVE_FIRST_HANDLE, OCT_RC_ACCESS_DENIED);
+        return NO;
     }
-    return probe == 1;
+    return YES;
 }
 
 static id storageIDs(id self, SEL cmd) {
@@ -185,7 +177,11 @@ static NSArray *decodeHandles(NSData *body, uint16_t *code) {
     if (!body) return nil;
     oct_reader reader; oct_reader_init(&reader, body.bytes, body.length);
     uint32_t count = oct_read_u32(&reader);
-    if (reader.failed || count > 6 || oct_reader_remaining(&reader) != (size_t)count * 4) {
+    /* Bounded by the store's own enumeration budget rather than the six objects of the synthetic
+     * tree, which would refuse every real directory with more than six entries. The store set
+     * that budget when it was opened and never changes it. */
+    if (reader.failed || count > oct_store_max_objects(store) ||
+        oct_reader_remaining(&reader) != (size_t)count * 4) {
         *code = OCT_RC_GENERAL_ERROR; return nil;
     }
     NSMutableArray *result = [NSMutableArray arrayWithCapacity:count];
@@ -223,7 +219,7 @@ static id dataSource(id self, SEL cmd, uint32_t handle, uint16_t *code, uint32_t
         return ((id (*)(id,SEL,uint32_t,uint16_t *,uint32_t *))originalSource)(self,cmd,handle,code,size);
     *size = 0;
     /* Only the object's size is needed now; the bytes follow one chunk at a time. */
-    oct_object_info info;
+    oct_object_info info = { 0 }; /* defined on every path: clang -Wsometimes-uninitialized */
     pthread_mutex_lock(&coreLock);
     oct_status status = store ? oct_store_get(store, handle, &info) : OCT_E_STATE;
     pthread_mutex_unlock(&coreLock);

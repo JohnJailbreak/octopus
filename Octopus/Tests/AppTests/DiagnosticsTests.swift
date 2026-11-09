@@ -129,7 +129,11 @@ final class DiagnosticsTests: XCTestCase {
                                                                 folder.appendingPathComponent("fallback").path])
         let archive = try XCTUnwrap(runner.archive, "the archive makes Export Diagnostics available")
         XCTAssertNil(runner.exportProblem)
-        XCTAssertEqual(verify(archive), 9 + DebugLog.files().count) // nine files and the logs
+        // Ten fixed entries (README, results.json/.txt, failures, build, settings, connectivity,
+        // device-observations, native/capture.json, connection-timeline) and the logs.
+        // native/status.json is added only when a native capture has data, which the Simulator
+        // never has, so it isn't counted here.
+        XCTAssertEqual(verify(archive), 10 + DebugLog.files().count)
     }
 
     func testTheDebugLogExportFallsBackToo() throws {

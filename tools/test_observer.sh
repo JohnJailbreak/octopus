@@ -7,12 +7,15 @@ if [[ "$(uname -s)" != Darwin ]]; then
 fi
 build="$(mktemp -d "${TMPDIR:-/tmp}/octopus-observer-tests.XXXXXX")"
 trap 'rm -rf "$build"' EXIT
-cc="$(xcrun --find clang)"
+# `xcrun --find clang` only returns the binary's path; running that path directly sets no SDK, so
+# clang has no sysroot and can't find stdlib.h. `xcrun --sdk macosx clang` runs it with the macOS
+# SDK selected, which these host-side tests need for libc and Foundation.
+cc=(xcrun --sdk macosx clang)
 common=(-g -O1 -Wall -Wextra -Werror -DOCT_NATIVE_TEST=1)
 for unit in Octopus/Core/*.c Octopus/Protocol/*.c; do
-  "$cc" "${common[@]}" -std=c11 -c "$unit" -o "$build/$(basename "$unit").o"
+  "${cc[@]}" "${common[@]}" -std=c11 -c "$unit" -o "$build/$(basename "$unit").o"
 done
-"$cc" "${common[@]}" -fobjc-arc -fblocks -framework Foundation \
+"${cc[@]}" "${common[@]}" -fobjc-arc -fblocks -framework Foundation \
   Octopus/Native/OctopusRuntime.m Octopus/Native/OctopusObserver.m \
   Octopus/Native/Tests/ObserverTests.m "$build"/*.o -o "$build/observer-tests"
 "$build/observer-tests"

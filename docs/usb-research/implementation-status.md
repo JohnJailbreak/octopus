@@ -70,8 +70,15 @@ silent zeros.
   writes and final responses.
 
 Handle ownership is now a store lookup rather than a fixed list, so objects discovered as the host
-browses are recognized; the handle-collision question is answered once, on the first provider call,
-instead of costing a message into Apple's code per object per call.
+browses are recognized. The collision check still runs on every call, as it must, since Apple can
+allocate a handle in our range at any time; it now asks about one handle instead of every one we
+own. Apple's handles come from `FUN_100004224`, which only increments a global counter and is called
+only by the `PTPFolder` and `PTPFile` initializers, so Apple cannot hold a handle in our range
+without first having allocated its base. That makes the check one message into Apple's code per call
+rather than one per owned object per call, which a filesystem would make unbounded.
+
+Directory listings were also capped at six entries, a sanity bound for the synthetic tree that would
+have refused every larger real directory. They are now bounded by the store's enumeration budget.
 
 ## Why the design should survive contact with Apple's code
 
