@@ -30,7 +30,7 @@ endif
 PLAIN     := $(patsubst Octopus/%.c,build/plain/%.o,$(CORE))
 SANITIZED := $(patsubst Octopus/%.c,build/san/%.o,$(CORE))
 
-.PHONY: tsan all test sanitize fuzz analyze check clean
+.PHONY: tsan all test sanitize fuzz analyze check clean test-native-signal
 
 all: test
 
@@ -100,6 +100,15 @@ build/native-tests: Octopus/Core/oct_native.c Octopus/Core/oct_native.h Octopus/
 .PHONY: test-native-io
 test-native-io: build/native-io-tests
 	./build/native-io-tests
+
+# The startup signal's Darwin branch, built against a stand-in notify.h with Apple's prototypes.
+test-native-signal: Octopus/Core/oct_native_io.c Octopus/Core/oct_native_io.h Octopus/Tests/CoreTests/signal_main.c \
+                    Octopus/Tests/CoreTests/fakes/notify.h Octopus/Tests/CoreTests/fakes/fake_notify.c
+	@mkdir -p build
+	$(CC) $(STD) $(WARN) -Wconversion -Wsign-conversion -O1 -g -DOCT_NATIVE_FAKE_NOTIFY -IOctopus/Tests/CoreTests/fakes \
+		Octopus/Core/oct_native_io.c Octopus/Core/oct_store.c Octopus/Core/oct_log.c \
+		Octopus/Tests/CoreTests/fakes/fake_notify.c Octopus/Tests/CoreTests/signal_main.c -lpthread -o build/native-signal-tests
+	./build/native-signal-tests
 
 build/native-io-tests: Octopus/Core/oct_native_io.c Octopus/Core/oct_native_io.h Octopus/Tests/CoreTests/test_native_io.c
 	@mkdir -p build

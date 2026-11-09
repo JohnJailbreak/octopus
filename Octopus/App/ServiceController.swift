@@ -437,7 +437,7 @@ final class ServiceController: ObservableObject {
         case .error:
             return lastError ?? "Octopus couldn't enable USB access."
         case .ready where !status.transportAvailable:
-            return "No USB transport in this build yet, so Windows can't see Octopus."
+            return "The portable USB adapter is unavailable. Check Diagnostics for the optional native integration experiment."
         case .waitingForConnection where status.transportState == .error,
              .connected where status.transportState == .error:
             return status.transportFailure.isEmpty ? "The USB transport failed." : status.transportFailure

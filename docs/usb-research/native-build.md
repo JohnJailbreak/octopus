@@ -9,6 +9,7 @@ Requires Xcode with the iPhoneOS SDK, Python 3.9+ and `ldid` (the existing build
 ```sh
 python3 Octopus/Tests/RepoTests/test_native_package.py
 bash tools/test_provider.sh
+bash tools/test_observer.sh
 bash tools/build_native.sh 0.4.10~experimental
 ```
 
@@ -33,7 +34,7 @@ Only two files are installed, both owned by root:root:
 
 Directories are 0755. The package declares `firmware (>= 17.0)`, `firmware (<< 17.1)` and `ellekit`; runtime gates are stricter (iOS 17.0.0 and the verified ptpd identity). There are **no maintainer scripts, automatic daemon restarts, launchd jobs, Apple binaries, configuration replacements or pre-authorized lease files**. The existing app is not part of this DEB. Archives use explicit modes/ownership and zero timestamps for reproducibility on Windows and macOS. Debian `md5sums` are an integrity inventory, not authentication; the sidecar supplies SHA-256.
 
-CI runs the package tests on Linux. A separate macOS `native` job runs provider tests and builds/uploads `OctopusNative-experimental-<version>` as an Actions artifact. Its failure remains visible but does not block the established app build/release jobs; the companion is not silently published as a working release asset or installed. Do not use a stale companion artifact from a different source revision with the app.
+CI runs the package tests on Linux. A separate macOS `native` job runs provider and observer tests and builds/uploads `OctopusNative-experimental-<version>` as an Actions artifact. Its failure remains visible but does not block the established app build/release jobs; the companion is not silently published as a working release asset or installed. Do not use a stale companion artifact from a different source revision with the app.
 
 ## Controlled installation and removal
 

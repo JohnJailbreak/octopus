@@ -170,14 +170,14 @@ struct ConnectionWindow: View {
         WindowList {
             Section {
                 InfoRow(title: "Service", value: service.state.title)
-                InfoRow(title: "USB transport",
+                InfoRow(title: "Portable USB adapter",
                         value: status.transportAvailable ? status.transportName : "Not in this build",
                         tint: status.transportAvailable ? Theme.chevron : Theme.failure)
                 InfoRow(title: "Transport", value: ConnectionStage(transport: status.transportState).title,
                         tint: status.transportState == .error ? Theme.failure : Theme.chevron)
-                InfoRow(title: "Host",
+                InfoRow(title: "Host (portable adapter)",
                         value: status.transportState == .hostConnected || status.transportState == .sessionActive
-                            ? "Connected" : "Not connected")
+                            ? "Connected" : "Not observed")
                 InfoRow(title: "Session", value: status.sessionOpen ? "Open (ID \(status.sessionID))" : "None")
             } header: {
                 SectionHeader("Status")

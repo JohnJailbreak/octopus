@@ -15,6 +15,8 @@ int main(int argc, char **argv)
     run_log_tests(); /* first, while the in-memory ring holds only its own lines */
     printf("store\n");
     run_store_tests();
+    puts("read-only backend");
+    run_readonly_tests();
     printf("protocol\n");
     run_protocol_tests();
     printf("responder\n");

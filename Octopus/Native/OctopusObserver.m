@@ -1,6 +1,7 @@
 #import "OctopusRuntime.h"
 #import <mach-o/dyld.h>
 #import <CommonCrypto/CommonDigest.h>
+#import <dispatch/dispatch.h>
 #include "../Core/oct_device.h"
 #include "../Core/oct_link.h"
 #include "../Core/oct_native.h"
@@ -9,6 +10,37 @@
 #include <pthread.h>
 #include <sys/sysctl.h>
 #include <unistd.h>
+#include <string.h>
+#include <stdlib.h>
+#include <os/log.h>
+
+/*
+ * Startup evidence that does not depend on the status file. On the v0.4.20 device run the status
+ * file never appeared, and nothing could say whether this dylib was loaded at all, rejected the
+ * process, or ran and was refused by ptpd's "ptpd" seatbelt profile when it touched the app's
+ * folder. The same uid does not imply the same sandbox rights.
+ *
+ * Two channels, neither of which needs the filesystem:
+ *  - os_log, under subsystem com.parv.octopus.native, readable from Windows with idevicesyslog.
+ *  - a 64-bit Darwin notification state (OCT_NATIVE_SIGNAL_NAME), which the app reads and shows
+ *    in Run Full Diagnostics: how far startup got, which identity check failed, and the exact stage
+ *    and errno of the last lease read and status write.
+ * Both report stage names and errno numbers only: no paths beyond our own, no lease token, no data.
+ * Updated only on the constructor thread before the timer starts, then only on the timer's serial
+ * queue, so the struct needs no lock.
+ */
+static oct_native_signal startup;
+static os_log_t startupLog;
+static os_log_t startup_log(void){return startupLog?startupLog:OS_LOG_DEFAULT;}
+static void raise_phase(uint8_t phase){if(phase>startup.phase)startup.phase=phase;}
+static uint8_t clamp_errno(int error){return error<0?0:(error>255?255:(uint8_t)error);}
+static void post_startup(void){
+    startup.pid=(uint16_t)(getpid()&0xFFFF);
+    oct_status posted=oct_native_signal_publish(&startup);
+    static bool reportedPostFailure;
+    if(posted!=OCT_OK&&!reportedPostFailure){reportedPostFailure=true;
+        os_log_error(startup_log(),"startup signal could not be posted: %{public}s",oct_status_name(posted));}
+}
 
 static pthread_mutex_t lock=PTHREAD_MUTEX_INITIALIZER;
 static oct_native_journal journal;
@@ -19,22 +51,35 @@ static _Atomic(bool) providerReady;
 static _Atomic(unsigned) observedStorage;
 static _Atomic(uint64_t) leaseEpoch;
 static __thread uint64_t usbScope;
+static __thread uint16_t currentOperation;
+static __thread uint32_t currentTransaction;
 static IMP originalBulk,originalRequest,originalResponse,originalData,originalConnected,originalStop;
 static IMP requestOp,requestTID,responseCode,responseTID,dataTID,transportConnected;
+static IMP requestParameterCount,requestParameter;
 static void *transportPointer;
 static uint64_t transportToken;
 static NSString *compatibility=@"Not checked", *hookState=@"Not installed", *providerState=@"Not installed";
 static NSString *leaseToken=@"",*kernelBuild=@"unknown",*lastProviderEvent=@"none";
 static uint64_t providerEvents;
+static NSMutableArray *providerJournal;
+static NSMutableArray *requestJournal;
 static uint64_t leaseSequence,leaseCommands,leaseResponses,leaseProviderEvents;
 static bool attemptedHooks,attemptedProvider;
 static dispatch_source_t timer;
 static uint64_t now(void){int64_t n=oct_link_now_ms();return n>0?(uint64_t)n:0;}
-static bool authorized(void){return atomic_load(&ready)&&atomic_load(&mode)>0&&now()<atomic_load(&deadline);}
+static bool authorized(void){uint64_t current=now();return current>0&&atomic_load(&ready)&&atomic_load(&mode)>0&&current<atomic_load(&deadline);}
 bool OCTNativeProviderEnabled(void){return authorized()&&atomic_load(&mode)==2&&atomic_load(&providerReady)&&atomic_load(&observedStorage)==3;}
 uint64_t OCTNativeAuthorizationEpoch(void){return atomic_load(&leaseEpoch);}
 void OCTNativeProviderEvent(const char *event,uint32_t handle,int32_t result){
-    pthread_mutex_lock(&lock);providerEvents++;lastProviderEvent=[NSString stringWithFormat:@"%s handle=%u result=%d",event,handle,result];pthread_mutex_unlock(&lock);
+    pthread_mutex_lock(&lock);
+    providerEvents++;lastProviderEvent=[NSString stringWithFormat:@"%s handle=%u result=%d",event,handle,result];
+    if(!providerJournal)providerJournal=[NSMutableArray array];
+    if(providerJournal.count==64)[providerJournal removeObjectAtIndex:0];
+    [providerJournal addObject:@{@"sequence":@(providerEvents),@"event":[NSString stringWithUTF8String:event],
+        @"utc_ms":@((int64_t)([NSDate date].timeIntervalSince1970*1000)),@"authorization_epoch":@(atomic_load(&leaseEpoch)),
+        @"usb_scope":@(usbScope),@"operation":@(currentOperation),@"transaction":@(currentTransaction),
+        @"object_or_storage":@(handle),@"result":@(result)}];
+    pthread_mutex_unlock(&lock);
 }
 static uint64_t tokenFor(id transport){
     void *p=(__bridge void*)transport;
@@ -42,31 +87,51 @@ static uint64_t tokenFor(id transport){
     return transportToken;
 }
 static bool packetIs(id packet,const char *name){return packet&&object_getClass(packet)==objc_getClass(name);}
-static BOOL bulk(id self,SEL cmd,uint64_t bytes,int32_t result){
+static bool bulk(id self,SEL cmd,uint64_t bytes,int32_t result){
     uint64_t previous=usbScope,scope=0;
     if(authorized()){
         // Read the verified native connection property only during a real bulk
         // callback. This also supports enabling after Apple's connection setup.
-        BOOL isConnected=((BOOL(*)(id,SEL))transportConnected)(self,sel_registerName("connected"));
+        bool isConnected=((bool(*)(id,SEL))transportConnected)(self,sel_registerName("connected"));
         pthread_mutex_lock(&lock);
         oct_native_connect(&journal,tokenFor(self),isConnected);
         scope=oct_native_receive_begin(&journal,tokenFor(self),result,bytes>UINT32_MAX?UINT32_MAX:(uint32_t)bytes);
         pthread_mutex_unlock(&lock);
     }
     usbScope=scope;
-    @try{return ((BOOL(*)(id,SEL,uint64_t,int32_t))originalBulk)(self,cmd,bytes,result);}
+    @try{return ((bool(*)(id,SEL,uint64_t,int32_t))originalBulk)(self,cmd,bytes,result);}
     @finally{usbScope=previous;pthread_mutex_lock(&lock);oct_native_receive_end(&journal,scope);pthread_mutex_unlock(&lock);}
 }
 static id request(id self,SEL cmd,id packet){
+    uint16_t previousOp=currentOperation;uint32_t previousTransaction=currentTransaction;
+    currentOperation=0;currentTransaction=0;
     if(authorized()&&usbScope&&packetIs(packet,"PTPOperationRequestPacket")){
         uint16_t op=((uint16_t(*)(id,SEL))requestOp)(packet,sel_registerName("operationCode"));
         uint32_t tid=((uint32_t(*)(id,SEL))requestTID)(packet,sel_registerName("transactionID"));
-        pthread_mutex_lock(&lock);oct_native_command(&journal,usbScope,op,tid);pthread_mutex_unlock(&lock);
+        pthread_mutex_lock(&lock);
+        if(oct_native_command(&journal,usbScope,op,tid)){
+            currentOperation=op;currentTransaction=tid;
+            int32_t count=((int32_t(*)(id,SEL))requestParameterCount)(packet,sel_registerName("numParameters"));
+            NSMutableArray *parameters=[NSMutableArray array];
+            // The supplied binary's parameterAtIndex: returns only indices 0..3.
+            // Never report its out-of-range zero as a genuine fifth parameter.
+            if(count>=0&&count<=5)for(uint32_t i=0;i<(uint32_t)count&&i<4;i++){
+                uint32_t value=((uint32_t(*)(id,SEL,uint32_t))requestParameter)(packet,sel_registerName("parameterAtIndex:"),i);
+                [parameters addObject:@(value)];
+            }
+            if(!requestJournal)requestJournal=[NSMutableArray array];
+            if(requestJournal.count==64)[requestJournal removeObjectAtIndex:0];
+            [requestJournal addObject:@{@"usb_scope":@(usbScope),@"operation":@(op),@"transaction":@(tid),
+                @"utc_ms":@((int64_t)([NSDate date].timeIntervalSince1970*1000)),@"parameters":parameters,
+                @"parameter_count":@(count),@"parameters_truncated":@(count<0||count>4)}];
+        }
+        pthread_mutex_unlock(&lock);
     }
-    return ((id(*)(id,SEL,id))originalRequest)(self,cmd,packet);
+    @try{return ((id(*)(id,SEL,id))originalRequest)(self,cmd,packet);}
+    @finally{currentOperation=previousOp;currentTransaction=previousTransaction;}
 }
-static BOOL response(id self,SEL cmd,id packet){
-    BOOL accepted=((BOOL(*)(id,SEL,id))originalResponse)(self,cmd,packet);
+static bool response(id self,SEL cmd,id packet){
+    bool accepted=((bool(*)(id,SEL,id))originalResponse)(self,cmd,packet);
     if(authorized()&&packetIs(packet,"PTPOperationResponsePacket")){
         uint32_t tid=((uint32_t(*)(id,SEL))responseTID)(packet,sel_registerName("transactionID"));
         uint16_t rc=((uint16_t(*)(id,SEL))responseCode)(packet,sel_registerName("responseCode"));
@@ -88,8 +153,8 @@ static void data(id self,SEL cmd,id packet){
     }
     ((void(*)(id,SEL,id))originalData)(self,cmd,packet); // async enqueue, NOT transmission success
 }
-static void connected(id self,SEL cmd,BOOL value){
-    ((void(*)(id,SEL,BOOL))originalConnected)(self,cmd,value);
+static void connected(id self,SEL cmd,bool value){
+    ((void(*)(id,SEL,bool))originalConnected)(self,cmd,value);
     if(authorized()){pthread_mutex_lock(&lock);oct_native_connect(&journal,tokenFor(self),value);pthread_mutex_unlock(&lock);}
 }
 static void stop(id self,SEL cmd){
@@ -109,6 +174,8 @@ static BOOL install(NSString **reason){
         {"PTPDeviceUSBTransport","connected","B16@0:8",&transportConnected},
         {"PTPOperationRequestPacket","operationCode","S16@0:8",&requestOp},
         {"PTPOperationRequestPacket","transactionID","I16@0:8",&requestTID},
+        {"PTPOperationRequestPacket","numParameters","i16@0:8",&requestParameterCount},
+        {"PTPOperationRequestPacket","parameterAtIndex:","I20@0:8I16",&requestParameter},
         {"PTPOperationResponsePacket","responseCode","S16@0:8",&responseCode},
         {"PTPOperationResponsePacket","transactionID","I16@0:8",&responseTID},
         {"PTPDataPacket","transactionID","I16@0:8",&dataTID}
@@ -122,24 +189,25 @@ static BOOL install(NSString **reason){
     return YES;
 }
 static BOOL compatible(NSString **reason){
-    if(strcmp(getprogname(),"ptpd")){*reason=@"Wrong process";return NO;}
+    if(strcmp(getprogname(),"ptpd")){startup.identity=OCT_NATIVE_IDENTITY_WRONG_PROCESS;*reason=@"Wrong process";return NO;}
     NSOperatingSystemVersion os=NSProcessInfo.processInfo.operatingSystemVersion;
     char build[64]={0};size_t size=sizeof build;
     if(sysctlbyname("kern.osversion",build,&size,NULL,0)==0)kernelBuild=[NSString stringWithUTF8String:build];
-    if(os.majorVersion!=17||os.minorVersion!=0||os.patchVersion!=0){*reason=@"Requires iOS 17.0.0";return NO;}
+    if(os.majorVersion!=17||os.minorVersion!=0||os.patchVersion!=0){startup.identity=OCT_NATIVE_IDENTITY_WRONG_SYSTEM;*reason=@"Requires iOS 17.0.0";return NO;}
     const struct mach_header_64 *header=(const struct mach_header_64*)_dyld_get_image_header(0);
-    oct_macho_identity identity;
-    if(!header||header->sizeofcmds>65536||oct_device_parse_identity((const uint8_t*)header,32+(size_t)header->sizeofcmds,&identity)!=OCT_OK||strcmp(identity.uuid,"FFD54FC7-0508-3AB8-8D17-2F698B611E10")||identity.cpu_type!=0x100000c||identity.cpu_subtype!=0x80000002){*reason=@"Loaded ptpd UUID/architecture mismatch";return NO;}
+    oct_macho_identity identity={0}; /* read below even when parsing is short-circuited */
+    if(!header||header->sizeofcmds>65536||oct_device_parse_identity((const uint8_t*)header,32+(size_t)header->sizeofcmds,&identity)!=OCT_OK||strcmp(identity.uuid,"FFD54FC7-0508-3AB8-8D17-2F698B611E10")||identity.cpu_type!=0x100000c||identity.cpu_subtype!=0x80000002){/* Blame the architecture only when the parse succeeded and reported a different one. */startup.identity=(identity.uuid[0]&&(identity.cpu_type!=0x100000c||identity.cpu_subtype!=0x80000002))?OCT_NATIVE_IDENTITY_WRONG_ARCHITECTURE:OCT_NATIVE_IDENTITY_WRONG_UUID;*reason=@"Loaded ptpd UUID/architecture mismatch";return NO;}
     NSError *error=nil;NSData *bytes=[NSData dataWithContentsOfFile:@"/usr/libexec/ptpd" options:NSDataReadingMappedIfSafe error:&error];
-    if(!bytes||bytes.length>8*1024*1024){*reason=@"Cannot verify on-disk ptpd";return NO;}
+    if(!bytes||bytes.length>8*1024*1024){startup.identity=OCT_NATIVE_IDENTITY_WRONG_DIGEST;*reason=@"Cannot verify on-disk ptpd";return NO;}
     uint8_t digest[CC_SHA256_DIGEST_LENGTH];CC_SHA256(bytes.bytes,(CC_LONG)bytes.length,digest);
     NSMutableString *hash=[NSMutableString string];for(unsigned i=0;i<sizeof digest;i++)[hash appendFormat:@"%02x",digest[i]];
-    if(![hash isEqualToString:@"a1742358da3e257204a0f190211cda26a155dfe0dabb3c9fa572117460085dcb"]){*reason=@"ptpd hash mismatch";return NO;}
-    *reason=@"Exact ptpd UUID, arm64e, SHA-256 and iOS 17.0 matched";return YES;
+    if(![hash isEqualToString:@"a1742358da3e257204a0f190211cda26a155dfe0dabb3c9fa572117460085dcb"]){startup.identity=OCT_NATIVE_IDENTITY_WRONG_DIGEST;*reason=@"ptpd hash mismatch";return NO;}
+    startup.identity=OCT_NATIVE_IDENTITY_COMPATIBLE;*reason=@"Exact ptpd UUID, arm64e, SHA-256 and iOS 17.0 matched";return YES;
 }
 static void publish(void){
-    oct_native_snapshot snapshot;NSString *event;uint64_t count;
-    pthread_mutex_lock(&lock);oct_native_get_snapshot(&journal,&snapshot);event=lastProviderEvent;count=providerEvents;pthread_mutex_unlock(&lock);
+    oct_native_snapshot snapshot;NSString *event;uint64_t count;NSArray *providerRecords,*requestRecords;
+    pthread_mutex_lock(&lock);oct_native_get_snapshot(&journal,&snapshot);event=lastProviderEvent;count=providerEvents;
+    providerRecords=[providerJournal copy]?:@[];requestRecords=[requestJournal copy]?:@[];pthread_mutex_unlock(&lock);
     NSMutableArray *events=[NSMutableArray array];
     for(size_t i=0;i<snapshot.event_count;i++){
         oct_native_event e=snapshot.events[i];
@@ -159,21 +227,48 @@ static void publish(void){
         @"data_submissions":@(snapshot.data_submissions),@"overwritten_events":@(snapshot.overwritten_events),
         @"pairing_disabled":@(snapshot.pairing_disabled),@"provider_events":@(count),@"lease_provider_events":@(count-leaseProviderEvents),
         @"last_provider_event":count>leaseProviderEvents?event:@"none in current authorization",@"events":events,
+        @"provider_journal":providerRecords,
+        @"request_journal":requestRecords,
         @"claim":@"Native method observations. Successful write result is not proof of host receipt or Explorer download."
     };
     NSData *json=[NSJSONSerialization dataWithJSONObject:report options:NSJSONWritingSortedKeys error:nil];
-    if(json&&json.length<=65536)oct_native_io_write(OCT_NATIVE_DIRECTORY,"status",json.bytes,json.length);
+    if(!json||json.length>65536)return;
+    oct_native_io_failure failure;
+    oct_native_io_write_detailed(OCT_NATIVE_DIRECTORY,"status",json.bytes,json.length,&failure);
+    if(failure.stage!=startup.status_stage||clamp_errno(failure.error)!=startup.status_error){
+        if(failure.stage==OCT_NATIVE_IO_OK)os_log(startup_log(),"status written");
+        else os_log_error(startup_log(),"status write failed at %{public}s, errno %d",oct_native_io_stage_name(failure.stage),failure.error);
+    }
+    startup.status_stage=(uint8_t)failure.stage;startup.status_error=clamp_errno(failure.error);
+    if(failure.stage==OCT_NATIVE_IO_OK)raise_phase(OCT_NATIVE_PHASE_PUBLISHED);
 }
 __attribute__((constructor)) static void startObserver(void){
     @autoreleasepool {
         if(strcmp(getprogname(),"ptpd"))return;
+        startupLog=os_log_create("com.parv.octopus.native","startup");
+        /* The first thing done in ptpd, before anything that can fail: proof the dylib was loaded. */
+        os_log(startup_log(),"constructor entered in ptpd pid %d uid %d",(int)getpid(),(int)geteuid());
+        raise_phase(OCT_NATIVE_PHASE_CONSTRUCTOR);post_startup();
         oct_native_init(&journal,((uint64_t)arc4random()<<32)|arc4random()|1);
         NSString *reason=nil;BOOL match=compatible(&reason);compatibility=reason?:@"Identity check failed";
+        raise_phase(OCT_NATIVE_PHASE_IDENTITY);
+        os_log(startup_log(),"identity %{public}s: %{public}s",match?"compatible":"rejected",compatibility.UTF8String);
+        post_startup();
         dispatch_queue_t queue=dispatch_queue_create("com.parv.octopus.native",DISPATCH_QUEUE_SERIAL);
         timer=dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER,0,0,queue);
         dispatch_source_set_timer(timer,dispatch_time(DISPATCH_TIME_NOW,0),NSEC_PER_SEC,NSEC_PER_SEC/10);
         dispatch_source_set_event_handler(timer,^{@autoreleasepool{
-            char token[33]={0};uint64_t until=0;unsigned wanted=match?oct_native_read_lease(OCT_NATIVE_DIRECTORY,now(),&until,token):0;
+            char token[33]={0};uint64_t until=0;unsigned wanted=0;
+            if(match){
+                oct_native_io_failure leaseFailure;
+                wanted=oct_native_read_lease_detailed(OCT_NATIVE_DIRECTORY,now(),&until,token,&leaseFailure);
+                if(leaseFailure.stage!=startup.lease_stage||clamp_errno(leaseFailure.error)!=startup.lease_error){
+                    if(leaseFailure.stage==OCT_NATIVE_IO_OK)os_log(startup_log(),"lease read");
+                    else os_log_error(startup_log(),"lease read failed at %{public}s, errno %d",oct_native_io_stage_name(leaseFailure.stage),leaseFailure.error);
+                }
+                startup.lease_stage=(uint8_t)leaseFailure.stage;startup.lease_error=clamp_errno(leaseFailure.error);
+                if(wanted)raise_phase(OCT_NATIVE_PHASE_LEASE);
+            }
             NSString *current=[NSString stringWithUTF8String:token];
             pthread_mutex_lock(&lock);
             if(![current isEqualToString:leaseToken]||wanted!=atomic_load(&mode)||
@@ -182,11 +277,15 @@ __attribute__((constructor)) static void startObserver(void){
                 oct_native_authorize(&journal,false);
                 oct_native_snapshot prior;oct_native_get_snapshot(&journal,&prior);
                 leaseSequence=prior.sequence;leaseCommands=prior.commands;leaseResponses=prior.paired_responses;leaseProviderEvents=providerEvents;
+                [providerJournal removeAllObjects];
+                [requestJournal removeAllObjects];
             }
             leaseToken=current;
             pthread_mutex_unlock(&lock);
             atomic_store(&deadline,until);atomic_store(&mode,wanted);
-            if(wanted&&!attemptedHooks){attemptedHooks=true;NSString *reason=nil;BOOL ok=install(&reason);hookState=ok?@"Installed":reason;atomic_store(&ready,ok);}
+            if(wanted&&!attemptedHooks){attemptedHooks=true;NSString *reason=nil;BOOL ok=install(&reason);hookState=ok?@"Installed":reason;atomic_store(&ready,ok);
+                startup.hooks=ok?OCT_NATIVE_HOOKS_INSTALLED:OCT_NATIVE_HOOKS_REFUSED;if(ok)raise_phase(OCT_NATIVE_PHASE_HOOKED);
+                os_log(startup_log(),"observer hooks %{public}s",ok?"installed":"refused");}
             if(wanted&&atomic_load(&ready)&&!attemptedProvider){
                 NSString *problem=nil;
                 BOOL valid=OCTProviderValidate(&problem);
@@ -199,7 +298,10 @@ __attribute__((constructor)) static void startObserver(void){
             }
             pthread_mutex_lock(&lock);oct_native_authorize(&journal,authorized());pthread_mutex_unlock(&lock);
             publish();
+            post_startup();
         }});
+        /* Before dispatch_resume: once resumed, the handler runs on its own queue and owns `startup`. */
+        raise_phase(OCT_NATIVE_PHASE_TIMER);post_startup();
         dispatch_resume(timer);
     }
 }

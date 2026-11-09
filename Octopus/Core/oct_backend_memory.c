@@ -295,7 +295,7 @@ static void mem_destroy(void *ctx)
 
 static const oct_backend_ops memory_ops = {
     "memory", mem_describe, mem_list, mem_stat, mem_read, mem_create,
-    mem_write, mem_truncate, mem_remove, mem_rename, mem_destroy,
+    mem_write, mem_truncate, mem_remove, mem_rename, mem_destroy, NULL,
 };
 
 oct_status oct_memory_backend_create(uint64_t capacity, oct_backend *out)

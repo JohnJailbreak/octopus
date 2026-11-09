@@ -264,6 +264,39 @@ enum Diagnostics {
             step("device.ptp_registry", "Device (read-only)", "PTP interface discovery", .local) { ptpRegistry() },
             step("device.ptpd_identity", "Device (read-only)", "ptpd binary identity", .local) { ptpdIdentity() },
             step("device.ptpd_process", "Device (read-only)", "ptpd running now", .local) { ptpdProcess() },
+            step("native.installation", "Native integration", "Optional companion files", .local) {
+                let capture = nativeCapture(environment)
+                return result("native.installation", "Native integration", "Optional companion files", .local,
+                              capture.companionFilesPresent ? .pass : .blocked,
+                              "App effective UID: \(capture.appUID). Companion files \(capture.companionFilesPresent ? "found" : "not found") at /var/jb/usr/lib/TweakInject. File presence does not prove the module loaded or hooks ran.", checks: 1)
+            },
+            step("native.startup_signal", "Native integration", "Companion startup signal", .nativeObservation) {
+                // Read through Darwin notifications, not the status file, because writing that file
+                // is one of the things that can fail inside ptpd's sandbox. The C side decides what
+                // the signal means; see oct_native_signal_describe.
+                let capture = nativeCapture(environment)
+                var signal = oct_native_signal()
+                let present = oct_native_signal_read(&signal) == OCT_OK
+                let capacity = 400
+                var text = [CChar](repeating: 0, count: capacity)
+                // capacity is a separate constant: reading text.count while passing &text in the same
+                // call is an overlapping access, which Swift's exclusivity checking rejects.
+                let verdict = oct_native_signal_describe(&signal, present, capture.observedPID, &text, capacity)
+                let detail = text.withUnsafeBufferPointer { String(cString: $0.baseAddress!) }
+                let status: DiagnosticStatus
+                if !capture.companionFilesPresent {
+                    status = .blocked
+                } else if verdict == OCT_NATIVE_VERDICT_RUNNING {
+                    status = .pass
+                } else if verdict == OCT_NATIVE_VERDICT_NO_LEASE {
+                    status = .blocked
+                } else {
+                    status = .fail
+                }
+                return result("native.startup_signal", "Native integration", "Companion startup signal", .nativeObservation,
+                              status, detail + " Signal word \(String(format: "%016llx", oct_native_signal_pack(&signal)))"
+                                  + (present ? "." : " (none posted)."), checks: 1)
+            },
             step("native.observer", "Native integration", "Native observer compatibility and authorization", .nativeObservation) {
                 nativeCapture(environment).result(transactions: false)
             },

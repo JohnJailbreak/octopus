@@ -10,6 +10,7 @@ extern BOOL OCTObserverTestInstall(NSString **reason);
 extern void OCTObserverTestAuthorize(unsigned wanted,uint64_t until);
 extern void OCTObserverTestSnapshot(oct_native_snapshot *out);
 extern uint64_t OCTObserverTestNow(void);
+extern unsigned OCTObserverTestStorageFlags(void);
 
 BOOL OCTProviderInstall(NSString **reason) { if(reason)*reason=@"Observer-only fixture";return YES; }
 BOOL OCTProviderValidate(NSString **reason) { if(reason)*reason=@"Observer-only fixture";return YES; }
@@ -17,8 +18,13 @@ BOOL OCTProviderValidate(NSString **reason) { if(reason)*reason=@"Observer-only 
 @interface PTPOperationRequestPacket : NSObject
 @property(nonatomic) uint16_t operationCode;
 @property(nonatomic) uint32_t transactionID;
+- (int32_t)numParameters;
+- (uint32_t)parameterAtIndex:(uint32_t)index;
 @end
-@implementation PTPOperationRequestPacket @end
+@implementation PTPOperationRequestPacket
+- (int32_t)numParameters { return 1; }
+- (uint32_t)parameterAtIndex:(uint32_t)index { return index==0?0x10001:0; }
+@end
 @interface PTPOperationResponsePacket : NSObject
 @property(nonatomic) uint16_t responseCode;
 @property(nonatomic) uint32_t transactionID;
@@ -72,11 +78,12 @@ int main(void){@autoreleasepool{
     PTPOperationRequestPacket *command=[PTPOperationRequestPacket new];command.operationCode=0x1004;command.transactionID=1;usb.packet=command;
     /* No authorization: originals continue, no request recorded. */
     assert([usb handleBulkData:12 result:0]);assert(usb.bulkCalls==1&&usb.responder.calls==1);assert(snapshot().commands==0);
-    OCTObserverTestAuthorize(1,OCTObserverTestNow()+60000);
+    OCTObserverTestAuthorize(1,OCTObserverTestNow()+15000);
     /* Hook installed after connection: bulk wrapper samples connected getter. */
     assert([usb handleBulkData:12 result:0]);assert(snapshot().commands==1&&snapshot().connected);
     PTPOperationResponsePacket *response=[PTPOperationResponsePacket new];response.transactionID=1;response.responseCode=0x2001;
     assert([usb sendResponse:response]);assert(snapshot().paired_responses==1);
+    assert(OCTObserverTestStorageFlags()==1);
     /* An arbitrary native method invocation cannot create USB provenance. */
     command.transactionID=2;[usb.responder handleRequest:command];assert(snapshot().commands==1);
     response.transactionID=2;assert([usb sendResponse:response]);assert(snapshot().paired_responses==1);
@@ -99,5 +106,11 @@ int main(void){@autoreleasepool{
     assert(snapshot().paired_responses==1);
     command.transactionID=7;[usb handleBulkData:12 result:0];assert(snapshot().commands==4);
     assert(usb.responseCalls==5&&usb.bulkCalls>=8);
+    OCTObserverTestAuthorize(1,OCTObserverTestNow()-1);
+    command.transactionID=8;[usb handleBulkData:12 result:0];assert(snapshot().commands==4);
+    OCTObserverTestAuthorize(1,OCTObserverTestNow()+15000);
+    command.operationCode=0x1005;command.transactionID=9;[usb handleBulkData:16 result:0];
+    response.transactionID=9;[usb sendResponse:response];
+    assert(OCTObserverTestStorageFlags()==3&&snapshot().paired_responses==2);
     puts("PASS observer wrappers: exact signatures, original forwarding, scoped provenance, async accounting, errors, disconnect, revoke (LOCAL boundary test)");
 }return 0;}

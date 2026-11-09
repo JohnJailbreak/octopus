@@ -139,6 +139,10 @@ typedef struct oct_backend_ops {
     oct_status (*remove)(void *ctx, uint64_t node);  /* file or empty directory */
     oct_status (*rename)(void *ctx, uint64_t node, const char *name);
     void       (*destroy)(void *ctx);
+    /* Optional live authorization/identity gate, including cached store reads.
+     * Recursive requests can be refused before any traversal. Source ABI only:
+     * all backends must be rebuilt with this header. NULL preserves prior behavior. */
+    oct_status (*access)(void *ctx, uint64_t node, bool recursive);
 } oct_backend_ops;
 
 typedef struct oct_backend {

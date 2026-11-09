@@ -1,4 +1,6 @@
 #include "test_support.h"
+#include <stdio.h>
+#include <string.h>
 #include "../../Core/oct_native_io.h"
 #include <errno.h>
 #include <fcntl.h>
@@ -248,8 +250,204 @@ static void test_permissions(const char *directory)
     CHECK_OK(oct_native_io_write(directory,"status","recovered",9));
 }
 
+/* ---- Stage-precise failures: the diagnosis the device run could not make ----------------- */
+
+#include <signal.h>
+#include <sys/resource.h>
+
+static void expect_stage(const oct_native_io_failure *f, oct_native_io_stage stage, int error)
+{
+    if (f->stage != stage || f->error != error) {
+        fprintf(stderr, "expected stage %s errno %d, got %s errno %d\n", oct_native_io_stage_name(stage), error,
+                oct_native_io_stage_name(f->stage), f->error);
+    }
+    CHECK_EQ(f->stage, stage);
+    CHECK_EQ(f->error, error);
+}
+
+static void test_detailed_failures(void)
+{
+    char root[] = "/tmp/octopus-nio-XXXXXX", path[512];
+    CHECK(mkdtemp(root) != NULL);
+    oct_native_io_failure f;
+    char bytes[64];
+    size_t length = 0;
+
+    /* What the device showed: a missing status file in a valid folder is OPEN_FILE/ENOENT. */
+    CHECK_EQ(chmod(root, 0700), 0);
+    CHECK_EQ(oct_native_io_read_detailed(root, "status", bytes, sizeof bytes, &length, &f), OCT_E_IO);
+    expect_stage(&f, OCT_NATIVE_IO_OPEN_FILE, ENOENT);
+
+    /* A folder that isn't there fails at OPEN_DIRECTORY, not later. */
+    snprintf(path, sizeof path, "%s/missing", root);
+    CHECK_EQ(oct_native_io_read_detailed(path, "status", bytes, sizeof bytes, &length, &f), OCT_E_IO);
+    expect_stage(&f, OCT_NATIVE_IO_OPEN_DIRECTORY, ENOENT);
+
+    /* A folder that opens but isn't private is a policy rejection, kept apart from a refusal by
+     * the kernel or the sandbox. Both used to surface as EPERM. */
+    snprintf(path, sizeof path, "%s/public", root);
+    CHECK_EQ(mkdir(path, 0755), 0);
+    CHECK_EQ(chmod(path, 0755), 0);
+    CHECK_EQ(oct_native_io_read_detailed(path, "status", bytes, sizeof bytes, &length, &f), OCT_E_IO);
+    expect_stage(&f, OCT_NATIVE_IO_VALIDATE_DIRECTORY, EPERM);
+    CHECK_EQ(oct_native_io_write_detailed(path, "status", "x", 1, &f), OCT_E_IO);
+    expect_stage(&f, OCT_NATIVE_IO_VALIDATE_DIRECTORY, EPERM);
+
+    /* A file where a folder should be. */
+    snprintf(path, sizeof path, "%s/plain", root);
+    FILE *file = fopen(path, "w");
+    CHECK(file != NULL);
+    if (file) CHECK_EQ(fclose(file), 0);
+    CHECK_EQ(oct_native_io_read_detailed(path, "status", bytes, sizeof bytes, &length, &f), OCT_E_IO);
+    expect_stage(&f, OCT_NATIVE_IO_OPEN_DIRECTORY, ENOTDIR);
+
+    /* A name outside the protocol never touches the filesystem. */
+    CHECK_EQ(oct_native_io_write_detailed(root, "../escape", "x", 1, &f), OCT_E_INVALID_ARGUMENT);
+    expect_stage(&f, OCT_NATIVE_IO_ARGUMENT, EINVAL);
+
+    /* Success reports OK with no errno, and the bytes read back. */
+    CHECK_OK(oct_native_io_write_detailed(root, "status", "{\"ok\":1}", 8, &f));
+    expect_stage(&f, OCT_NATIVE_IO_OK, 0);
+    CHECK_OK(oct_native_io_read_detailed(root, "status", bytes, sizeof bytes, &length, &f));
+    expect_stage(&f, OCT_NATIVE_IO_OK, 0);
+    CHECK_EQ(length, 8u);
+}
+
+/* A write that fails part-way must be reported as WRITE with the write's own errno: the old code
+ * captured errno only after close(), which could replace it. RLIMIT_FSIZE makes write() fail
+ * for real with EFBIG once the file reaches the limit. */
+static void test_partial_write_is_reported_exactly(void)
+{
+    char root[] = "/tmp/octopus-nio-XXXXXX", path[512];
+    CHECK(mkdtemp(root) != NULL);
+    CHECK_EQ(chmod(root, 0700), 0);
+    char payload[4096];
+    memset(payload, 'x', sizeof payload);
+    struct rlimit before, capped;
+    CHECK_EQ(getrlimit(RLIMIT_FSIZE, &before), 0);
+    void (*previous)(int) = signal(SIGXFSZ, SIG_IGN);
+    capped = before;
+    capped.rlim_cur = 100;
+    CHECK_EQ(setrlimit(RLIMIT_FSIZE, &capped), 0);
+    oct_native_io_failure f;
+    oct_status status = oct_native_io_write_detailed(root, "status", payload, sizeof payload, &f);
+    CHECK_EQ(setrlimit(RLIMIT_FSIZE, &before), 0);
+    signal(SIGXFSZ, previous);
+    CHECK_EQ(status, OCT_E_IO);
+    expect_stage(&f, OCT_NATIVE_IO_WRITE, EFBIG);
+    /* Nothing half-written is published, and the temporary is cleaned up. */
+    snprintf(path, sizeof path, "%s/status", root);
+    CHECK(access(path, F_OK) != 0);
+    snprintf(path, sizeof path, "%s/.status.%ld.tmp", root, (long)getpid());
+    CHECK(access(path, F_OK) != 0);
+}
+
+static void test_detailed_lease_reads(void)
+{
+    char root[] = "/tmp/octopus-nio-XXXXXX";
+    CHECK(mkdtemp(root) != NULL);
+    CHECK_EQ(chmod(root, 0700), 0);
+    oct_native_io_failure f;
+    uint64_t deadline = 0;
+    char token[33];
+    CHECK_EQ(oct_native_read_lease_detailed(root, 1000, &deadline, token, &f), 0u);
+    expect_stage(&f, OCT_NATIVE_IO_OPEN_FILE, ENOENT);              /* no lease at all */
+    CHECK_OK(oct_native_write_lease(root, "0123456789abcdef0123456789abcdef", 1, 1000));
+    CHECK(oct_native_read_lease_detailed(root, 2000, &deadline, token, &f) > 0);
+    expect_stage(&f, OCT_NATIVE_IO_OK, 0);                         /* current */
+    CHECK_EQ(oct_native_read_lease_detailed(root, 1000 + OCT_NATIVE_LEASE_MS + 1, &deadline, token, &f), 0u);
+    expect_stage(&f, OCT_NATIVE_IO_CONTENT, 0);                    /* expired: readable, rejected */
+    CHECK_OK(oct_native_io_write(root, "lease", "garbage", 7));
+    CHECK_EQ(oct_native_read_lease_detailed(root, 2000, &deadline, token, &f), 0u);
+    expect_stage(&f, OCT_NATIVE_IO_CONTENT, 0);                    /* malformed */
+}
+
+/* ---- The startup signal ------------------------------------------------------------------ */
+
+static void test_startup_signal(void)
+{
+    oct_native_signal s = { .phase = OCT_NATIVE_PHASE_TIMER, .identity = OCT_NATIVE_IDENTITY_COMPATIBLE,
+                            .hooks = OCT_NATIVE_HOOKS_NOT_ATTEMPTED, .lease_stage = OCT_NATIVE_IO_OPEN_DIRECTORY,
+                            .status_stage = OCT_NATIVE_IO_CREATE_DIRECTORY, .lease_error = EPERM,
+                            .status_error = 255, .pid = 1152 };
+    uint64_t word = oct_native_signal_pack(&s);
+    oct_native_signal back;
+    CHECK(oct_native_signal_unpack(word, &back));
+    CHECK(memcmp(&s, &back, sizeof s) == 0);                       /* every field survives */
+    CHECK(oct_native_signal_from_pid(&back, 1152));
+    CHECK(!oct_native_signal_from_pid(&back, 43138));              /* a restarted ptpd is noticed */
+    CHECK(!oct_native_signal_from_pid(&back, 0));
+
+    CHECK(!oct_native_signal_unpack(0, &back));                    /* never posted */
+    CHECK(!oct_native_signal_unpack(word ^ (1ull << 30), &back));  /* one flipped bit */
+    CHECK(!oct_native_signal_unpack((word & ~0xFull) | 2u, &back)); /* another version */
+    oct_native_signal bad = s;
+    bad.phase = 15;                                                /* out of range, check recomputed */
+    CHECK(!oct_native_signal_unpack(oct_native_signal_pack(&bad), &back));
+    bad = s;
+    bad.lease_stage = 14;
+    CHECK(!oct_native_signal_unpack(oct_native_signal_pack(&bad), &back));
+    CHECK(!oct_native_signal_unpack(word, NULL));
+
+    for (int stage = OCT_NATIVE_IO_OK; stage <= OCT_NATIVE_IO_CONTENT; stage++) {
+        CHECK(strcmp(oct_native_io_stage_name((oct_native_io_stage)stage), "unknown") != 0);
+    }
+#if !defined(__APPLE__)
+    CHECK_EQ(oct_native_signal_publish(&s), OCT_E_UNSUPPORTED);
+    CHECK_EQ(oct_native_signal_read(&back), OCT_E_UNSUPPORTED);
+#endif
+}
+
+/* Each verdict names exactly one cause, which is what the v0.4.20 run could not get. */
+static void test_signal_verdicts(void)
+{
+    char text[400];
+    oct_native_signal s = { 0 };
+    CHECK_EQ(oct_native_signal_describe(NULL, false, 1152, text, sizeof text), OCT_NATIVE_VERDICT_NO_SIGNAL);
+    CHECK(strstr(text, "never posted") != NULL);
+
+    s = (oct_native_signal){ .phase = OCT_NATIVE_PHASE_TIMER, .identity = OCT_NATIVE_IDENTITY_COMPATIBLE, .pid = 43138 & 0xFFFF };
+    CHECK_EQ(oct_native_signal_describe(&s, true, 1152, text, sizeof text), OCT_NATIVE_VERDICT_STALE);
+
+    s = (oct_native_signal){ .phase = OCT_NATIVE_PHASE_IDENTITY, .identity = OCT_NATIVE_IDENTITY_WRONG_DIGEST, .pid = 1152 };
+    CHECK_EQ(oct_native_signal_describe(&s, true, 1152, text, sizeof text), OCT_NATIVE_VERDICT_IDENTITY);
+    CHECK(strstr(text, "SHA-256") != NULL);
+
+    /* The leading hypothesis for the device run: the sandbox refuses the shared folder. */
+    s = (oct_native_signal){ .phase = OCT_NATIVE_PHASE_TIMER, .identity = OCT_NATIVE_IDENTITY_COMPATIBLE,
+                             .lease_stage = OCT_NATIVE_IO_OPEN_DIRECTORY, .lease_error = EPERM, .pid = 1152 };
+    CHECK_EQ(oct_native_signal_describe(&s, true, 1152, text, sizeof text), OCT_NATIVE_VERDICT_SANDBOX);
+    CHECK(strstr(text, "open-directory") != NULL);
+    /* A policy rejection of our own is not mistaken for the sandbox. */
+    s.lease_stage = OCT_NATIVE_IO_VALIDATE_DIRECTORY;
+    CHECK_EQ(oct_native_signal_describe(&s, true, 1152, text, sizeof text), OCT_NATIVE_VERDICT_NO_LEASE);
+    /* Nor is a lease that simply isn't there yet. */
+    s.lease_stage = OCT_NATIVE_IO_OPEN_FILE; s.lease_error = ENOENT;
+    CHECK_EQ(oct_native_signal_describe(&s, true, 1152, text, sizeof text), OCT_NATIVE_VERDICT_NO_LEASE);
+
+    s = (oct_native_signal){ .phase = OCT_NATIVE_PHASE_LEASE, .identity = OCT_NATIVE_IDENTITY_COMPATIBLE,
+                             .status_stage = OCT_NATIVE_IO_RENAME, .status_error = EXDEV, .pid = 1152 };
+    CHECK_EQ(oct_native_signal_describe(&s, true, 1152, text, sizeof text), OCT_NATIVE_VERDICT_STATUS_FAILED);
+    s.status_stage = OCT_NATIVE_IO_OPEN_FILE; s.status_error = EPERM;
+    CHECK_EQ(oct_native_signal_describe(&s, true, 1152, text, sizeof text), OCT_NATIVE_VERDICT_SANDBOX);
+
+    s = (oct_native_signal){ .phase = OCT_NATIVE_PHASE_PUBLISHED, .identity = OCT_NATIVE_IDENTITY_COMPATIBLE,
+                             .hooks = OCT_NATIVE_HOOKS_REFUSED, .pid = 1152 };
+    CHECK_EQ(oct_native_signal_describe(&s, true, 1152, text, sizeof text), OCT_NATIVE_VERDICT_HOOKS_REFUSED);
+    s.hooks = OCT_NATIVE_HOOKS_INSTALLED; s.phase = OCT_NATIVE_PHASE_HOOKED;
+    CHECK_EQ(oct_native_signal_describe(&s, true, 1152, text, sizeof text), OCT_NATIVE_VERDICT_RUNNING);
+    /* An unknown observed pid skips the staleness check rather than guessing. */
+    CHECK_EQ(oct_native_signal_describe(&s, true, 0, text, sizeof text), OCT_NATIVE_VERDICT_RUNNING);
+    CHECK_EQ(oct_native_signal_describe(&s, true, 1152, NULL, 0), OCT_NATIVE_VERDICT_RUNNING); /* no buffer */
+}
+
 void run_native_io_tests(void)
 {
+    test_detailed_failures();
+    test_partial_write_is_reported_exactly();
+    test_detailed_lease_reads();
+    test_startup_signal();
+    test_signal_verdicts();
     char directory[512], path[1024];
     const char *temporary = getenv("OCT_NATIVE_TEST_TMP");
     int count = snprintf(directory, sizeof directory, "%s/octopus-native-XXXXXX", temporary ? temporary : "/tmp");

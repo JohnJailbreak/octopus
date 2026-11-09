@@ -486,7 +486,7 @@ static void dir_destroy(void *ctx)
 
 static const oct_backend_ops directory_ops = {
     "directory", dir_describe, dir_list, dir_stat, dir_read, dir_create,
-    dir_write, dir_truncate, dir_remove, dir_rename, dir_destroy,
+    dir_write, dir_truncate, dir_remove, dir_rename, dir_destroy, NULL,
 };
 
 oct_status oct_directory_backend_create(const char *root, oct_backend *out)

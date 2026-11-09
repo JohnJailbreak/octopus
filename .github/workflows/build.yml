@@ -6,7 +6,7 @@ name: Build
 
 on:
   push:
-    branches: [main]
+    branches: [main, sonnet]   # sonnet also publishes an experimental prerelease; see prerelease
     tags: ['v*']
   pull_request:
   workflow_dispatch:
@@ -28,6 +28,14 @@ jobs:
         run: make test
       - name: Optional native package structure and reproducibility
         run: python3 Octopus/Tests/RepoTests/test_native_package.py
+      - name: Native startup signal (the Darwin transport, against a stand-in notifyd)
+        run: make test-native-signal
+      - name: Native DeviceInfo dataset parser
+        run: bash tools/test_native_dataset.sh
+      - name: Sonnet prerelease pipeline (structure, and its publish scripts run against a stand-in gh)
+        run: |
+          python3 -c 'import yaml' 2>/dev/null || sudo apt-get install -y python3-yaml
+          python3 Octopus/Tests/RepoTests/test_workflow.py
       - name: Sanitizers (address, undefined behaviour, leaks)
         run: make sanitize
       - name: ThreadSanitizer (the debug log and the transport adapter)
@@ -109,6 +117,8 @@ jobs:
           brew install ldid
       - name: Native provider implementation tests (macOS Foundation)
         run: bash tools/test_provider.sh
+      - name: Native observer provenance tests (macOS Foundation)
+        run: bash tools/test_observer.sh
       - name: Build optional arm64e rootless native companion
         run: bash tools/build_native.sh "${{ steps.version.outputs.version }}"
       - uses: actions/upload-artifact@v4
@@ -119,6 +129,13 @@ jobs:
             build/native/*.deb.sha256
             build/native/*.deb.json
           if-no-files-found: error
+      - name: Keep the native build's output when it fails
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: OctopusNative-failure-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build/native
+          if-no-files-found: ignore
 
   release:
     name: Publish release
@@ -191,3 +208,124 @@ jobs:
             sleep 30
           done
           echo "Published: https://github.com/$GH_REPO/releases/tag/$tag" | tee -a "$GITHUB_STEP_SUMMARY"
+
+  prerelease:
+    name: Publish sonnet prerelease
+    # Only a push to sonnet, never a pull request, a manual run or a tag, and only when the core tests, the app and
+    # the native companion all built. A failed native job therefore blocks this prerelease rather than publishing
+    # an app without its paired DEB; main's stable release job is unaffected either way.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/sonnet'
+    needs: [core, app, native]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    # Keyed by commit, so only retries of the same commit queue behind each other.
+    concurrency:
+      group: sonnet-prerelease-${{ github.sha }}
+      cancel-in-progress: false
+    env:
+      VERSION: ${{ needs.app.outputs.version }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: Octopus-${{ needs.app.outputs.version }}
+          path: release/app
+      - uses: actions/download-artifact@v4
+        with:
+          name: OctopusNative-experimental-${{ needs.app.outputs.version }}
+          path: release/native
+      - name: Verify the paired assets
+        run: |
+          set -euo pipefail
+          deb="com.parv.octopus.native_${VERSION}_iphoneos-arm64.deb"
+          # The app and the companion must come from this run and this version, or they are not a pair.
+          for f in release/app/Octopus.tipa release/app/Octopus.ipa "release/native/$deb" \
+                   "release/native/$deb.sha256" "release/native/$deb.json"; do
+            [ -s "$f" ] || { echo "::error::Missing or empty $f; not publishing an incomplete prerelease"; exit 1; }
+          done
+          (cd release/app && sha256sum -c SHA256SUMS)
+          (cd release/native && sha256sum -c "$deb.sha256")
+          python3 -c 'import json,sys; sys.exit(json.load(open(sys.argv[2])).get("version") != sys.argv[1])' \
+            "$VERSION" "release/native/$deb.json" || { echo "::error::$deb.json does not record version $VERSION"; exit 1; }
+          mkdir -p publish
+          cp release/app/Octopus.tipa release/app/Octopus.ipa "release/native/$deb" \
+             "release/native/$deb.sha256" "release/native/$deb.json" publish/
+          # One SHA256SUMS over every binary in the release.
+          (cd publish && sha256sum Octopus.tipa Octopus.ipa "$deb" > SHA256SUMS && cat SHA256SUMS)
+      - name: Write prerelease notes
+        run: |
+          set -euo pipefail
+          deb="com.parv.octopus.native_${VERSION}_iphoneos-arm64.deb"
+          run_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          {
+            echo "**Experimental build from the \`sonnet\` branch. Not a stable release.**"
+            echo
+            echo "- Commit: \`$GITHUB_SHA\`"
+            echo "- Version: $VERSION"
+            echo "- Build: $run_url"
+            echo "- Scope: iPhone with iOS 17.0.0 only, Dopamine rootless, ElleKit. The native companion refuses to run on any other ptpd build."
+            echo
+            echo "## Changes"
+            git log -1 --format='%B' "$GITHUB_SHA" | sed -n '1p' | sed 's/^/- /'
+            echo
+            echo "## Install"
+            echo "1. Octopus.tipa with TrollStore (Octopus.ipa is the same file)."
+            echo "2. Optional: $deb with Sileo. It is inert until Octopus grants an expiring lease."
+            echo "3. In Octopus: enable USB Access, then Settings, Diagnostics, Run Full Diagnostics. Read \"Companion startup signal\" first."
+            echo
+            echo "## Roll back"
+            echo "- Uninstall the companion in Sileo, then \`killall -9 ptpd\`, or reboot without re-running Dopamine: rootless tweaks load only while jailbroken."
+            echo "- Reinstall the previous Octopus.tipa from its release."
+            echo
+            echo "## Not proven"
+            echo "No device run has yet shown the companion loaded in ptpd, real USB callbacks, or a file served to Windows."
+            echo
+            echo '```'
+            cat publish/SHA256SUMS
+            echo '```'
+          } > prerelease-notes.md
+          cat prerelease-notes.md
+      - name: Publish
+        run: |
+          set -euo pipefail
+          deb="com.parv.octopus.native_${VERSION}_iphoneos-arm64.deb"
+          tag="sonnet-${VERSION}-${GITHUB_SHA:0:12}"
+          case "$tag" in sonnet-*) ;; *) echo "::error::refusing tag $tag"; exit 1 ;; esac
+          files=(publish/Octopus.tipa publish/Octopus.ipa "publish/$deb" "publish/$deb.sha256" "publish/$deb.json" publish/SHA256SUMS)
+          # A tag of this name may exist only at this exact commit. An annotated tag points at a tag object, so
+          # resolve it. Never move a tag: a collision at another commit fails the job instead.
+          if sha="$(gh api "repos/$GH_REPO/git/ref/tags/$tag" --jq '.object.sha' 2>/dev/null)"; then
+            if [ "$(gh api "repos/$GH_REPO/git/ref/tags/$tag" --jq '.object.type')" = tag ]; then
+              sha="$(gh api "repos/$GH_REPO/git/tags/$sha" --jq '.object.sha')"
+            fi
+            if [ "$sha" != "$GITHUB_SHA" ]; then
+              echo "::error::Tag $tag already points at $sha, not $GITHUB_SHA; not moving it"
+              exit 1
+            fi
+          fi
+          publish() {
+            if gh release view "$tag" >/dev/null 2>&1; then
+              # A retry for this same commit (the tag check above proved it): refresh the files and the notes. Only
+              # ever a prerelease, and never the latest release.
+              [ "$(gh release view "$tag" --json isPrerelease --jq .isPrerelease)" = true ] \
+                || { echo "::error::$tag exists and is not a prerelease; not touching it"; return 2; }
+              gh release upload "$tag" "${files[@]}" --clobber || return 1
+              gh release edit "$tag" --notes-file prerelease-notes.md --prerelease --latest=false || return 1
+            else
+              gh release create "$tag" "${files[@]}" --target "$GITHUB_SHA" --prerelease --latest=false \
+                --title "sonnet $VERSION (experimental)" --notes-file prerelease-notes.md || return 1
+            fi
+          }
+          # Up to three tries. Unlike the stable job, nothing is deleted between tries, not even drafts.
+          for attempt in 1 2 3; do
+            status=0; publish || status=$?
+            [ "$status" = 0 ] && break
+            [ "$status" = 2 ] && exit 1
+            [ "$attempt" = 3 ] && { echo "::error::Publishing the prerelease failed three times"; exit 1; }
+            echo "::warning::Publishing failed (attempt $attempt of 3); trying again in 30 s"
+            sleep 30
+          done
+          echo "Published $tag at $GITHUB_SHA"

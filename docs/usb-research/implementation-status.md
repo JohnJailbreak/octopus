@@ -107,6 +107,66 @@ which returns early for synthetic handles, and no handler validates storage thro
   accepts `SendObjectInfo`, `SendObject` and `SetObjectPropValue`. None of that is wired into the
   native provider, and no write path has been exercised against Apple's responder.
 
+## The v0.4.20 device run, and what the next run decides
+
+**Observed.** Three diagnostic exports (app only, after installing the DEB, after a reboot) each gave 29 pass,
+0 fail, 5 blocked. The companion was installed at `/var/jb/usr/lib/TweakInject/OctopusNative.dylib` with a
+`ptpd` executable filter, Dopamine's `systemhook.dylib` was in ptpd's environment, the app wrote its lease as
+uid 501 and ptpd ran as uid 501. The status file never appeared: the app read it as `OCT_E_IO` with `ENOENT`.
+Windows kept showing Apple's Photos folders. Nothing shows the companion loaded, a native USB callback, or a
+synthetic object.
+
+**Leading hypothesis, not proven.** `launchctl procinfo` lists ptpd's entitlements, and they include
+`seatbelt-profiles = ("ptpd")`: ptpd runs under Apple's ptpd sandbox. Its other entitlements cover Photos
+storage, its own temporary space and some preference domains; nothing suggests access to
+`/var/mobile/Library/Caches/Octopus/native`. The same uid does not give the same sandbox rights. If the sandbox
+refuses that folder, then the lease is never read, nothing is hooked, Photos is unaffected and no status is
+written, which is everything observed. The profile's rules are not in the evidence, and whether the dylib
+loaded at all is still unknown.
+
+**Not causes.** zsh's `log` builtin shadowed Apple's tool and `/usr/bin/log` is absent, so the attempted log
+query never ran; the `zsh/watch.so` signature message came from the shell, not from Octopus; the `plutil -lint`
+attempt used an unsupported syntax; `launchctl procinfo` reporting `status = stopped` is a moment's scheduling
+state, and `ps` showed ptpd alive throughout.
+
+**What changed so one run can tell.** The status file was the only channel, so it could not report its own
+failure. There are now two channels that need no files:
+
+- **A startup signal** posted through Darwin notifications: how far startup got, which identity check failed,
+  and the exact stage and errno of the last lease read and status write. Run Full Diagnostics shows it as
+  **Companion startup signal**, with one verdict: not loaded, a stale ptpd, rejected identity, sandbox refusal,
+  waiting for a lease, status write failed, hooks refused, or running.
+- **An os_log marker** under subsystem `com.parv.octopus.native` the moment the constructor runs in ptpd.
+  Readable from Windows with `idevicesyslog`, not on the phone.
+
+Stage and errno are captured at the failing call. A refusal of `open()` by the kernel or sandbox is reported
+separately from a folder that opened but is not private, which used to look identical.
+
+## The next device run
+
+One run, observer-only, answers the open question. Nothing in it exposes a synthetic storage.
+
+1. Install the prerelease's Octopus.tipa with TrollStore and its paired DEB with Sileo. Leave the provider off.
+2. Open Octopus, enable USB Access, keep it in the foreground, and connect the cable to Windows.
+3. **Photos regression first:** in File Explorer, copy one ordinary photo from DCIM. If that fails, stop and
+   roll back.
+4. Run Full Diagnostics and export. Read **Companion startup signal**:
+   - *No startup signal*: the dylib never ran its constructor in ptpd. Next: injection or code signing, not the
+     sandbox. Optionally run `idevicesyslog | findstr OctopusNative` on Windows while reconnecting the cable.
+   - *Sandbox refused the shared folder*, with a stage and errno: the hypothesis holds; the lease and status
+     must move somewhere ptpd's profile allows.
+   - *Rejected identity*: a different ptpd build; nothing was hooked, by design.
+   - *Running*: then check **Native observer** for commands paired with Apple's responses during the copy.
+5. Only after a *running* verdict with paired callbacks: authorize the synthetic provider, reconnect, and look
+   for a second volume. Download `Documents/example.txt` and confirm 76 bytes and SHA-256
+   `aeeb6cba90d7d6adfcd42d673f64897f26cfcc479c5cf489a86146e09a9d2bd2`.
+
+The read-only filesystem backend is not connected to the live provider and stays that way until step 5
+succeeds. Writes are not implemented.
+
+**Roll back** at any point: uninstall the companion in Sileo and `killall -9 ptpd`, or reboot without
+re-running Dopamine; rootless tweaks load only while jailbroken, so that boot runs stock ptpd.
+
 ## The staged device procedure
 
 Each stage answers one question and stops. Do not skip ahead: a later stage's failure is

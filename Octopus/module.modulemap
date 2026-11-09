@@ -1,5 +1,6 @@
 module OctopusCore {
     header "Core/oct_store.h"
+    header "Core/oct_readonly.h"
     header "Protocol/oct_ptp.h"
     header "Protocol/oct_responder.h"
     header "Core/oct_service.h"

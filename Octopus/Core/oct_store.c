@@ -188,6 +188,11 @@ struct oct_store {
     uint32_t    max_objects;    /* see oct_store_options.max_objects */
 };
 
+static oct_status check_access(const oct_store *store, uint64_t node, bool recursive)
+{
+    return store->backend.ops->access ? store->backend.ops->access(store->backend.ctx, node, recursive) : OCT_OK;
+}
+
 static object *lookup(const oct_store *store, uint32_t handle)
 {
     if (handle < store->first_handle) return NULL;
@@ -383,7 +388,7 @@ void oct_store_close(oct_store *store)
 }
 
 uint32_t oct_store_storage_id(const oct_store *store) { return store ? store->storage_id : 0; }
-uint32_t oct_store_object_count(const oct_store *store) { return store ? store->live : 0; }
+uint32_t oct_store_object_count(const oct_store *store) { return store && check_access(store, 0, false) == OCT_OK ? store->live : 0; }
 
 const char *oct_store_backend_kind(const oct_store *store)
 {
@@ -393,6 +398,8 @@ const char *oct_store_backend_kind(const oct_store *store)
 oct_status oct_store_storage_info(oct_store *store, oct_storage_info *out)
 {
     if (!store || !out) return OCT_E_INVALID_ARGUMENT;
+    oct_status access = check_access(store, 0, false);
+    if (access != OCT_OK) return access;
     oct_backend_info info;
     oct_status status = store->backend.ops->describe(store->backend.ctx, &info);
     if (status != OCT_OK) return status;
@@ -425,6 +432,8 @@ oct_status oct_store_get(oct_store *store, uint32_t handle, oct_object_info *out
     const object *o = lookup(store, handle);
     if (!o) return OCT_E_INVALID_HANDLE;
     memset(out, 0, sizeof *out);
+    oct_status access = check_access(store, o->node, false);
+    if (access != OCT_OK) return access;
     out->handle = o->handle;
     out->parent = o->parent;
     out->storage_id = store->storage_id;
@@ -444,7 +453,9 @@ oct_status oct_store_find(oct_store *store, uint32_t parent, const char *name, u
     object *dir = lookup_container(store, parent);
     if (!dir) return OCT_E_INVALID_HANDLE;
     if (!dir->is_directory) return OCT_E_NOT_DIRECTORY;
-    oct_status status = load_children(store, dir);
+    oct_status status = check_access(store, dir->node, false);
+    if (status != OCT_OK) return status;
+    status = load_children(store, dir);
     if (status != OCT_OK) return status;
     object *child = child_named(store, dir, name);
     if (!child) return OCT_E_INVALID_HANDLE;
@@ -459,7 +470,9 @@ oct_status oct_store_list(oct_store *store, uint32_t parent, bool recursive, oct
     object *dir = lookup_container(store, parent);
     if (!dir) return OCT_E_INVALID_HANDLE;
     if (!dir->is_directory) return OCT_E_NOT_DIRECTORY;
-    oct_status status = load_children(store, dir);
+    oct_status status = check_access(store, dir->node, recursive);
+    if (status != OCT_OK) return status;
+    status = load_children(store, dir);
     for (uint32_t i = 0; status == OCT_OK && i < dir->child_count; i++) {
         status = handle_list_push(out, dir->children[i]);
     }
@@ -487,6 +500,8 @@ oct_status oct_store_read(oct_store *store, uint32_t handle, uint64_t offset,
     if (!store || !read || (!buffer && length)) return OCT_E_INVALID_ARGUMENT;
     const object *o = lookup(store, handle);
     if (!o) return OCT_E_INVALID_HANDLE;
+    oct_status access = check_access(store, o->node, false);
+    if (access != OCT_OK) return access;
     if (o->is_directory) return OCT_E_IS_DIRECTORY;
     if (offset > o->size) return OCT_E_OUT_OF_RANGE;
     uint64_t remaining = o->size - offset;
@@ -502,6 +517,8 @@ oct_status oct_store_create(oct_store *store, uint32_t parent, const char *name,
     object *dir = lookup_container(store, parent);
     if (!dir) return OCT_E_INVALID_PARENT;
     if (!dir->is_directory) return OCT_E_NOT_DIRECTORY;
+    oct_status access = check_access(store, dir->node, false);
+    if (access != OCT_OK) return access;
     if (!dir->writable) return OCT_E_WRITE_PROTECTED;
     oct_status status = oct_name_validate(name);
     if (status != OCT_OK) return status;
@@ -527,6 +544,8 @@ static oct_status writable_file(oct_store *store, uint32_t handle, object **out)
 {
     object *o = lookup(store, handle);
     if (!o) return OCT_E_INVALID_HANDLE;
+    oct_status access = check_access(store, o->node, false);
+    if (access != OCT_OK) return access;
     if (o->is_directory) return OCT_E_IS_DIRECTORY;
     if (!o->writable) return OCT_E_WRITE_PROTECTED;
     *out = o;
@@ -559,6 +578,8 @@ oct_status oct_store_truncate(oct_store *store, uint32_t handle, uint64_t size)
 
 static oct_status delete_object(oct_store *store, object *o, uint32_t *deleted)
 {
+    oct_status access = check_access(store, o->node, false);
+    if (access != OCT_OK) return access;
     if (!o->writable) return OCT_E_WRITE_PROTECTED;
     if (o->is_directory) {
         oct_status status = load_children(store, o);
@@ -597,6 +618,8 @@ oct_status oct_store_rename(oct_store *store, uint32_t handle, const char *name)
     if (!store) return OCT_E_INVALID_ARGUMENT;
     object *o = lookup(store, handle);
     if (!o) return OCT_E_INVALID_HANDLE;
+    oct_status access = check_access(store, o->node, false);
+    if (access != OCT_OK) return access;
     if (!o->writable) return OCT_E_WRITE_PROTECTED;
     oct_status status = oct_name_validate(name);
     if (status != OCT_OK) return status;

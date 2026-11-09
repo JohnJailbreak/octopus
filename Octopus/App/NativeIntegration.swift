@@ -23,7 +23,7 @@ final class NativeIntegration: ObservableObject {
 
     func sync(serviceActive: Bool) { active = serviceActive; synchronize() }
     func setForeground(_ value: Bool) { foreground = value; synchronize() }
-    func revoke() { active = false; synchronize() }
+    func revoke() { active = false; observe = false; synthetic = false; synchronize() }
 
     private func synchronize() {
         let wanted: UInt32 = observe && active && foreground ? (synthetic ? 2 : 1) : 0
@@ -81,6 +81,7 @@ struct NativeCapture: Codable, Sendable {
     var capturedAt: Double
     var capturedMonotonicMs: UInt64 = 0
     var appUID: UInt32 = 0
+    var companionFilesPresent = false
 
     static func read(expectedLease: String) -> NativeCapture {
         var bytes = [UInt8](repeating: 0, count: 65536)
@@ -94,7 +95,9 @@ struct NativeCapture: Codable, Sendable {
         return NativeCapture(data: result == OCT_OK ? Data(bytes.prefix(length)) : nil,
                              problem: result == OCT_OK ? "" : "Native status unavailable: status \(result.rawValue), errno \(error). Install the optional companion and activate the observer, then reconnect USB.",
                              expectedLease: expectedLease, observedPID: pid, capturedAt: Date().timeIntervalSince1970,
-                             capturedMonotonicMs: UInt64(max(0, oct_link_now_ms())), appUID: geteuid())
+                             capturedMonotonicMs: UInt64(max(0, oct_link_now_ms())), appUID: geteuid(),
+                             companionFilesPresent: FileManager.default.fileExists(atPath: "/var/jb/usr/lib/TweakInject/OctopusNative.dylib")
+                                && FileManager.default.fileExists(atPath: "/var/jb/usr/lib/TweakInject/OctopusNative.plist"))
     }
 
     var report: NativeReport? {
@@ -109,7 +112,7 @@ struct NativeCapture: Codable, Sendable {
         guard capturedAt - report.generatedAt >= -1, capturedAt - report.generatedAt <= 5 else { return "Native status is stale or its clock is inconsistent." }
         guard observedPID > 0, report.pid == observedPID else { return "Native status does not match the running ptpd process." }
         guard report.uid == appUID else { return "App and ptpd do not share the same user identity; authorization is refused." }
-        guard !expectedLease.isEmpty, report.lease == expectedLease, report.authorized else { return "No matching active authorization lease. Keep Octopus open with Enable USB Access and native observation enabled." }
+        guard !expectedLease.isEmpty, report.lease == expectedLease, report.authorized else { return "No matching active authorization lease. Keep Octopus open with Enable USB Access and native observation enabled. Native compatibility: \(report.compatibility); hooks: \(report.hooks)." }
         guard report.expiresAtMs > capturedMonotonicMs, report.expiresAtMs - capturedMonotonicMs <= 15000 else { return "Native authorization is expired or has an invalid deadline." }
         guard report.leasePairedResponses <= report.leaseCommands else { return "Inconsistent native transaction counters." }
         guard report.hooks == "Installed" else { return "Native ABI checks did not enable observation: \(report.hooks). \(report.compatibility)" }

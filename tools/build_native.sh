@@ -12,7 +12,7 @@ flags=(-arch arm64e -isysroot "$sdk" -miphoneos-version-min=17.0 -O2 -g -fPIC -W
 objects=()
 # Use the same C implementations as the app. oct_link's clock references its service
 # implementation; link the complete core so dependency changes cannot silently fork it.
-for source in Octopus/Core/*.c Octopus/Protocol/*.c; do
+for source in Octopus/Core/*.c Octopus/Protocol/*.c Octopus/Native/*.c; do
   object="$out/objects/$(basename "${source%.c}").o"
   xcrun --sdk iphoneos clang "${flags[@]}" -std=c11 -c "$source" -o "$object"
   objects+=("$object")

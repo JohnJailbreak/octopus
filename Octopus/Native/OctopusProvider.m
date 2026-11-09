@@ -1,5 +1,6 @@
 #import "OctopusProvider.h"
 #import "../Protocol/oct_responder.h"
+#include "oct_native_dataset.h"
 #include <pthread.h>
 #include <stdatomic.h>
 #include <string.h>
@@ -17,14 +18,47 @@ static atomic_bool installed;
 static IMP originalIDs, originalStorage, originalInfo, originalHandles;
 static IMP originalSource, originalValue, originalList, originalSupported;
 static IMP originalLookup;
+static IMP originalDeviceInfo, originalBulkInfo;
+
+/* Dynamic class lookup avoids linking against private classes exported by the
+ * executable. These are only the exact signatures verified in this image. */
+@protocol OCTNativeContent <NSObject>
+- (id)content;
+@end
+@protocol OCTNativeObjectInfo <NSObject>
+- (instancetype)initWithData:(id)data;
+- (void)setObjectHandle:(uint32_t)handle;
+- (id)content:(int32_t)type;
+@end
 
 @interface OCTNativeDataset : NSObject
 @property(nonatomic, strong) NSData *content;
 @property(nonatomic, strong) NSString *filename;
 @property(nonatomic) uint32_t objectCompressedSize;
 @property(nonatomic) uint64_t objectCompressedSize64;
+/* Apple's own object this one stands in for, when there is one. */
+@property(nonatomic, strong) id original;
 @end
+/*
+ * When this object replaces one of Apple's (the DeviceInfo dataset), any message it doesn't
+ * implement goes to Apple's genuine object, which answers with its real signature and real values.
+ * That is delegation, not fabrication: nothing here invents a method signature or a return value.
+ *
+ * It exists because the evidence shows getDeviceInfo: building its data packet from bytes, which
+ * fits it reading only -content, but getDeviceInfo:'s own body (0x100020bbc) was never captured,
+ * so that is an inference. PTPDeviceInfoDataset has many accessors (standardVersion,
+ * vendorExtensionID, ...). Without this, any one of them sent to the substitute would raise inside
+ * ptpd. With no original, behaviour is exactly NSObject's, so the other uses are unchanged.
+ */
 @implementation OCTNativeDataset
+- (id)forwardingTargetForSelector:(SEL)selector
+{
+    return self.original ?: [super forwardingTargetForSelector:selector];
+}
+- (BOOL)respondsToSelector:(SEL)selector
+{
+    return [super respondsToSelector:selector] || [self.original respondsToSelector:selector];
+}
 @end
 
 /*
@@ -147,6 +181,21 @@ static id storageIDs(id self, SEL cmd) {
     return [base arrayByAddingObject:@(OCT_NATIVE_STORAGE_ID)];
 }
 
+static id deviceInfo(id self, SEL cmd) {
+    id base=((id (*)(id,SEL))originalDeviceInfo)(self,cmd);
+    if (!available(self) || object_getClass(base)!=objc_getClass("PTPDeviceInfoDataset")) return base;
+    id body=[(id<OCTNativeContent>)base content];
+    if (![body isKindOfClass:[NSData class]] || [body length]>OCT_NATIVE_DEVICE_INFO_MAX-2) return base;
+    NSMutableData *copy=[NSMutableData dataWithLength:[body length]+2];size_t length=0;
+    int result=oct_native_device_info_add_format([body bytes],[body length],OCT_FORMAT_TEXT,
+                                                copy.mutableBytes,copy.length,&length);
+    if (result!=1) return base;
+    copy.length=length;
+    OCTNativeDataset *dataset=[OCTNativeDataset new];dataset.content=copy;dataset.original=base;
+    OCTNativeProviderEvent("provider-device-info",OCT_FORMAT_TEXT,OCT_RC_OK);
+    return dataset;
+}
+
 static id storageInfo(id self, SEL cmd, uint32_t storageID) {
     if (storageID != OCT_NATIVE_STORAGE_ID || !available(self))
         return ((id (*)(id,SEL,uint32_t))originalStorage)(self,cmd,storageID);
@@ -211,6 +260,48 @@ static id objectHandles(id self, SEL cmd, uint32_t storageID, uint16_t format, u
     *code = OCT_RC_OK;
     OCTNativeProviderEvent("provider-object-enumeration", association, (int32_t)extra.count);
     return [base arrayByAddingObjectsFromArray:extra];
+}
+
+static id bulkObjectInfo(id self,SEL cmd,uint32_t storageID,uint16_t format,
+                         uint32_t association,int32_t type,uint16_t *code) {
+    uint64_t epoch=OCTNativeAuthorizationEpoch();
+    /* Apple's all-storage bulk path rejects 0xffffffff. Preserve its behavior,
+     * including Photos filters and native format extensions. */
+    if(storageID!=OCT_NATIVE_STORAGE_ID || type<1 || type>3 || !available(self))
+        return ((id (*)(id,SEL,uint32_t,uint16_t,uint32_t,int32_t,uint16_t *))originalBulkInfo)
+            (self,cmd,storageID,format,association,type,code);
+    uint32_t params[]={storageID,format,association};
+    NSArray *handles=decodeHandles(query(OCT_OP_GET_OBJECT_HANDLES,params,3,code),code);
+    if (!handles || *code!=OCT_RC_OK) return nil;
+    NSMutableData *result=[NSMutableData data];
+    if (!handles.count) {
+        const uint32_t empty=0;[result appendBytes:&empty length:4];
+    } else if (type==3) {
+        uint64_t count=handles.count;uint8_t little[8];
+        for(unsigned i=0;i<8;i++)little[i]=(uint8_t)(count>>(i*8));
+        [result appendBytes:little length:8];
+    }
+    Class datasetClass=objc_getClass("PTPObjectInfoDataset");
+    for(NSNumber *number in handles) {
+        uint32_t handle=number.unsignedIntValue;
+        NSData *body=query(OCT_OP_GET_OBJECT_INFO,&handle,1,code);
+        if(!body || *code!=OCT_RC_OK)return nil;
+        id<OCTNativeObjectInfo> dataset=[(id<OCTNativeObjectInfo>)[datasetClass alloc] initWithData:body];
+        if(!dataset){*code=OCT_RC_GENERAL_ERROR;return nil;}
+        [dataset setObjectHandle:handle];
+        id record=[dataset content:type];
+        if(![record isKindOfClass:[NSData class]] || ![record length] ||
+           [record length]>OCT_PTP_MAX_TRANSFER-result.length) {
+            *code=OCT_RC_GENERAL_ERROR;return nil;
+        }
+        [result appendData:record];
+    }
+    if(!OCTNativeProviderEnabled() || epoch!=OCTNativeAuthorizationEpoch()) {
+        *code=OCT_RC_ACCESS_DENIED;return nil;
+    }
+    *code=OCT_RC_OK;
+    OCTNativeProviderEvent("provider-bulk-object-info",association,(int32_t)handles.count);
+    return result;
 }
 
 static id dataSource(id self, SEL cmd, uint32_t handle, uint16_t *code, uint32_t *size) {
@@ -281,10 +372,12 @@ static id supportedProperties(id self, SEL cmd, uint16_t format, uint16_t *code)
 
 typedef struct { const char *selector; const char *encoding; IMP replacement; IMP *original; } Hook;
 static Hook hooks[] = {
+    {"deviceInfoDataset","@16@0:8",(IMP)deviceInfo,&originalDeviceInfo},
     {"allStorageIDs","@16@0:8",(IMP)storageIDs,&originalIDs},
     {"storageInfoDatasetForStorageID:","@20@0:8I16",(IMP)storageInfo,&originalStorage},
     {"objectInfoDatasetForObjectHandle:","@20@0:8I16",(IMP)objectInfo,&originalInfo},
     {"objectHandlesInStorage:forObjectFormatCode:inAssociation:responseCode:","@36@0:8I16S20I24^S28",(IMP)objectHandles,&originalHandles},
+    {"objectInfoForObjectsInStorage:forObjectFormatCode:inAssociation:withContentType:responseCode:","@40@0:8I16S20I24i28^S32",(IMP)bulkObjectInfo,&originalBulkInfo},
     {"dataSourceForObjectHandle:responseCode:size:","@36@0:8I16^S20^I28",(IMP)dataSource,&originalSource},
     {"objectPropValueForHandle:withObjectPropertyCode:responseCode:","@32@0:8I16S20^S24",(IMP)propertyValue,&originalValue},
     {"objectPropListForHandle:withObjectFormatCode:andPropertyCode:andPropertyGroup:andDepth:responseCode:","@44@0:8I16I20I24I28I32^S36",(IMP)propertyList,&originalList},
@@ -295,6 +388,10 @@ BOOL OCTProviderValidate(NSString **reason) {
     for(size_t i=0;i<sizeof(hooks)/sizeof(hooks[0]);i++)
         if(!OCTRuntimeCheck("PTPVirtualCamera",hooks[i].selector,hooks[i].encoding,reason))return NO;
     if(!OCTRuntimeCheck("PTPVirtualCamera","objectForObjectHandle:","@24@0:8@16",reason))return NO;
+    if(!OCTRuntimeCheck("PTPDeviceInfoDataset","content","@16@0:8",reason) ||
+       !OCTRuntimeCheck("PTPObjectInfoDataset","initWithData:","@24@0:8@16",reason) ||
+       !OCTRuntimeCheck("PTPObjectInfoDataset","setObjectHandle:","v20@0:8I16",reason) ||
+       !OCTRuntimeCheck("PTPObjectInfoDataset","content:","@20@0:8i16",reason))return NO;
     if(reason)*reason=@"Provider method encodings and original implementation provenance matched";
     return YES;
 }
