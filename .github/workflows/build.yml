@@ -53,13 +53,19 @@ jobs:
           mkdir -p "$HOME/theos/sdks"
           ln -sfn "$sdk" "$HOME/theos/sdks/$(basename "$sdk")"
           echo "THEOS=$HOME/theos" >> "$GITHUB_ENV"
+      - name: Where Theos adds Clang's module flags
+        run: |
+          # Evidence for the module-map fix in Octopus/Bridge/Makefile: where these flags come from,
+          # and so whether they land before or after the tweak's own CFLAGS.
+          grep -rnE -- '-fmodules|implicit-module-maps' "$THEOS/makefiles" | head -20 || true
       - name: Build the tweak
         working-directory: Octopus/Bridge
-        run: make clean all
+        # messages=yes prints every compile and link command in full, so a failure shows its flags.
+        run: make clean all messages=yes
       - name: Package the rootless DEB
         working-directory: Octopus/Bridge
         run: |
-          make package
+          make package messages=yes
           ls -la packages/
           # Record what the package contains, so the layout is reviewable without installing it.
           for deb in packages/*.deb; do

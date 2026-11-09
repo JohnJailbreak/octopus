@@ -47,9 +47,14 @@ without touching it.
   artifact. It runs independently of the app job, so a successful IPA is never reported as proof the
   component compiles. The source is `OctopusBridge.x`, not `.m`: Theos runs the Logos preprocessor
   only on `.x` and `.xm` files, and handed a `.m` straight to clang, which rejected `%hook`.
-- **The tweak compiles without Clang modules.** Theos enables them, and Clang then found the app's
-  own `Octopus/module.modulemap` one directory above `Core/` and built module `OctopusCore` from it;
-  mixed with the plain includes the bridge files use, every type was defined twice.
+- **The tweak doesn't load the app's module map.** Theos enables Clang modules, and Clang then
+  found the app's own `Octopus/module.modulemap` one directory above `Core/` and built module
+  `OctopusCore` from it. Xcode compiles these files as that module's implementation, so it includes
+  their headers textually; Theos names the module after the tweak, so Clang imported `OctopusCore`
+  and included the headers textually as well, defining every type twice. `-fno-modules` didn't help:
+  it is last-one-wins and Theos adds `-fmodules` after the tweak's flags. The tweak now passes
+  `-fno-implicit-module-maps`, which Clang honours wherever `-fmodules` falls, and the CI job prints
+  Theos's full commands (`messages=yes`) and where Theos adds its module flags.
 - **`oct_status_name` has its own file**, `oct_status.c`. It lived in `oct_store.c`, so the tweak —
   which reports statuses but must not link the storage engine — would have failed to link on it.
 - **Every hook matches Apple's recorded type encoding**, listed in the tweak's header and checked

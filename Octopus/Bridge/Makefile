@@ -27,11 +27,17 @@ OctopusBridge_FILES := \
     ../Core/oct_log.c \
     ../Core/oct_status.c
 
-# -fno-modules: Theos turns Clang modules on, and Clang then finds the app's own module map one
-# directory above Core/ (Octopus/module.modulemap) and builds module OctopusCore from it. Mixed with
-# the plain includes these files use, that defines every type twice. Plain includes with their
-# guards are all this needs. Theos's remaining module flags become unused, hence the second flag.
-OctopusBridge_CFLAGS     := -I../Core -I../Protocol -fno-objc-arc -fno-modules \
+# -fno-implicit-module-maps: Theos turns Clang modules on, and Clang then finds the app's own module
+# map one directory above Core/ (Octopus/module.modulemap) and builds module OctopusCore from it.
+# Xcode compiles these files as that module's implementation (its library target is named
+# OctopusCore), so it includes their headers textually; Theos names the module after the tweak, so
+# Clang imports OctopusCore and also includes the headers textually, defining every type twice.
+#
+# -fno-modules didn't fix it: it is last-one-wins, and Theos adds its own -fmodules after these
+# flags. Whether Clang looks for module maps is decided only by -fimplicit-module-maps versus
+# -fno-implicit-module-maps, whatever the order of -fmodules, so this holds wherever Theos puts its
+# flags. With no module map loaded, the headers are plain includes with guards, as GCC sees them.
+OctopusBridge_CFLAGS     := -I../Core -I../Protocol -fno-objc-arc -fno-implicit-module-maps \
                             -Wno-unused-command-line-argument
 OctopusBridge_FRAMEWORKS := Foundation
 
