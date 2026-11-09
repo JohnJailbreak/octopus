@@ -149,3 +149,66 @@ would list those calls; it is one of the open items below.
   connections while also holding a long-lived one, but the server accepts one client at a time,
   so those requests would wait behind the long-lived connection. Do not install it.
 - The PTPStorage calls described above.
+
+---
+
+## v0.5 integration status and staged testing plan
+
+### Stage 1 — App bridge socket: IMPLEMENTED
+
+`ServiceController.swift` creates an `oct_bridge *` transport on every `enable()` call and
+tears it down on `disable()`. The service starts with the bridge transport attached, so
+`/var/mobile/Library/Caches/Octopus/octopus-bridge.sock` is created the moment USB Access
+is enabled. It is removed on disable or app termination.
+
+**Backgrounding:** A `UIBackgroundTaskIdentifier` is requested when the app moves to the
+background while USB Access is enabled, buying ~30 seconds for in-flight Windows operations.
+iOS may still suspend the process after this. Users should keep Octopus in the foreground
+while transferring files for reliable operation.
+
+**To verify Stage 1 on the device:**
+1. Enable USB Access in Octopus.
+2. Settings → Diagnostics → Run Full Diagnostics.
+3. The `bridge.app_socket` core check should report PASS with a PING response.
+4. The `bridge.app_active` app check should report PASS.
+
+### Stage 2 — Native component availability: IMPLEMENTED (identity only)
+
+`OctopusBridge.m` is built as a Logos/Theos tweak. Its `%ctor` reads the running ptpd
+binary's LC_UUID and aborts without installing any hooks if the UUID doesn't match the
+analysed reference build (FFD54FC7-0508-3AB8-8D17-2F698B611E10). This protects Photos on
+unrecognised builds.
+
+With a matching UUID, it connects to the app socket, sends a PING, and logs the result.
+`HOOKS_ENABLED` is 0 by default: no PTP behaviour is changed.
+
+**CI status:** The tweak job in `.github/workflows/build.yml` syntax-checks the C core
+and parses `OctopusBridge.m`. A full arm64e Theos build requires macOS + Xcode + iOS SDK.
+
+### Stage 3 — Runtime observation: PENDING (physical device required)
+
+The PTP hooks are guarded behind `HOOKS_ENABLED=0`. To complete Stage 3:
+
+1. Install the tweak with `HOOKS_ENABLED=0` on the reference device.
+2. Connect the iPhone to Windows 11 via USB.
+3. Trust the PC in the iPhone prompt, open File Explorer → This PC.
+4. Run Settings → Diagnostics → Export Diagnostics and send the ZIP.
+5. The ZIP's `connectivity.txt` and bridge-related log lines will show:
+   a. Whether `transportActivated` fired (Windows saw the PTP interface).
+   b. Whether the bridge socket is reachable.
+   c. What unrecognised selectors ptpd called on `OctopusPTPStorage` (from the
+      `forwardInvocation:` log lines — this is the key Stage 3 output).
+6. Update this document with those selector observations.
+7. Implement the missing selectors in `OctopusPTPStorage`.
+8. Rebuild the tweak with `HOOKS_ENABLED=1` for Stage 4.
+
+### Open items before Stage 4
+
+- The bridge server (app socket) must be running before ptpd calls `initWithName:andPath:`.
+  With `HOOKS_ENABLED=1`, the tweak will only inject storage if the app is already open.
+  A reliable solution: install a small launchd user agent that keeps the app running when
+  USB is connected. (Low priority; the user can open the app manually first.)
+- The session-level bridge protocol needs adjustment: for each object operation the tweak
+  currently opens a new PTP session over the socket. The bridge server accepts one session
+  at a time; two operations in quick succession may race. Use a persistent session or
+  correlated request/response tags. This is a known issue to fix before Stage 4.

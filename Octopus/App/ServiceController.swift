@@ -259,6 +259,7 @@ final class CoreService: @unchecked Sendable {
 
     private let handle: OpaquePointer
     private let queue = DispatchQueue(label: "octopus.core.service")
+    private(set) var activeBridge: BridgeTransport?
 
     init() {
         var created: OpaquePointer?
@@ -286,6 +287,22 @@ final class CoreService: @unchecked Sendable {
     }
 
     func start(_ configuration: CoreConfiguration) -> [CoreEvent] {
+        // Create a bridge transport for every enable cycle and wire it to the service.
+        // The service must be stopped (disabled) for set_transport to succeed.
+        let bridge = BridgeTransport(socketPath: OCT_BRIDGE_DEFAULT_SOCKET)
+        if let bridge {
+            if oct_service_set_transport(handle, &bridge.transport) == OCT_OK {
+                activeBridge = bridge
+                DebugLog.log(.info, "app.bridge", "transport_set",
+                             "Bridge transport wired to the service at \(bridge.socketPath)")
+            } else {
+                DebugLog.log(.warn, "app.bridge", "transport_set_failed",
+                             "oct_service_set_transport failed; starting without bridge transport")
+            }
+        } else {
+            DebugLog.log(.warn, "app.bridge", "transport_unavailable",
+                         "BridgeTransport could not be created; starting without bridge transport")
+        }
         var config = oct_service_config()
         config.seed_time = 0
         config.scratch = configuration.scratch
@@ -296,6 +313,12 @@ final class CoreService: @unchecked Sendable {
 
     func stop() -> [CoreEvent] {
         _ = oct_service_stop(handle)
+        // Bridge driver_stop was called by the service; now release our C objects.
+        if activeBridge != nil {
+            var noTransport: oct_transport? = nil
+            _ = oct_service_set_transport(handle, nil)
+            activeBridge = nil
+        }
         return drainEvents()
     }
 
@@ -303,6 +326,10 @@ final class CoreService: @unchecked Sendable {
         _ = oct_service_self_test(handle)
         return drainEvents()
     }
+
+    var bridgeSocketPath: String { activeBridge?.socketPath ?? "" }
+    var bridgeClientConnected: Bool { activeBridge?.clientConnected ?? false }
+    var bridgeActive: Bool { activeBridge != nil }
 
     func state() -> ServiceState {
         ServiceState(oct_service_get_state(handle))
@@ -396,6 +423,50 @@ final class CoreService: @unchecked Sendable {
     }
 }
 
+// MARK: - Bridge transport wrapper
+
+/// Owns the C objects that make up the bridge socket transport for one enable/disable cycle.
+/// The bridge is created before `CoreService.start(...)` and destroyed after `CoreService.stop()`.
+@unchecked Sendable
+final class BridgeTransport {
+    private let bridge: OpaquePointer  // oct_bridge *
+    private let link: OpaquePointer    // oct_link *
+    var transport: oct_transport       // copy: ops/context remain valid while bridge/link live
+
+    /// Returns nil if the bridge or link objects can't be created.
+    init?(socketPath: String) {
+        var rawBridge: OpaquePointer? = nil
+        guard oct_bridge_create(socketPath, &rawBridge) == OCT_OK, let rawBridge else {
+            DebugLog.log(.error, "app.bridge", "create_failed", "oct_bridge_create failed for \(socketPath)")
+            return nil
+        }
+        var rawLink: OpaquePointer? = nil
+        var rawTransport = oct_transport()
+        guard oct_bridge_link_create(rawBridge, &rawLink, &rawTransport) == OCT_OK, let rawLink else {
+            DebugLog.log(.error, "app.bridge", "link_failed", "oct_bridge_link_create failed")
+            oct_bridge_destroy(rawBridge)
+            return nil
+        }
+        bridge = rawBridge
+        link = rawLink
+        transport = rawTransport
+    }
+
+    deinit {
+        // oct_bridge_destroy also calls bridge_driver_stop if still running (safe no-op after service stop).
+        oct_bridge_destroy(bridge)
+        oct_link_destroy(link)
+    }
+
+    /// Whether a client (the ptpd tweak or a diagnostic probe) is currently connected to the socket.
+    var clientConnected: Bool { oct_bridge_client_connected(bridge) }
+
+    /// The socket path, for display and diagnostics.
+    var socketPath: String {
+        String(cString: oct_bridge_socket_path(bridge))
+    }
+}
+
 // MARK: - Controller
 
 /// Connects the SwiftUI screens to the core: runs operations off the main
@@ -412,8 +483,12 @@ final class ServiceController: ObservableObject {
     @Published private(set) var tree: [StorageEntry] = []
     @Published private(set) var log: [LogEntry] = []
     @Published private(set) var sheet = ActivitySheetState()
+    @Published private(set) var bridgeActive = false
+    @Published private(set) var bridgeSocketPath = ""
+    @Published private(set) var bridgeClientConnected = false
 
     let core: CoreService
+    private var backgroundTask: UIBackgroundTaskIdentifier = .invalid
     private let pacing: Pacing
     private var operation: Task<Void, Never>?
     private var lineCounter = 0
@@ -477,6 +552,9 @@ final class ServiceController: ObservableObject {
     func refresh() {
         status = core.status()
         state = status.state
+        bridgeActive = core.bridgeActive
+        bridgeSocketPath = core.bridgeSocketPath
+        bridgeClientConnected = core.bridgeClientConnected
         let seen = observedStages.union([ConnectionStage(service: state), ConnectionStage(transport: status.transportState)])
         if seen != observedStages { observedStages = seen }
         lastError = core.lastError()
@@ -556,6 +634,41 @@ final class ServiceController: ObservableObject {
         refresh()
         withAnimation(Motion.sheet) { sheet.isPresented = false }
         isBusy = false
+    }
+
+    // MARK: - Backgrounding
+
+    /// Call from MainScreen.onChange(of: scenePhase) to manage the bridge background task.
+    func handleScenePhase(_ phase: ScenePhase) {
+        if phase == .background {
+            startBackgroundTask()
+        } else if phase != .inactive {
+            endBackgroundTask()
+        }
+    }
+
+    /// iOS suspends apps after ~10 s in the background. This requests extra time (~30 s) so an
+    /// in-progress Windows file operation can complete cleanly. Users should keep Octopus in the
+    /// foreground while transferring files for reliable operation.
+    private func startBackgroundTask() {
+        guard isActive, backgroundTask == .invalid else { return }
+        DebugLog.log(.info, "app.bridge", "background_task_start",
+                     "Background task requested; keep Octopus foreground for uninterrupted file access")
+        backgroundTask = UIApplication.shared.beginBackgroundTask(withName: "Octopus bridge") { [weak self] in
+            // Expiration: iOS is about to suspend us. Log, but don't stop the service —
+            // the bridge socket stays alive until iOS actually suspends the process.
+            DebugLog.log(.warn, "app.bridge", "background_task_expired",
+                         "Background time expired; the bridge socket may be suspended by iOS. "
+                         + "Bring Octopus to the foreground to resume file access.")
+            self?.endBackgroundTask()
+        }
+    }
+
+    private func endBackgroundTask() {
+        guard backgroundTask != .invalid else { return }
+        UIApplication.shared.endBackgroundTask(backgroundTask)
+        backgroundTask = .invalid
+        DebugLog.log(.debug, "app.bridge", "background_task_end", "Background task ended")
     }
 
     private func pause(_ seconds: Double) async {

@@ -55,6 +55,9 @@ struct DiagnosticsEnvironment: Codable, Sendable {
     var transportState: String
     var transportFailure: String
     var transportTransactions: UInt64
+    var bridgeActive: Bool
+    var bridgeSocketPath: String
+    var bridgeClientConnected: Bool
     var settings: [String: String]
 
     @MainActor
@@ -63,18 +66,27 @@ struct DiagnosticsEnvironment: Codable, Sendable {
         transportState = ConnectionStage(transport: service.status.transportState).title
         transportFailure = service.status.transportFailure
         transportTransactions = service.status.transportTransactions
+        bridgeActive = service.bridgeActive
+        bridgeSocketPath = service.bridgeSocketPath
+        bridgeClientConnected = service.bridgeClientConnected
         settings = Diagnostics.settingsSnapshot()
     }
 
     static let unknown = DiagnosticsEnvironment(serviceState: "unknown", transportState: "unknown",
-                                                transportFailure: "", transportTransactions: 0, settings: [:])
+                                                transportFailure: "", transportTransactions: 0,
+                                                bridgeActive: false, bridgeSocketPath: "", bridgeClientConnected: false,
+                                                settings: [:])
 
     init(serviceState: String, transportState: String, transportFailure: String, transportTransactions: UInt64,
+         bridgeActive: Bool, bridgeSocketPath: String, bridgeClientConnected: Bool,
          settings: [String: String]) {
         self.serviceState = serviceState
         self.transportState = transportState
         self.transportFailure = transportFailure
         self.transportTransactions = transportTransactions
+        self.bridgeActive = bridgeActive
+        self.bridgeSocketPath = bridgeSocketPath
+        self.bridgeClientConnected = bridgeClientConnected
         self.settings = settings
     }
 }
@@ -257,6 +269,8 @@ enum Diagnostics {
                 hostRequests(environment)
             },
             step("external.windows", "External connection", "Windows File Explorer", .external) { windows() },
+            step("bridge.app_active", "Bridge", "App bridge socket server", .local) { bridgeAppActive(environment) },
+            step("bridge.client_connected", "Bridge", "Integration client connected", .local) { bridgeClientState(environment) },
         ]
         return steps
     }
@@ -475,6 +489,48 @@ enum Diagnostics {
                checks: 0)
     }
 
+    // MARK: - Bridge state checks
+
+    /// Whether the app's bridge socket is active, based on the environment snapshot taken when the run started.
+    static func bridgeAppActive(_ environment: DiagnosticsEnvironment) -> DiagnosticResult {
+        let id = "bridge.app_active", group = "Bridge", title = "App bridge socket server"
+        guard environment.bridgeActive else {
+            return result(id, group, title, .local, .blocked,
+                          "The bridge socket server is not running. Enable USB Access to start it at "
+                              + (environment.bridgeSocketPath.isEmpty
+                                 ? String(cString: OCT_BRIDGE_DEFAULT_SOCKET)
+                                 : environment.bridgeSocketPath)
+                              + ". The separate bridge.app_socket core check probes it at run time.",
+                          checks: 0)
+        }
+        let path = environment.bridgeSocketPath.isEmpty
+            ? String(cString: OCT_BRIDGE_DEFAULT_SOCKET) : environment.bridgeSocketPath
+        return result(id, group, title, .local, .pass,
+                      "Bridge socket server is running at \(path). "
+                          + "The core check bridge.app_socket probes it via PING; "
+                          + "install OctopusBridge and enable it in Sileo to route native PTP traffic from Windows.")
+    }
+
+    /// Whether a native integration client (the OctopusBridge tweak or a diagnostic probe) is connected.
+    static func bridgeClientState(_ environment: DiagnosticsEnvironment) -> DiagnosticResult {
+        let id = "bridge.client_connected", group = "Bridge", title = "Integration client connected"
+        guard environment.bridgeActive else {
+            return result(id, group, title, .local, .blocked,
+                          "No bridge socket server is running; there can be no client. Enable USB Access first.",
+                          checks: 0)
+        }
+        if environment.bridgeClientConnected {
+            return result(id, group, title, .local, .pass,
+                          "A client is connected to the bridge socket. "
+                              + "If OctopusBridge is installed in Sileo and enabled, this is the ptpd integration. "
+                              + "Otherwise it may be the bridge.app_socket core check running concurrently.")
+        }
+        return result(id, group, title, .local, .blocked,
+                      "The bridge socket is listening but no client is connected. "
+                          + "Install OctopusBridge from Sileo (Octopus/Bridge/control), enable it, "
+                          + "then connect the iPhone to Windows and plug in a USB cable to trigger ptpd.")
+    }
+
     // MARK: - The archive
 
     struct BuildInfo: Codable, Sendable {
@@ -673,9 +729,13 @@ enum Diagnostics {
     }
 
     static func connectivity(_ environment: DiagnosticsEnvironment) -> String {
+        let socketPath = environment.bridgeSocketPath.isEmpty
+            ? String(cString: OCT_BRIDGE_DEFAULT_SOCKET) : environment.bridgeSocketPath
         var lines = ["Service: \(environment.serviceState)", "Transport: \(environment.transportState)",
                      "Transport failure: \(environment.transportFailure.isEmpty ? "none" : environment.transportFailure)",
-                     "Requests from a computer this launch: \(environment.transportTransactions)"]
+                     "Requests from a computer this launch: \(environment.transportTransactions)",
+                     "Bridge socket: \(environment.bridgeActive ? "running at \(socketPath)" : "not running")",
+                     "Bridge client: \(environment.bridgeClientConnected ? "connected" : "none")"]
         var pid: Int32 = 0
         let found = oct_diag_find_process("ptpd", &pid) == OCT_OK
         lines.append("ptpd: \(found ? (pid > 0 ? "running, pid \(pid)" : "not running") : "process table unreadable")")

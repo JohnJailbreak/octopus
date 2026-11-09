@@ -3,9 +3,11 @@ Name: OctopusBridge
 Depends: mobilesubstrate
 Version: 0.5.0
 Architecture: iphoneos-arm64
-Description: Draft bridge between ptpd's PTP responder and the Octopus app. Not ready to install.
- Would inject into ptpd on iOS 17 and register Octopus as a second PTP storage. It checks
- ptpd's UUID before hooking and does nothing on an unrecognised build. Octopus itself is
- a TrollStore app, not a package, so it is not listed as a dependency.
+Description: Routes native PTP requests from Windows into the Octopus app over a local socket.
+ Injects into ptpd on iOS 17 (Dopamine). Verifies the binary UUID before installing any hooks.
+ Defaults to HOOKS_ENABLED=0 (observation only) until Stage 3 runtime evidence is collected.
+ Requires the Octopus app to be running with USB Access enabled.
+ OctopusBridge is a companion tweak; Octopus itself is a TrollStore app, not a Sileo package.
 Maintainer: Parv Tahiliani <pat113@pitt.edu>
 Section: Tweaks
+Tag: compatible_min::ios=17.0

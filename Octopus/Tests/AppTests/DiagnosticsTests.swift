@@ -5,6 +5,7 @@ import XCTest
 extension DiagnosticsEnvironment {
     static let sample = DiagnosticsEnvironment(serviceState: "Disabled", transportState: "Transport unavailable",
                                                transportFailure: "", transportTransactions: 0,
+                                               bridgeActive: false, bridgeSocketPath: "", bridgeClientConnected: false,
                                                settings: ["haptics": "default"])
 }
 
@@ -34,7 +35,7 @@ final class DiagnosticsTests: XCTestCase {
         let runner = DiagnosticsRunner()
         await runner.run(environment: .sample, includeNetwork: false)
         XCTAssertFalse(runner.running)
-        XCTAssertGreaterThan(runner.planned, 20)
+        XCTAssertGreaterThan(runner.planned, 22)
         XCTAssertEqual(runner.results.count, runner.planned)
         XCTAssertEqual(Set(runner.results.map(\.id)).count, runner.results.count)
         let failed = runner.results.filter { $0.status == .fail }
@@ -48,6 +49,9 @@ final class DiagnosticsTests: XCTestCase {
         // Without any file, the results still leave as text.
         XCTAssertTrue(runner.resultsText.contains("[BLOCKED] USB transport for Octopus"), runner.resultsText)
         XCTAssertTrue(runner.resultsText.contains("[PASS] MTP enumeration of the read-only storage"))
+        // Bridge checks are BLOCKED in Simulator (no app socket running).
+        XCTAssertNotNil(runner.results.first { $0.id == "bridge.app_active" })
+        XCTAssertNotNil(runner.results.first { $0.id == "bridge.client_connected" })
     }
 
     /// A scratch folder for one test, removed afterwards.

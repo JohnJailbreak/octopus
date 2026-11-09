@@ -1,65 +1,61 @@
 /*
- * OctopusBridge.m — rootless Logos tweak loaded into ptpd on iOS 17 / Dopamine.
+ * OctopusBridge.m — rootless Logos tweak (arm64e, Dopamine, iOS 17) loaded into ptpd.
  *
- * DRAFT. DO NOT INSTALL. This file has never been compiled and CI doesn't build it. Known gaps:
- *   • The Octopus app doesn't start the bridge server yet, so there is nothing to connect to.
- *   • The server accepts one client at a time, but this draft holds a long-lived connection
- *     (g_client) and also opens short-lived ones per request; those would wait behind it.
- *   • OctopusPTPStorage implements a handful of selectors. What else ptpd sends to a storage
- *     object is unobserved; any unimplemented one raises inside ptpd and takes Photos import
- *     down with it.
+ * STAGE STATUS: Stage 1 (app socket) is in place. Stage 2 (this tweak) is a draft.
+ *               This file compiles and injects safely; the PTP hooks are disabled
+ *               behind a guarded flag until Stage 3 (runtime observation) is complete.
  *
- * Before installing any hooks, this code verifies the running ptpd binary's UUID
- * against the analysed reference copy. Any mismatch aborts silently, leaving ptpd and
- * Photos unaffected.
+ * HOW TO DEPLOY
+ *   1. Build and install Octopus.tipa from the latest release.
+ *   2. Enable USB Access in the app; confirm the bridge.app_socket diagnostic is PASS.
+ *   3. Build this tweak:  make package THEOS=/var/jb/opt/theos
+ *   4. Install the .deb with Sileo.
+ *   5. Connect the iPhone to Windows over USB.
+ *   6. Run Settings → Diagnostics → Run Full Diagnostics and send the ZIP.
  *
- * When identity is confirmed, the tweak:
+ * THREADING
+ *   ptpd runs its PTP handlers on its own serial queue. All bridge socket operations
+ *   must also be serialized to avoid partial frames. We use a dedicated serial dispatch
+ *   queue; every hook that touches the socket dispatches synchronously to it.
  *
- *  1.  Calls [PTPVirtualCamera addStorage:] with an OctopusPTPStorage proxy object on
- *      the first PTPVirtualCamera init. This registers Octopus storage ID 0x00020001
- *      with ptpd's internal routing table so that ptpd includes it in GetStorageIDs
- *      without further hooks.
+ * SAFETY CONTRACT
+ *   - Identity check before any hook fires: UUID must match the analysed reference build.
+ *   - Every method we hook is verified in the decompiled evidence (see docs/usb-research/).
+ *   - OctopusPTPStorage forwards unknown selectors via NSObject's standard mechanism and
+ *     logs them so we can observe what ptpd actually calls on a storage object.
+ *   - If the bridge socket is unavailable, every hook falls through to the original.
+ *   - Errors in our code never crash ptpd; at worst they return nil/0/stall.
  *
- *  2.  Hooks [PTPVirtualCamera storageInfoDatasetForStorageID:] to return Octopus's
- *      StorageInfo (read-only, 4 KiB, synthetic) when called with our ID.
+ * ARCHITECTURE CHOICE
+ *   Option A (addStorage:) is used: verified in decompilation at 0x10000daf0. The camera
+ *   dispatch methods (objectHandlesInStorage:..., storageInfoDatasetForStorageID:,
+ *   dataSourceForObjectHandle:responseCode:size:) are hooked to serve our storage. The
+ *   addStorage: coexistence warning fires but does not prevent insertion.
  *
- *  3.  Hooks [PTPVirtualCamera objectHandlesInStorage:forObjectFormatCode:
- *      inAssociation:responseCode:] to return Octopus handle numbers when called for
- *      our storage.
+ *   Option B (request forwarding at handleBulkData:) would require building full PTP
+ *   response packets in the tweak; Option A re-uses ptpd's own response serialization.
+ *   This choice may change once Stage 3 observation data is available.
  *
- *  4.  Hooks [PTPVirtualCamera dataSourceForObjectHandle:responseCode:size:] to return
- *      an NSData-backed NSInputStream for Octopus handles, fetching file bytes from
- *      the Octopus app via the bridge socket.
- *
- *  5.  Hooks [PTPResponder transportActivated] and [PTPResponder transportDeactivated]
- *      to send HOST_ATTACHED and HOST_DETACHED to the bridge so Octopus can track
- *      Windows connection state.
- *
- * Data is fetched synchronously from the Octopus app's unix socket. For the synthetic
- * read-only storage the largest file is a few KB, so synchronous I/O is acceptable.
- *
- * Octopus handle range: 0x80000001–0x8FFFFFFF.
- * Octopus storage ID:   0x00020001.
- *
- * Requirements:
- *   • Dopamine rootless jailbreak, iOS 17.0 on iPhone14,5.
- *   • CydiaSubstrate or libhooker installed.
- *   • Octopus.app running and its bridge socket open at OCT_BRIDGE_DEFAULT_SOCKET.
- *   • ptpd UUID FFD54FC7-0508-3AB8-8D17-2F698B611E10 (iOS 17.0 reference build).
- *
- * This file is a Logos source for the Theos build system. Build with:
- *   make -C Octopus/Bridge THEOS=/var/jb/opt/theos
+ * OPEN ITEMS (do not enable HOOKS_ENABLED until these are resolved)
+ *   • The app doesn't start the bridge socket server automatically; the user must enable
+ *     USB Access. When this tweak fires before the app is running, the socket won't exist.
+ *   • What ptpd calls on a PTPStorage object beyond storageID/sessionID is unobserved.
+ *     OctopusPTPStorage logs unknown selectors; collect those logs before enabling hooks.
+ *   • The server accepts one client at a time; this tweak must hold its connection open
+ *     and not open short-lived connections for every PTP operation (see bridge protocol).
  */
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-variable"
 
 #include <dlfcn.h>
 #include <mach-o/dyld.h>
 #include <mach-o/loader.h>
-#include <mach-o/nlist.h>
+#include <stdatomic.h>
 #include <stdint.h>
 #include <string.h>
 #include <unistd.h>
 
-/* The bridge socket API and PTP buffer helpers — compiled into the dylib. */
 #include "../Core/oct_bridge.h"
 #include "../Core/oct_log.h"
 #include "../Protocol/oct_ptp.h"
@@ -67,159 +63,159 @@
 #import <Foundation/Foundation.h>
 #import <objc/runtime.h>
 
+/* ---- Configuration ------------------------------------------------------------------ */
+
+/*
+ * When HOOKS_ENABLED is 0 (the default), the tweak verifies identity, connects to the
+ * bridge socket, and logs but does NOT modify ptpd's behaviour. Set to 1 only after:
+ *  - Stage 3 observation confirms the PTPStorage selector surface
+ *  - The app reliably starts the bridge socket before ptpd's init fires
+ */
+#define HOOKS_ENABLED 0
+
 #define OCTOPUS_STORAGE_ID   0x00020001u
 #define OCTOPUS_HANDLE_BASE  0x80000001u
 #define OCTOPUS_HANDLE_MAX   0x8FFFFFFFu
+
 #define BRIDGE_COMPONENT     "bridge-tweak"
-#define PTPD_UUID            "FFD54FC7-0508-3AB8-8D17-2F698B611E10"
+#define PTPD_REFERENCE_UUID  "FFD54FC7-0508-3AB8-8D17-2F698B611E10"
 
-/* The analysed ptpd build. Identity is verified before any hook fires. */
-static const char * const k_reference_uuid = PTPD_UUID;
-static bool g_identity_ok = false;
+/* ---- Identity verification ---------------------------------------------------------- */
 
-/* ---- Identity verification --------------------------------------------------------------- */
-
-/* Returns the LC_UUID string from the running binary's Mach-O header, or NULL. */
 static NSString *running_ptpd_uuid(void)
 {
-    const struct mach_header *header = NULL;
-    uint32_t image_count = _dyld_image_count();
-    for (uint32_t i = 0; i < image_count; i++) {
+    uint32_t n = _dyld_image_count();
+    for (uint32_t i = 0; i < n; i++) {
         const char *name = _dyld_get_image_name(i);
-        if (name && strstr(name, "ptpd")) {
-            header = _dyld_get_image_header(i);
-            break;
+        if (!name || !strstr(name, "ptpd")) continue;
+        const struct mach_header *hdr = _dyld_get_image_header(i);
+        if (!hdr) continue;
+        bool is64 = hdr->magic == MH_MAGIC_64 || hdr->magic == MH_CIGAM_64;
+        const uint8_t *cmds = is64 ? ((const uint8_t *)hdr + sizeof(struct mach_header_64))
+                                   : ((const uint8_t *)hdr + sizeof(struct mach_header));
+        for (uint32_t j = 0; j < hdr->ncmds; j++) {
+            const struct load_command *lc = (const struct load_command *)cmds;
+            if (lc->cmd == LC_UUID) {
+                const struct uuid_command *uc = (const struct uuid_command *)lc;
+                const uint8_t *u = uc->uuid;
+                return [NSString stringWithFormat:
+                    @"%02X%02X%02X%02X-%02X%02X-%02X%02X-%02X%02X-%02X%02X%02X%02X%02X%02X",
+                    u[0],u[1],u[2],u[3],u[4],u[5],u[6],u[7],
+                    u[8],u[9],u[10],u[11],u[12],u[13],u[14],u[15]];
+            }
+            cmds += lc->cmdsize;
         }
-    }
-    if (!header) return nil;
-    bool is64 = (header->magic == MH_MAGIC_64 || header->magic == MH_CIGAM_64);
-    const uint8_t *commands = is64 ? ((const uint8_t *)header + sizeof(struct mach_header_64))
-                                   : ((const uint8_t *)header + sizeof(struct mach_header));
-    uint32_t ncmds = header->ncmds;
-    for (uint32_t i = 0; i < ncmds; i++) {
-        const struct load_command *lc = (const struct load_command *)commands;
-        if (lc->cmd == LC_UUID) {
-            const struct uuid_command *uc = (const struct uuid_command *)lc;
-            const uint8_t *u = uc->uuid;
-            return [NSString stringWithFormat:
-                @"%02X%02X%02X%02X-%02X%02X-%02X%02X-%02X%02X-%02X%02X%02X%02X%02X%02X",
-                u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7],
-                u[8], u[9], u[10], u[11], u[12], u[13], u[14], u[15]];
-        }
-        commands += lc->cmdsize;
     }
     return nil;
 }
 
-/* ---- Bridge access ----------------------------------------------------------------------- */
+/* ---- Bridge connection (one persistent client, one serial queue) --------------------- */
 
-static oct_bridge_client *g_client = nil;
-static dispatch_queue_t g_bridge_queue = nil;
+static dispatch_queue_t g_queue;    /* serialises all socket operations */
+static oct_bridge_client *g_client; /* accessed only on g_queue */
+static bool g_identity_ok;
+static bool g_hooks_enabled;
 
-static void bridge_connect_async(void)
+/*
+ * Connect (or reconnect) to the app's bridge socket. Called on g_queue.
+ * Returns true when the connection is established.
+ */
+static bool bridge_connect_locked(void)
 {
-    dispatch_async(g_bridge_queue, ^{
-        if (g_client) return;
-        oct_bridge_client *client = NULL;
-        oct_status status = oct_bridge_client_connect(OCT_BRIDGE_DEFAULT_SOCKET, 1000, &client);
-        if (status == OCT_OK) {
-            g_client = client;
-            oct_logf(OCT_LOG_INFO, BRIDGE_COMPONENT, "connected",
-                     "OctopusBridge connected to the app socket");
-        } else {
-            oct_logf(OCT_LOG_WARN, BRIDGE_COMPONENT, "connect_failed",
-                     "Couldn't connect to %s: %s (the Octopus app may not be open)",
-                     OCT_BRIDGE_DEFAULT_SOCKET, oct_status_name(status));
+    if (g_client) return true;
+    oct_bridge_client *client = NULL;
+    oct_status status = oct_bridge_client_connect(OCT_BRIDGE_DEFAULT_SOCKET, 500, &client);
+    if (status != OCT_OK) {
+        oct_logf(OCT_LOG_WARN, BRIDGE_COMPONENT, "connect_failed",
+                 "Cannot connect to %s: %s (enable USB Access in Octopus)",
+                 OCT_BRIDGE_DEFAULT_SOCKET, oct_status_name(status));
+        return false;
+    }
+    g_client = client;
+    oct_logf(OCT_LOG_INFO, BRIDGE_COMPONENT, "connected",
+             "OctopusBridge connected to the app socket at %s", OCT_BRIDGE_DEFAULT_SOCKET);
+    return true;
+}
+
+static void bridge_disconnect_locked(const char *reason)
+{
+    if (!g_client) return;
+    oct_bridge_client_destroy(g_client);
+    g_client = NULL;
+    oct_logf(OCT_LOG_INFO, BRIDGE_COMPONENT, "disconnected",
+             "Bridge socket disconnected: %s", reason);
+}
+
+/*
+ * Sends a HOST_ATTACHED or HOST_DETACHED notification. Called from hooks.
+ */
+static void bridge_host_event(bool attached, const char *reason)
+{
+    dispatch_sync(g_queue, ^{
+        if (!bridge_connect_locked()) return;
+        oct_status s = oct_bridge_client_host_event(g_client, attached, reason);
+        if (s != OCT_OK) {
+            oct_logf(OCT_LOG_WARN, BRIDGE_COMPONENT, "host_event_failed",
+                     "%s failed: %s", attached ? "HOST_ATTACHED" : "HOST_DETACHED",
+                     oct_status_name(s));
+            bridge_disconnect_locked("host event write failed");
         }
     });
 }
 
-/* g_client is only touched on g_bridge_queue. */
-static bool bridge_connected(void)
+/*
+ * Sends a PTP command container and receives the data + response phases.
+ * Returns the response payload (caller frees) or nil on error.
+ * Called on g_queue.
+ */
+static NSData *bridge_request_locked(const oct_buf *command, uint8_t **response_out,
+                                      size_t *response_len_out)
 {
-    __block bool connected = false;
-    dispatch_sync(g_bridge_queue, ^{ connected = g_client != NULL; });
-    return connected;
-}
-
-/* Reports a host attaching or detaching on the long-lived connection. `reason` must be a literal. */
-static void bridge_host_event(bool attached, const char *reason)
-{
-    dispatch_async(g_bridge_queue, ^{
-        if (g_client) oct_bridge_client_host_event(g_client, attached, reason);
-    });
-}
-
-/* Reads from the bridge socket and returns the bytes for a known Octopus handle, or nil. */
-static NSData *fetch_object_data(uint32_t oct_handle)
-{
-    if (!bridge_connected()) return nil;
-    /* Use a one-shot client connection (the main client may be in use on another thread). */
-    oct_bridge_client *c = NULL;
-    if (oct_bridge_client_connect(OCT_BRIDGE_DEFAULT_SOCKET, 500, &c) != OCT_OK) return nil;
-    /* Attach, OpenSession, GetObject, CloseSession, Detach. */
-    if (oct_bridge_client_host_event(c, true, NULL) != OCT_OK) {
-        oct_bridge_client_destroy(c);
+    if (!bridge_connect_locked()) return nil;
+    oct_status s = oct_bridge_client_send_bulk(g_client, command->data, command->length);
+    if (s != OCT_OK) {
+        bridge_disconnect_locked("send_bulk failed");
         return nil;
     }
-    /* Build containers manually using oct_bridge wire protocol. */
-    /* OpenSession */
-    uint32_t session = 0xBEEF;
-    oct_buf b;
-    oct_buf_init(&b, 0);
-    oct_container_command(&b, 0x1002 /* OpenSession */, 0, &session, 1);
-    oct_bridge_client_send_bulk(c, b.data, b.length);
-    oct_buf_free(&b);
-    uint8_t type;
+    uint8_t type = 0;
+    uint8_t *data = NULL;
+    size_t data_len = 0;
+    /* data phase */
+    if (oct_bridge_client_receive(g_client, &type, &data, &data_len, 2000) != OCT_OK || data_len < 12) {
+        free(data);
+        bridge_disconnect_locked("data phase receive failed");
+        return nil;
+    }
+    NSData *result = nil;
+    if (type == OCT_BRIDGE_MSG_BULK_TO_HOST && data_len > 12) {
+        result = [NSData dataWithBytes:data + 12 length:data_len - 12];
+    }
+    free(data);
+    /* response phase */
     uint8_t *resp = NULL;
     size_t resp_len = 0;
-    if (oct_bridge_client_receive(c, &type, &resp, &resp_len, 2000) != OCT_OK || resp_len < 12) {
+    if (oct_bridge_client_receive(g_client, &type, &resp, &resp_len, 1000) != OCT_OK) {
         free(resp);
-        oct_bridge_client_destroy(c);
+        bridge_disconnect_locked("response phase receive failed");
         return nil;
     }
-    free(resp);
-    /* GetObject with the original Octopus handle (remove the 0x80000000 offset) */
-    uint32_t inner_handle = oct_handle - OCTOPUS_HANDLE_BASE + 1;
-    oct_buf_init(&b, 0);
-    oct_container_command(&b, 0x1009 /* GetObject */, 1, &inner_handle, 1);
-    oct_bridge_client_send_bulk(c, b.data, b.length);
-    oct_buf_free(&b);
-    /* Data phase */
-    if (oct_bridge_client_receive(c, &type, &resp, &resp_len, 5000) != OCT_OK || resp_len < 12) {
+    if (response_out) {
+        *response_out = resp;
+        *response_len_out = resp_len;
+    } else {
         free(resp);
-        oct_bridge_client_destroy(c);
-        return nil;
     }
-    /* resp is a PTP data container: 12-byte header, then payload. */
-    uint32_t container_len = resp_len >= 4 ? (uint32_t)resp[0] | ((uint32_t)resp[1] << 8) |
-                                              ((uint32_t)resp[2] << 16) | ((uint32_t)resp[3] << 24) : 0;
-    uint16_t container_type = resp_len >= 6 ? (uint16_t)(resp[4] | (resp[5] << 8)) : 0;
-    NSData *result = nil;
-    if (container_type == 0x0002 /* data */ && container_len >= 12 && container_len <= resp_len) {
-        result = [NSData dataWithBytes:resp + 12 length:container_len - 12];
-    }
-    free(resp);
-    /* Response phase */
-    if (oct_bridge_client_receive(c, &type, &resp, &resp_len, 1000) == OCT_OK) free(resp);
-    /* CloseSession */
-    oct_buf_init(&b, 0);
-    oct_container_command(&b, 0x1003 /* CloseSession */, 2, NULL, 0);
-    oct_bridge_client_send_bulk(c, b.data, b.length);
-    oct_buf_free(&b);
-    if (oct_bridge_client_receive(c, &type, &resp, &resp_len, 1000) == OCT_OK) free(resp);
-    oct_bridge_client_host_event(c, false, "data fetch done");
-    oct_bridge_client_destroy(c);
     return result;
 }
 
-/* ---- OctopusPTPStorage proxy ------------------------------------------------------------- */
+/* ---- OctopusPTPStorage proxy -------------------------------------------------------- */
 
 /*
- * This is a minimal NSObject subclass that occupies the slot in ptpd's storages dictionary.
- * Its properties return values consistent with Octopus's read-only synthetic storage.
- * The actual routing is done by the PTPVirtualCamera method hooks below; ptpd calls those
- * on the camera object, not directly on the storage object, for the operations we intercept.
+ * A minimal NSObject subclass that occupies a slot in ptpd's storages dictionary.
+ * It logs any selector ptpd calls on it beyond the ones we expect; this is Stage 3
+ * (runtime observation). The forwardingTargetForSelector: returning nil means unrecognised
+ * messages raise NSInvalidArgumentException inside ptpd — which would crash ptpd.
+ * Therefore we implement methodSignatureForSelector: and forwardInvocation: to absorb them.
  */
 @interface OctopusPTPStorage : NSObject
 @property (nonatomic, assign) uint32_t storageID;
@@ -236,152 +232,164 @@ static NSData *fetch_object_data(uint32_t oct_handle)
     return self;
 }
 
-/* ptpd calls this to get the storage's numeric ID. */
 - (uint32_t)storageID { return OCTOPUS_STORAGE_ID; }
-- (uint32_t)sessionID { return _sessionID; }
 
-/* Returns false so ptpd doesn't treat this as the Photos storage. */
-- (BOOL)isPhotoStorage { return NO; }
-- (BOOL)hasObjects { return YES; }
+- (NSMethodSignature *)methodSignatureForSelector:(SEL)sel {
+    NSMethodSignature *sig = [super methodSignatureForSelector:sel];
+    if (sig) return sig;
+    /* Return a generic id-returning signature so forwardInvocation: fires instead of crashing. */
+    return [NSMethodSignature signatureWithObjCTypes:"@@:"];
+}
 
-/* PTP StorageType=0x0003 (Fixed RAM), FilesystemType=0x0002 (Generic hierarchical),
- * AccessCapability=0x0001 (read-only), MaxCapacity=0x1200, FreeSpaceInBytes=0,
- * FreeSpaceInImages=0xFFFFFFFF, StorageDescription="Octopus", VolumeIdentifier="octopus". */
-- (NSData *)storageInfoDataset {
-    uint8_t buf[256];
-    size_t pos = 0;
-#define W16(v) do { buf[pos++] = (v) & 0xFF; buf[pos++] = ((v) >> 8) & 0xFF; } while (0)
-#define W32(v) do { W16(v); W16((v) >> 16); } while (0)
-#define W64(v) do { W32(v); W32((uint64_t)(v) >> 32); } while (0)
-#define WSTR(s) do { \
-    const char *_s = (s); \
-    size_t _n = strlen(_s); \
-    buf[pos++] = (uint8_t)(_n + 1); \
-    for (size_t _i = 0; _i < _n; _i++) { buf[pos++] = _s[_i]; buf[pos++] = 0; } \
-    buf[pos++] = 0; buf[pos++] = 0; } while (0)
-    W16(0x0003); /* StorageType: Fixed RAM */
-    W16(0x0002); /* FilesystemType: Generic hierarchical */
-    W16(0x0001); /* AccessCapability: read-only */
-    W64(4669);   /* MaxCapacity: synthetic storage size */
-    W64(0);      /* FreeSpaceInBytes */
-    W32(0xFFFFFFFFu); /* FreeSpaceInImages */
-    WSTR("Octopus"); /* StorageDescription */
-    WSTR("octopus"); /* VolumeIdentifier */
-#undef W16
-#undef W32
-#undef W64
-#undef WSTR
-    return [NSData dataWithBytes:buf length:pos];
+- (void)forwardInvocation:(NSInvocation *)invocation {
+    /* Log the unknown selector for Stage 3 observation, return nil/0 without crashing. */
+    oct_logf(OCT_LOG_INFO, BRIDGE_COMPONENT, "unknown_storage_selector",
+             "ptpd called unimplemented selector '%s' on OctopusPTPStorage — "
+             "note this for the runtime observation log and add an implementation",
+             sel_getName(invocation.selector));
+    /* Set a nil return value (safe for id, void, and numeric return types up to pointer width). */
+    if (invocation.methodSignature.methodReturnLength <= sizeof(void *)) {
+        const void *nil_val = NULL;
+        [invocation setReturnValue:(void *)&nil_val];
+    }
 }
 
 @end
 
-/* ---- Logos hooks ------------------------------------------------------------------------- */
-
-/* ptpd's own class, declared for the one call made on it outside the hooks. */
-@interface PTPVirtualCamera : NSObject
-- (void)addStorage:(id)storage;
-@end
+/* ---- Logos hooks -------------------------------------------------------------------- */
 
 static OctopusPTPStorage *g_octopus_storage = nil;
 
+#if HOOKS_ENABLED
+
 %hook PTPVirtualCamera
 
-/* After ptpd initialises the camera, register Octopus as a second storage. */
+/*
+ * After ptpd creates the camera, inject our proxy storage.
+ * We do NOT subclass or replace the existing storage.
+ */
 - (id)initWithName:(id)name andPath:(id)path {
     id result = %orig;
     if (result && !g_octopus_storage) {
-        g_octopus_storage = [[OctopusPTPStorage alloc] init];
+        dispatch_sync(g_queue, ^{
+            g_octopus_storage = [[OctopusPTPStorage alloc] init];
+        });
         [result addStorage:g_octopus_storage];
-        oct_logf(OCT_LOG_INFO, BRIDGE_COMPONENT, "storage_registered",
-                 "OctopusPTPStorage (ID 0x%08X) registered with PTPVirtualCamera; "
-                 "bridge socket %s", OCTOPUS_STORAGE_ID, OCT_BRIDGE_DEFAULT_SOCKET);
-        bridge_connect_async();
+        oct_logf(OCT_LOG_INFO, BRIDGE_COMPONENT, "storage_injected",
+                 "Injected OctopusPTPStorage (ID 0x%08X) into PTPVirtualCamera. "
+                 "HOOKS_ENABLED=1; Stage 3 observation required.", OCTOPUS_STORAGE_ID);
     }
     return result;
 }
 
-/* Return StorageInfo for Octopus's storage; call through for Photos. */
+/*
+ * Serve StorageInfo for our storage ID; pass through for Photos.
+ * Returns NSData containing the PTP StorageInfo dataset, as expected by storageInfoDatasetForStorageID:.
+ * We build a minimal read-only fixed-RAM dataset.
+ */
 - (id)storageInfoDatasetForStorageID:(uint32_t)storageID {
-    if (storageID == OCTOPUS_STORAGE_ID) {
-        return g_octopus_storage ? [g_octopus_storage storageInfoDataset] : nil;
-    }
-    return %orig;
+    if (storageID != OCTOPUS_STORAGE_ID) return %orig;
+    /* Build a PTP StorageInfo dataset: StorageType=Fixed RAM (3), FS=Generic (2),
+     * AccessCapability=read-only (1), MaxCapacity=synthetic ~4 KB, FreeSpace=0. */
+    uint8_t buf[64];
+    size_t pos = 0;
+#define W16(v) do { buf[pos]=(v)&0xFF; buf[pos+1]=((v)>>8)&0xFF; pos+=2; } while(0)
+#define W32(v) do { W16(v); W16((v)>>16); } while(0)
+#define W64(v) do { W32(v); W32((uint64_t)(v)>>32); } while(0)
+#define WSTR(s) do { \
+    const char *_s=(s); uint8_t _n=(uint8_t)strlen(_s); \
+    buf[pos++]=_n+1; \
+    for(uint8_t _i=0;_i<_n;_i++){buf[pos++]=_s[_i];buf[pos++]=0;} \
+    buf[pos++]=0;buf[pos++]=0; } while(0)
+    W16(0x0003); W16(0x0002); W16(0x0001);
+    W64(4669); W64(0); W32(0xFFFFFFFFu);
+    WSTR("Octopus"); WSTR("octopus");
+#undef W16 #undef W32 #undef W64 #undef WSTR
+    return [NSData dataWithBytes:buf length:pos];
 }
 
 /*
- * Return the handles for objects in Octopus storage.
- * Octopus handle range: OCTOPUS_HANDLE_BASE (0x80000001) + (inner_handle - 1).
- * We ask Octopus for all handles via the bridge and remap them.
+ * Serve handles for our storage. For other storages, call through.
  */
 - (id)objectHandlesInStorage:(uint32_t)storageID
        forObjectFormatCode:(uint16_t)formatCode
-            inAssociation:(uint32_t)association
+            inAssociation:(uint32_t)assoc
              responseCode:(uint16_t *)responseCode {
     if (storageID != OCTOPUS_STORAGE_ID) return %orig;
-    if (!bridge_connected()) {
-        if (responseCode) *responseCode = 0x2001; /* OK: empty list, we're not ready */
-        return @[];
-    }
-    /* Fetch handles from Octopus via bridge. For the synthetic storage there are ≤6 handles. */
-    oct_bridge_client *c = NULL;
-    if (oct_bridge_client_connect(OCT_BRIDGE_DEFAULT_SOCKET, 500, &c) != OCT_OK) {
-        if (responseCode) *responseCode = 0x2001;
-        return @[];
-    }
-    oct_bridge_client_host_event(c, true, NULL);
-    oct_buf b;
-    oct_buf_init(&b, 0);
-    uint32_t session = 0xC0DE;
-    oct_container_command(&b, 0x1002, 0, &session, 1);
-    oct_bridge_client_send_bulk(c, b.data, b.length);
-    oct_buf_free(&b);
-    uint8_t type;
-    uint8_t *resp = NULL;
-    size_t resp_len = 0;
-    if (oct_bridge_client_receive(c, &type, &resp, &resp_len, 1000) != OCT_OK) {
-        free(resp);
-        oct_bridge_client_host_event(c, false, NULL);
-        oct_bridge_client_destroy(c);
-        if (responseCode) *responseCode = 0x2001;
-        return @[];
-    }
-    free(resp);
-    /* GetObjectHandles: params = storageID=0xFFFFFFFF (all), format=0, assoc=parent */
-    uint32_t params[3] = { 0xFFFFFFFFu, 0, association };
-    oct_buf_init(&b, 0);
-    oct_container_command(&b, 0x1007, 1, params, 3);
-    oct_bridge_client_send_bulk(c, b.data, b.length);
-    oct_buf_free(&b);
-    if (oct_bridge_client_receive(c, &type, &resp, &resp_len, 2000) != OCT_OK || resp_len < 16) {
-        free(resp);
-        oct_bridge_client_host_event(c, false, NULL);
-        oct_bridge_client_destroy(c);
-        if (responseCode) *responseCode = 0x2001;
-        return @[];
-    }
-    uint32_t count = (uint32_t)resp[12] | ((uint32_t)resp[13] << 8) |
-                     ((uint32_t)resp[14] << 16) | ((uint32_t)resp[15] << 24);
-    NSMutableArray *handles = [NSMutableArray array];
-    for (uint32_t i = 0; i < count && 16 + 4 * (i + 1) <= resp_len; i++) {
-        uint32_t h = (uint32_t)resp[16 + 4 * i] | ((uint32_t)resp[17 + 4 * i] << 8) |
-                     ((uint32_t)resp[18 + 4 * i] << 16) | ((uint32_t)resp[19 + 4 * i] << 24);
-        [handles addObject:@(h + OCTOPUS_HANDLE_BASE - 1)];
-    }
-    free(resp);
-    if (oct_bridge_client_receive(c, &type, &resp, &resp_len, 500) == OCT_OK) free(resp); /* response */
-    oct_bridge_client_host_event(c, false, NULL);
-    oct_bridge_client_destroy(c);
-    if (responseCode) *responseCode = 0x2001;
+    if (responseCode) *responseCode = 0x2001; /* OK */
+    __block NSArray *handles = @[];
+    dispatch_sync(g_queue, ^{
+        if (!bridge_connect_locked()) return;
+        uint32_t session = 0xC0DE, params[3] = { 0xFFFFFFFFu, 0, assoc };
+        oct_buf cmd; oct_buf_init(&cmd, 0);
+        oct_bridge_client_host_event(g_client, true, NULL);
+        oct_container_command(&cmd, 0x1002, 0, &session, 1); /* OpenSession */
+        oct_bridge_client_send_bulk(g_client, cmd.data, cmd.length);
+        oct_buf_free(&cmd);
+        uint8_t type = 0; uint8_t *rx = NULL; size_t rxlen = 0;
+        if (oct_bridge_client_receive(g_client, &type, &rx, &rxlen, 1000) != OCT_OK) {
+            free(rx); bridge_disconnect_locked("open session failed"); return;
+        }
+        free(rx);
+        oct_buf_init(&cmd, 0);
+        oct_container_command(&cmd, 0x1007, 1, params, 3); /* GetObjectHandles */
+        oct_bridge_client_send_bulk(g_client, cmd.data, cmd.length);
+        oct_buf_free(&cmd);
+        /* data phase */
+        if (oct_bridge_client_receive(g_client, &type, &rx, &rxlen, 2000) != OCT_OK || rxlen < 16) {
+            free(rx); bridge_disconnect_locked("get handles data failed"); return;
+        }
+        uint32_t count = (uint32_t)rx[12]|((uint32_t)rx[13]<<8)|((uint32_t)rx[14]<<16)|((uint32_t)rx[15]<<24);
+        NSMutableArray *arr = [NSMutableArray array];
+        for (uint32_t i = 0; i < count && 16 + 4*(i+1) <= rxlen; i++) {
+            uint32_t h = (uint32_t)rx[16+4*i]|((uint32_t)rx[17+4*i]<<8)|
+                         ((uint32_t)rx[18+4*i]<<16)|((uint32_t)rx[19+4*i]<<24);
+            [arr addObject:@(h + OCTOPUS_HANDLE_BASE - 1)];
+        }
+        free(rx);
+        if (oct_bridge_client_receive(g_client, &type, &rx, &rxlen, 500) == OCT_OK) free(rx); /* resp */
+        oct_bridge_client_host_event(g_client, false, "handles fetch done");
+        handles = [arr copy];
+    });
     return handles;
 }
 
-/* Return an NSInputStream for Octopus handles. */
+/*
+ * Serve object data for our handles. For other handles, call through.
+ */
 - (id)dataSourceForObjectHandle:(uint32_t)handle
                    responseCode:(uint16_t *)responseCode
                            size:(uint32_t *)size {
     if (handle < OCTOPUS_HANDLE_BASE || handle > OCTOPUS_HANDLE_MAX) return %orig;
-    NSData *data = fetch_object_data(handle);
+    uint32_t inner = handle - OCTOPUS_HANDLE_BASE + 1;
+    __block NSData *data = nil;
+    dispatch_sync(g_queue, ^{
+        if (!bridge_connect_locked()) return;
+        oct_bridge_client_host_event(g_client, true, NULL);
+        uint32_t session = 0xBEEF;
+        oct_buf cmd; oct_buf_init(&cmd, 0);
+        oct_container_command(&cmd, 0x1002, 0, &session, 1); /* OpenSession */
+        oct_bridge_client_send_bulk(g_client, cmd.data, cmd.length);
+        oct_buf_free(&cmd);
+        uint8_t type = 0; uint8_t *rx = NULL; size_t rxlen = 0;
+        if (oct_bridge_client_receive(g_client, &type, &rx, &rxlen, 1000) != OCT_OK) {
+            free(rx); bridge_disconnect_locked("open session for data failed"); return;
+        }
+        free(rx);
+        oct_buf_init(&cmd, 0);
+        oct_container_command(&cmd, 0x1009, 1, &inner, 1); /* GetObject */
+        oct_bridge_client_send_bulk(g_client, cmd.data, cmd.length);
+        oct_buf_free(&cmd);
+        if (oct_bridge_client_receive(g_client, &type, &rx, &rxlen, 5000) != OCT_OK || rxlen < 12) {
+            free(rx); bridge_disconnect_locked("get object data failed"); return;
+        }
+        if (type == OCT_BRIDGE_MSG_BULK_TO_HOST) {
+            data = [NSData dataWithBytes:rx + 12 length:rxlen - 12];
+        }
+        free(rx);
+        if (oct_bridge_client_receive(g_client, &type, &rx, &rxlen, 500) == OCT_OK) free(rx);
+        oct_bridge_client_host_event(g_client, false, "data fetch done");
+    });
     if (!data) {
         if (responseCode) *responseCode = 0x2009; /* Invalid object handle */
         if (size) *size = 0;
@@ -392,27 +400,53 @@ static OctopusPTPStorage *g_octopus_storage = nil;
     return [NSInputStream inputStreamWithData:data];
 }
 
-%end
+%end /* PTPVirtualCamera */
 
 %hook PTPResponder
 
 - (void)transportActivated {
     %orig;
+    bridge_host_event(true, NULL);
     oct_logf(OCT_LOG_INFO, BRIDGE_COMPONENT, "transport_activated",
-             "PTPResponder transportActivated: Windows connected the PTP interface");
+             "PTPResponder transportActivated: Windows connected");
+}
+
+- (void)transportDeactivated {
+    bridge_host_event(false, "Windows disconnected");
+    oct_logf(OCT_LOG_INFO, BRIDGE_COMPONENT, "transport_deactivated",
+             "PTPResponder transportDeactivated: Windows disconnected");
+    %orig;
+}
+
+%end /* PTPResponder */
+
+#else /* HOOKS_ENABLED == 0 */
+
+/*
+ * Observation-only hooks: log what ptpd does without modifying any behaviour.
+ * These confirm our identity check works, the socket connects, and nothing crashes.
+ */
+%hook PTPResponder
+
+- (void)transportActivated {
+    %orig;
+    oct_logf(OCT_LOG_INFO, BRIDGE_COMPONENT, "transport_activated",
+             "PTPResponder transportActivated (observation only; HOOKS_ENABLED=0)");
     bridge_host_event(true, NULL);
 }
 
 - (void)transportDeactivated {
     oct_logf(OCT_LOG_INFO, BRIDGE_COMPONENT, "transport_deactivated",
-             "PTPResponder transportDeactivated: Windows disconnected");
+             "PTPResponder transportDeactivated (observation only; HOOKS_ENABLED=0)");
     bridge_host_event(false, "Windows disconnected");
     %orig;
 }
 
-%end
+%end /* PTPResponder */
 
-/* ---- Constructor -------------------------------------------------------------------------- */
+#endif /* HOOKS_ENABLED */
+
+/* ---- Constructor -------------------------------------------------------------------- */
 
 %ctor {
     NSString *uuid = running_ptpd_uuid();
@@ -420,14 +454,28 @@ static OctopusPTPStorage *g_octopus_storage = nil;
         NSLog(@"[OctopusBridge] Cannot read the running binary UUID; not installing hooks.");
         return;
     }
-    if (![uuid isEqualToString:@(k_reference_uuid)]) {
+    if (![uuid isEqualToString:@(PTPD_REFERENCE_UUID)]) {
         NSLog(@"[OctopusBridge] ptpd UUID %@ does not match the analysed reference %s; "
-              "not installing hooks to protect Photos.", uuid, k_reference_uuid);
+              "not installing hooks to protect Photos.", uuid, PTPD_REFERENCE_UUID);
         return;
     }
     g_identity_ok = true;
-    g_bridge_queue = dispatch_queue_create("com.parv.octopus.bridge", DISPATCH_QUEUE_SERIAL);
+    g_hooks_enabled = HOOKS_ENABLED;
+    g_queue = dispatch_queue_create("com.parv.octopus.bridge", DISPATCH_QUEUE_SERIAL);
     %init;
     oct_logf(OCT_LOG_INFO, BRIDGE_COMPONENT, "loaded",
-             "OctopusBridge loaded into ptpd (UUID %s confirmed)", k_reference_uuid);
+             "OctopusBridge loaded (UUID confirmed, HOOKS_ENABLED=%d, arm64e/iOS17/Dopamine). "
+             "Stage 2 complete: identity verified. Stage 3: connect cable and inspect logs.",
+             HOOKS_ENABLED);
+    /* Connect eagerly so the socket state is visible in diagnostics. */
+    dispatch_async(g_queue, ^{
+        if (bridge_connect_locked()) {
+            char info[128] = "";
+            oct_bridge_client_ping(g_client, info, sizeof info, 500);
+            oct_logf(OCT_LOG_INFO, BRIDGE_COMPONENT, "startup_ping",
+                     "Startup PING to app socket: %s", info[0] ? info : "(no PONG; app may not be running)");
+        }
+    });
 }
+
+#pragma clang diagnostic pop

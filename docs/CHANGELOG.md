@@ -7,36 +7,39 @@ the app's changelog.
 
 ## v0.5
 
-A socket transport for the responder, so a component outside the app can carry PTP to it, and a diagnostic that
-runs that transport on the phone.
+The bridge transport now runs in the real app, the diagnostics report its state, and the
+experimental native component is cleaner and ships with a CI job that proves it parses.
 
-- **The bridge transport** (`oct_bridge`): the responder's USB pipes over a Unix socket. The app side listens;
-  a client reports a host attaching and detaching, forwards bulk-OUT bytes, class requests, bus resets, suspend
-  and resume, and receives bulk-IN data and interrupt events. Frames are a type byte, a 4-byte little-endian
-  length and the payload; a class request's reply starts with a byte saying completed or stall, so a Device Reset
-  that succeeds is told apart from a stall. One client at a time; another waits until it leaves.
-- **Built to survive its peer.** One thread owns the client socket and is the only code that closes it; every frame
-  is written whole under a lock, so frames from the responder and from events never interleave; a write that fails
-  or stalls for 5 seconds disconnects the client instead of leaving half a frame behind; stopping wakes the thread
-  through a pipe and returns at once; and a peer that goes away is an error, never SIGPIPE, which would end the
-  app or, on the client side, ptpd.
-- **Run Full Diagnostics** gains **Bridge socket transport** (`adapter.bridge`, simulated): a server and a client on
-  a private socket in /tmp, /var/tmp or Octopus's caches folder, through a ping, a session with GetStorageIDs,
-  Get Device Status, a stalled request, an unknown frame, a client that leaves, a reconnect and the stop. When no
-  folder takes a socket, it says which folders refused and why.
-- **Not connected yet.** The app doesn't start the bridge server, so nothing listens at
-  `/var/mobile/Library/Caches/Octopus/octopus-bridge.sock` and Windows still can't see Octopus.
-- **The ptpd tweak** (`Octopus/Bridge`) is a draft that has never been compiled and isn't built by CI. Before
-  hooking it checks the running ptpd's UUID against the analysed build. Don't install it: what ptpd calls on a
-  second storage is unobserved, and an unimplemented call would crash ptpd and Photos import with it.
-- **Docs.** `docs/usb-research/runtime-validation.md` records the four v0.4.9 diagnostic captures: ptpd's identity
-  matched the analysed binary, the IOKit PTP match is present with the cable unplugged (a configuration, not a
-  connection), ptpd starts on connect and stays after unplugging, and nothing reached Octopus.
-- **Tests.** 3,617 C checks: the bridge's wire format, sessions, class requests, lifecycle messages, unknown frames,
-  reconnects, restarts, a client leaving just before the stop (the order ThreadSanitizer caught racing), stopping
-  with a client connected, clients that leave before reading their replies, two writers sharing the socket, a client
-  that stops reading, and the diagnostics self-test. Clean under AddressSanitizer, UndefinedBehaviorSanitizer,
-  LeakSanitizer and ThreadSanitizer.
+- **Enable USB Access starts the bridge socket** at `/var/mobile/Library/Caches/Octopus/octopus-bridge.sock`.
+  `ServiceController` creates a `BridgeTransport` wrapper (a Swift class owning `oct_bridge *` and
+  `oct_link *`) and attaches it to the C service before starting. Disabling USB Access stops the
+  transport, closes the socket, and destroys the C objects. Repeated enable/disable cycles don't
+  leak resources. A `UIBackgroundTaskIdentifier` buys ~30 s of extra time when the app goes to
+  the background while USB Access is enabled.
+- **New diagnostics**, measured against the running app and shown in Run Full Diagnostics:
+  - `bridge.app_socket` (native observation) — tries to connect to the socket and send a PING.
+    Reports PASS when the app has enabled USB Access; BLOCKED when nothing is listening.
+  - `bridge.app_active` (local) — whether the bridge socket server is active in this app process.
+  - `bridge.client_connected` (local) — whether a native integration client (the tweak or the
+    diagnostic probe) is currently connected.
+  A PING to the app socket is never reported as evidence that the tweak is loaded or that
+  real USB traffic is flowing.
+- **`OctopusBridge.m` rewritten** (single persistent connection, serial dispatch queue):
+  - `HOOKS_ENABLED=0` by default: identity is checked, the socket is probed at startup, and
+    `transportActivated` / `transportDeactivated` are logged — but ptpd's PTP behaviour is
+    unchanged. Set to 1 only after Stage 3 runtime observation confirms the PTPStorage selector
+    surface (the `forwardInvocation:` log in the tweak records every unknown call).
+  - A single `oct_bridge_client *` is held open for the tweak's lifetime; all socket operations
+    are serialised on a private queue to prevent frame interleaving.
+  - `OctopusPTPStorage.forwardInvocation:` absorbs any selector ptpd calls that we haven't
+    implemented yet, logging it instead of crashing ptpd and Photos import.
+- **Theos CI job** (`tweak` in `.github/workflows/build.yml`): syntax-checks every C translation
+  unit the tweak links and parses `OctopusBridge.m` as Objective-C. A full arm64e DEB requires a
+  macOS host with Xcode; the CI job proves the sources are correct independently of the toolchain.
+- **Docs**: `docs/usb-research/runtime-validation.md` documents all five integration stages, their
+  current status, and the exact device-testing sequence required for Stage 3.
+- **Tests**: 3,646 C checks, 0 failures. ASan/UBSan/LeakSanitizer and TSan clean. Fuzzer: 300,000
+  iterations, no faults. Static analysis: no findings.
 
 ## v0.4
 

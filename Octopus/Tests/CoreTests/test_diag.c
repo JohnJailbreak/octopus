@@ -249,8 +249,8 @@ static void test_diagnostics(void)
     oct_diag *diag = NULL;
     CHECK_OK(oct_diag_create(&diag));
     uint32_t count = oct_diag_count(diag);
-    CHECK_EQ(count, 19);
-    uint32_t passed = 0, simulated = 0;
+    CHECK_EQ(count, 20); /* adapter checks + bridge.app_socket */
+    uint32_t passed = 0, simulated = 0, blocked_ok = 0;
     for (uint32_t i = 0; i < count; i++) {
         oct_diag_result result, identity;
         CHECK_OK(oct_diag_info(diag, i, &identity));
@@ -258,17 +258,29 @@ static void test_diagnostics(void)
         CHECK_STR(identity.id, result.id);
         CHECK_STR(identity.title, result.title);
         CHECK_EQ(identity.kind, result.kind);
-        passed += result.status == OCT_DIAG_PASS;
         if (strncmp(result.id, "adapter.", 8) == 0) {
             CHECK_EQ(result.kind, OCT_DIAG_SIMULATED);
             simulated++;
+            CHECK_EQ(result.status, OCT_DIAG_PASS);
+        } else if (strcmp(result.id, "bridge.app_socket") == 0) {
+            /* native observation: BLOCKED when no app socket is running (expected in tests) */
+            CHECK_EQ(result.kind, OCT_DIAG_LOCAL);
+            CHECK(result.status == OCT_DIAG_BLOCKED || result.status == OCT_DIAG_PASS ||
+                  result.status == OCT_DIAG_FAIL);
+            blocked_ok++;
         } else {
             CHECK_EQ(result.kind, OCT_DIAG_LOCAL);
+            CHECK_EQ(result.status, OCT_DIAG_PASS);
         }
-        CHECK(result.title[0] && result.group[0] && result.detail[0] && result.checks > 0);
-        if (result.status != OCT_DIAG_PASS) fprintf(stderr, "diagnostic %s: %s\n", result.id, result.detail);
+        /* bridge.app_socket may have 0 checks when BLOCKED (nothing is listening). */
+        bool zero_ok = strcmp(result.id, "bridge.app_socket") == 0 && result.status == OCT_DIAG_BLOCKED;
+        CHECK(result.title[0] && result.group[0] && result.detail[0] && (result.checks > 0 || zero_ok));
+        passed += result.status == OCT_DIAG_PASS;
+        if (result.status == OCT_DIAG_FAIL) fprintf(stderr, "diagnostic %s: %s\n", result.id, result.detail);
     }
-    CHECK_EQ(passed, count);
+    CHECK_EQ(blocked_ok, 1); /* bridge.app_socket */
+    uint32_t non_blocked_pass = count - 1; /* all except bridge.app_socket must pass */
+    CHECK_EQ(passed, non_blocked_pass);  /* bridge.app_socket is BLOCKED in tests */
     CHECK_EQ(simulated, 7);
     oct_diag_result result;
     CHECK_EQ(oct_diag_run(diag, count, &result), OCT_E_INVALID_ARGUMENT);
@@ -296,6 +308,7 @@ static void test_diagnostics(void)
     CHECK_EQ(failed, 1);
     CHECK_EQ(skipped, 7);
     CHECK_EQ(after_pass, 7); /* the adapter checks don't depend on the responder phases */
+    /* bridge.app_socket is counted separately; it may be BLOCKED independently of responder phases */
     oct_diag_destroy(diag);
     CHECK_STR(oct_diag_status_name(OCT_DIAG_BLOCKED), "BLOCKED");
     CHECK_STR(oct_diag_kind_name(OCT_DIAG_EXTERNAL), "external");
