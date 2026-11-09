@@ -315,7 +315,7 @@ final class CoreService: @unchecked Sendable {
         _ = oct_service_stop(handle)
         // Bridge driver_stop was called by the service; now release our C objects.
         if activeBridge != nil {
-            var noTransport: oct_transport? = nil
+            // Detach before releasing the C objects, so the service never holds a dangling context.
             _ = oct_service_set_transport(handle, nil)
             activeBridge = nil
         }
@@ -427,8 +427,7 @@ final class CoreService: @unchecked Sendable {
 
 /// Owns the C objects that make up the bridge socket transport for one enable/disable cycle.
 /// The bridge is created before `CoreService.start(...)` and destroyed after `CoreService.stop()`.
-@unchecked Sendable
-final class BridgeTransport {
+final class BridgeTransport: @unchecked Sendable {
     private let bridge: OpaquePointer  // oct_bridge *
     private let link: OpaquePointer    // oct_link *
     var transport: oct_transport       // copy: ops/context remain valid while bridge/link live

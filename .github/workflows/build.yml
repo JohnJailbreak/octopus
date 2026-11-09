@@ -37,38 +37,41 @@ jobs:
 
   tweak:
     name: Native integration tweak (Theos, arm64e)
-    runs-on: ubuntu-latest
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
-      - name: Install Theos (rootless SDK)
+      # The tweak needs an iOS SDK and the Logos preprocessor, so it builds on macOS.
+      # Linux can't compile it at all: it includes Apple SDK headers, and Logos directives
+      # (%hook, %orig, %ctor) aren't valid Objective-C until logos.pl has rewritten them.
+      - name: Install Theos, ldid and dpkg
         run: |
-          # Install Theos and the iOS 17 SDK headers for a CI syntax check.
-          # This does not cross-compile to arm64e (no clang arm64e target on ubuntu-latest);
-          # it verifies that the Logos sources pre-process and that the C translation units
-          # compile without errors under a permissive clang host compilation.
-          sudo apt-get install -y --no-install-recommends clang libclang-dev curl
-      - name: Syntax-check the bridge C core (host clang, permissive flags)
+          brew install --quiet ldid dpkg
+          git clone --quiet --recursive --depth 1 https://github.com/theos/theos.git "$HOME/theos"
+          # Theos wants an SDK under $THEOS/sdks; Xcode's iPhoneOS SDK covers Foundation,
+          # the Objective-C runtime and mach-o, which is all this tweak includes.
+          sdk="$(xcrun --sdk iphoneos --show-sdk-path)"
+          mkdir -p "$HOME/theos/sdks"
+          ln -sfn "$sdk" "$HOME/theos/sdks/$(basename "$sdk")"
+          echo "THEOS=$HOME/theos" >> "$GITHUB_ENV"
+      - name: Build the tweak
+        working-directory: Octopus/Bridge
+        run: make clean all
+      - name: Package the rootless DEB
+        working-directory: Octopus/Bridge
         run: |
-          # Compile each C translation unit the tweak links, using clang in host mode,
-          # so we catch preprocessor errors and obvious type mismatches without an iOS SDK.
-          CFLAGS="-std=c11 -Wno-everything -Wno-unused -DTARGET_OS_IPHONE=1 -c -fsyntax-only"
-          INCLUDES="-IOctopus/Core -IOctopus/Protocol"
-          failed=0
-          for f in Octopus/Core/*.c Octopus/Protocol/*.c; do
-            clang $CFLAGS $INCLUDES "$f" 2>&1 || { echo "FAILED: $f"; failed=1; }
+          make package
+          ls -la packages/
+          # Record what the package contains, so the layout is reviewable without installing it.
+          for deb in packages/*.deb; do
+            echo "== $deb"
+            dpkg-deb --info "$deb"
+            dpkg-deb --contents "$deb"
           done
-          [ "$failed" = 0 ] || exit 1
-          echo "All bridge C translation units passed syntax check"
-      - name: Check OctopusBridge.m Objective-C structure
-        run: |
-          # Verify the .m file at least parses as Objective-C.
-          clang -std=gnu11 -x objective-c -Wno-everything -DTARGET_OS_IPHONE=1             -IOctopus/Core -IOctopus/Protocol             -fsyntax-only Octopus/Bridge/OctopusBridge.m 2>&1 || {
-            echo "OctopusBridge.m has parse errors (expected without arm64e SDK; failing only on syntax)"
-            # Note: a full arm64e Theos build requires a macOS host with Xcode and the iOS SDK.
-            # This job validates C sources and ObjC structure independently of the Theos toolchain.
-            exit 1
-          }
-          echo "OctopusBridge.m parsed successfully"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OctopusBridge-deb
+          path: Octopus/Bridge/packages/*.deb
+          if-no-files-found: error
 
   app:
     name: iOS app (Xcode)

@@ -25,17 +25,19 @@ experimental native component is cleaner and ships with a CI job that proves it 
   A PING to the app socket is never reported as evidence that the tweak is loaded or that
   real USB traffic is flowing.
 - **`OctopusBridge.m` rewritten** (single persistent connection, serial dispatch queue):
-  - `HOOKS_ENABLED=0` by default: identity is checked, the socket is probed at startup, and
-    `transportActivated` / `transportDeactivated` are logged — but ptpd's PTP behaviour is
-    unchanged. Set to 1 only after Stage 3 runtime observation confirms the PTPStorage selector
-    surface (the `forwardInvocation:` log in the tweak records every unknown call).
+  - The storage hooks are gated by a run-time flag (`OCTOPUS_BRIDGE_HOOKS`, off by default), not by
+    `#if`: Logos rewrites `%hook` lexically before the C preprocessor, so two `%hook` groups for one
+    class in `#if`/`#else` branches make it emit both and the build fails. There is now one group
+    per class, and each hook calls `%orig` straight through while the gate is closed. Open it only
+    after Stage 3 observation records the PTPStorage selector surface.
   - A single `oct_bridge_client *` is held open for the tweak's lifetime; all socket operations
     are serialised on a private queue to prevent frame interleaving.
   - `OctopusPTPStorage.forwardInvocation:` absorbs any selector ptpd calls that we haven't
     implemented yet, logging it instead of crashing ptpd and Photos import.
-- **Theos CI job** (`tweak` in `.github/workflows/build.yml`): syntax-checks every C translation
-  unit the tweak links and parses `OctopusBridge.m` as Objective-C. A full arm64e DEB requires a
-  macOS host with Xcode; the CI job proves the sources are correct independently of the toolchain.
+- **Theos CI job** (`tweak` in `.github/workflows/build.yml`): installs Theos and builds the tweak
+  for arm64e on a macOS runner, then packages the rootless DEB and uploads it as an artifact, with
+  `dpkg-deb --contents` printed so the package layout is reviewable without installing it. It runs
+  independently of the app job, so a successful IPA is never reported as proof the tweak compiles.
 - **Docs**: `docs/usb-research/runtime-validation.md` documents all five integration stages, their
   current status, and the exact device-testing sequence required for Stage 3.
 - **Tests**: 3,646 C checks, 0 failures. ASan/UBSan/LeakSanitizer and TSan clean. Fuzzer: 300,000
