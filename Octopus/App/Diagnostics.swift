@@ -28,6 +28,18 @@ enum DiagnosticStatus: String, Codable, Sendable, CaseIterable {
 
 enum DiagnosticKind: String, Codable, Sendable {
     case local, simulated, external
+    case nativeObservation = "native_observation"
+    case realUSB = "real_external_usb_transaction"
+
+    var label: String {
+        switch self {
+        case .local: return "Local"
+        case .simulated: return "Simulated"
+        case .external: return "External"
+        case .nativeObservation: return "Native observation"
+        case .realUSB: return "USB callback + response"
+        }
+    }
 
     init(_ raw: oct_diag_kind) {
         switch raw {
@@ -55,10 +67,8 @@ struct DiagnosticsEnvironment: Codable, Sendable {
     var transportState: String
     var transportFailure: String
     var transportTransactions: UInt64
-    var bridgeActive: Bool
-    var bridgeSocketPath: String
-    var bridgeClientConnected: Bool
     var settings: [String: String]
+    var nativeCapture: NativeCapture? = nil
 
     @MainActor
     init(service: ServiceController) {
@@ -66,27 +76,19 @@ struct DiagnosticsEnvironment: Codable, Sendable {
         transportState = ConnectionStage(transport: service.status.transportState).title
         transportFailure = service.status.transportFailure
         transportTransactions = service.status.transportTransactions
-        bridgeActive = service.bridgeActive
-        bridgeSocketPath = service.bridgeSocketPath
-        bridgeClientConnected = service.bridgeClientConnected
         settings = Diagnostics.settingsSnapshot()
+        nativeCapture = NativeCapture.read(expectedLease: NativeIntegration.shared.token)
     }
 
     static let unknown = DiagnosticsEnvironment(serviceState: "unknown", transportState: "unknown",
-                                                transportFailure: "", transportTransactions: 0,
-                                                bridgeActive: false, bridgeSocketPath: "", bridgeClientConnected: false,
-                                                settings: [:])
+                                                transportFailure: "", transportTransactions: 0, settings: [:])
 
     init(serviceState: String, transportState: String, transportFailure: String, transportTransactions: UInt64,
-         bridgeActive: Bool, bridgeSocketPath: String, bridgeClientConnected: Bool,
          settings: [String: String]) {
         self.serviceState = serviceState
         self.transportState = transportState
         self.transportFailure = transportFailure
         self.transportTransactions = transportTransactions
-        self.bridgeActive = bridgeActive
-        self.bridgeSocketPath = bridgeSocketPath
-        self.bridgeClientConnected = bridgeClientConnected
         self.settings = settings
     }
 }
@@ -262,6 +264,12 @@ enum Diagnostics {
             step("device.ptp_registry", "Device (read-only)", "PTP interface discovery", .local) { ptpRegistry() },
             step("device.ptpd_identity", "Device (read-only)", "ptpd binary identity", .local) { ptpdIdentity() },
             step("device.ptpd_process", "Device (read-only)", "ptpd running now", .local) { ptpdProcess() },
+            step("native.observer", "Native integration", "Native observer compatibility and authorization", .nativeObservation) {
+                nativeCapture(environment).result(transactions: false)
+            },
+            step("native.usb_transactions", "Native integration", "USB callbacks and paired native responses", .nativeObservation) {
+                nativeCapture(environment).result(transactions: true)
+            },
             step("external.usb_transport", "External connection", "USB transport for Octopus", .external) {
                 usbTransport()
             },
@@ -269,9 +277,6 @@ enum Diagnostics {
                 hostRequests(environment)
             },
             step("external.windows", "External connection", "Windows File Explorer", .external) { windows() },
-            step("bridge.app_active", "Bridge", "App bridge socket server", .local) { bridgeAppActive(environment) },
-            step("bridge.client_connected", "Bridge", "Integration client connected", .local) { bridgeClientState(environment) },
-            step("bridge.tweak_log", "Bridge", "Native component log", .local) { tweakLog() },
         ]
         return steps
     }
@@ -467,15 +472,22 @@ enum Diagnostics {
 
     // MARK: - External connection
 
+    static func nativeCapture(_ environment: DiagnosticsEnvironment) -> NativeCapture {
+        environment.nativeCapture ?? NativeCapture(data: nil, problem: "No native observation was captured for this run.",
+                                                   expectedLease: "", observedPID: 0, capturedAt: 0)
+    }
+
     static func usbTransport() -> DiagnosticResult {
         result("external.usb_transport", "External connection", "USB transport for Octopus", .external, .blocked,
-               "This build has no native USB driver registered with the transport adapter. Read-only PTP discovery "
-                   + "does not open Apple's interface or prove ownership. Private transport ABI and provider coexistence "
-                   + "still require device evidence.", checks: 0)
+               "The portable adapter has no direct native USB driver. The optional provider experiment instead uses Apple's existing USB service; its observations appear under Native integration. Explorer visibility and Photos coexistence still require the physical acceptance test.", checks: 0)
     }
 
     static func hostRequests(_ environment: DiagnosticsEnvironment) -> DiagnosticResult {
         let id = "external.host_requests", group = "External connection", title = "Requests from a computer"
+        let native = nativeCapture(environment).result(transactions: true)
+        if native.status == .pass {
+            return result(id, group, title, .realUSB, .pass, native.detail)
+        }
         return result(id, group, title, .external, .blocked,
                       "No verified native USB request evidence is available. Generic transaction count: \(environment.transportTransactions). "
                           + "Transport: \(environment.transportState)"
@@ -488,85 +500,6 @@ enum Diagnostics {
                "Needs a Windows PC and manual steps, and the USB transport above. With the iPhone connected and "
                    + "unlocked, run tools\\windows\\octopus-usb-diagnostics.ps1 and send its report with this ZIP.",
                checks: 0)
-    }
-
-    // MARK: - Bridge state checks
-
-    /// Where the ptpd tweak writes its own log. A different process owns it, so it is a separate
-    /// file from the app's; this check reports whether it exists and what it last recorded.
-    static let tweakLogPath = "/var/mobile/Library/Caches/Octopus/octopus-bridge-tweak.log"
-
-    /// Every rotated generation of the tweak log, newest first, that exists and can be read.
-    static func tweakLogFiles() -> [URL] {
-        let manager = FileManager.default
-        return ([tweakLogPath] + (1...2).map { "\(tweakLogPath).\($0)" })
-            .filter { manager.isReadableFile(atPath: $0) }
-            .map { URL(fileURLWithPath: $0) }
-    }
-
-    /// Whether the native component has written anything. Its absence is the normal state before
-    /// the tweak is installed, so this is BLOCKED rather than FAIL.
-    static func tweakLog() -> DiagnosticResult {
-        let id = "bridge.tweak_log", group = "Bridge", title = "Native component log"
-        let files = tweakLogFiles()
-        guard let newest = files.first else {
-            return result(id, group, title, .local, .blocked,
-                          "No native component log at \(tweakLogPath). That is expected until "
-                              + "OctopusBridge is installed and ptpd has run once with a USB cable attached. "
-                              + "If the tweak is installed and this stays empty, ptpd could not write there; "
-                              + "read its lines over SSH instead.", checks: 0)
-        }
-        let text = (try? String(contentsOf: newest, encoding: .utf8)) ?? ""
-        let lines = text.split(separator: "\n")
-        let classes = lines.filter { $0.contains(" class ") }.count
-        let methods = lines.filter { $0.contains(" method ") }.count
-        let transports = lines.filter { $0.contains("transport_activated") }.count
-        return result(id, group, title, .local, .pass,
-                      "\(files.count) log file(s), newest \(lines.count) lines: "
-                          + "\(classes) class observations, \(methods) method observations, "
-                          + "\(transports) host attachments. These are ptpd's own classes read through the "
-                          + "Objective-C runtime; they do not show that Windows accepted anything.",
-                      checks: UInt32(files.count))
-    }
-
-    /// Whether the app's bridge socket is active, based on the environment snapshot taken when the run started.
-    static func bridgeAppActive(_ environment: DiagnosticsEnvironment) -> DiagnosticResult {
-        let id = "bridge.app_active", group = "Bridge", title = "App bridge socket server"
-        guard environment.bridgeActive else {
-            return result(id, group, title, .local, .blocked,
-                          "The bridge socket server is not running. Enable USB Access to start it at "
-                              + (environment.bridgeSocketPath.isEmpty
-                                 ? OCT_BRIDGE_DEFAULT_SOCKET
-                                 : environment.bridgeSocketPath)
-                              + ". The separate bridge.app_socket core check probes it at run time.",
-                          checks: 0)
-        }
-        let path = environment.bridgeSocketPath.isEmpty
-            ? OCT_BRIDGE_DEFAULT_SOCKET : environment.bridgeSocketPath
-        return result(id, group, title, .local, .pass,
-                      "Bridge socket server is running at \(path). "
-                          + "The core check bridge.app_socket probes it via PING; "
-                          + "install OctopusBridge and enable it in Sileo to route native PTP traffic from Windows.")
-    }
-
-    /// Whether a native integration client (the OctopusBridge tweak or a diagnostic probe) is connected.
-    static func bridgeClientState(_ environment: DiagnosticsEnvironment) -> DiagnosticResult {
-        let id = "bridge.client_connected", group = "Bridge", title = "Integration client connected"
-        guard environment.bridgeActive else {
-            return result(id, group, title, .local, .blocked,
-                          "No bridge socket server is running; there can be no client. Enable USB Access first.",
-                          checks: 0)
-        }
-        if environment.bridgeClientConnected {
-            return result(id, group, title, .local, .pass,
-                          "A client is connected to the bridge socket. "
-                              + "If OctopusBridge is installed in Sileo and enabled, this is the ptpd integration. "
-                              + "Otherwise it may be the bridge.app_socket core check running concurrently.")
-        }
-        return result(id, group, title, .local, .blocked,
-                      "The bridge socket is listening but no client is connected. "
-                          + "Install OctopusBridge from Sileo (Octopus/Bridge/control), enable it, "
-                          + "then connect the iPhone to Windows and plug in a USB cable to trigger ptpd.")
     }
 
     // MARK: - The archive
@@ -652,9 +585,12 @@ enum Diagnostics {
         try add("settings.json", try encoder.encode(environment.settings))
         try add("connectivity.txt", Data(connectivity(environment).utf8))
         try add("device-observations.json", try encoder.encode(report.results.filter { $0.id.hasPrefix("device.") }))
+        let capture = nativeCapture(environment)
+        try add("native/capture.json", try encoder.encode(capture))
+        if let data = capture.data { try add("native/status.json", data) }
         var timeline = ["Saved log observations, not proof of native USB traffic."]
 
-        for file in DebugLog.files() + tweakLogFiles() {
+        for file in DebugLog.files() {
             let text = (try? String(contentsOf: file, encoding: .utf8)) ?? ""
             try add("logs/\(file.lastPathComponent)", Data(redact(text).utf8))
             timeline += redact(text).components(separatedBy: "\n").filter {
@@ -729,6 +665,7 @@ enum Diagnostics {
         build.json        version, build, commit, core and system
         settings.json     Octopus's settings
         connectivity.txt  the transport's state, and how this iPhone presents itself over USB (read-only)
+        native/           the immutable native status captured at run start, its PID, timestamp and lease validation
         logs/             the debug log files
 
         If the app's temporary folder can't take the archive, it is written to Octopus's folder in
@@ -736,6 +673,9 @@ enum Diagnostics {
 
         Kinds: local runs inside the app; simulated talks to a simulated host through the real transport adapter
         and responder, never a computer; external is a real connection to something outside the iPhone.
+        native_observation describes the optional in-process observer; real_external_usb_transaction means a
+        command inside the native USB receive callback was paired with Apple's successful response write.
+        This is not proof of host receipt, Explorer visibility, file integrity or Photos coexistence.
         Paths have app container IDs replaced with <app-container>. Nothing here holds file contents.
         """
     }
@@ -767,14 +707,9 @@ enum Diagnostics {
     }
 
     static func connectivity(_ environment: DiagnosticsEnvironment) -> String {
-        let socketPath = environment.bridgeSocketPath.isEmpty
-            ? OCT_BRIDGE_DEFAULT_SOCKET : environment.bridgeSocketPath
         var lines = ["Service: \(environment.serviceState)", "Transport: \(environment.transportState)",
                      "Transport failure: \(environment.transportFailure.isEmpty ? "none" : environment.transportFailure)",
-                     "Requests from a computer this launch: \(environment.transportTransactions)",
-                     "Bridge socket: \(environment.bridgeActive ? "running at \(socketPath)" : "not running")",
-                     "Bridge client: \(environment.bridgeClientConnected ? "connected" : "none")",
-                     "Native component log: " + (tweakLogFiles().first.map { "\($0.path)" } ?? "absent")]
+                     "Requests from a computer this launch: \(environment.transportTransactions)"]
         var pid: Int32 = 0
         let found = oct_diag_find_process("ptpd", &pid) == OCT_OK
         lines.append("ptpd: \(found ? (pid > 0 ? "running, pid \(pid)" : "not running") : "process table unreadable")")

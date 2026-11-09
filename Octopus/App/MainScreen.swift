@@ -94,7 +94,6 @@ struct MainScreen: View {
             updater.watch(updateNotifications && phase == .active)
             if phase == .background && updateNotifications { UpdateNotifications.schedule() }
             if phase == .background { DebugLog.flush() } // the log reaches storage before iOS may end the app
-            service.handleScenePhase(phase)
         }
         .onChange(of: updateNotifications) { _, on in
             updater.watch(on && scenePhase == .active)

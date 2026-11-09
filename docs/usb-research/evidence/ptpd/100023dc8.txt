@@ -1,0 +1,94 @@
+===== 100023dc8 PTPResponder::sentData:responseCode: =====
+XREF 10005daae DATA null
+XREF 100034aec DATA null
+100023dc8 pacibsp
+100023dcc sub sp,sp,#0x50
+100023dd0 stp x24,x23,[sp, #0x10]
+100023dd4 stp x22,x21,[sp, #0x20]
+100023dd8 stp x20,x19,[sp, #0x30]
+100023ddc stp x29,x30,[sp, #0x40]
+100023de0 add x29,sp,#0x40
+100023de4 mov x23,x3
+100023de8 mov x21,x2
+100023dec mov x19,x0
+100023df0 mov x0,x2
+100023df4 bl 0x100031180
+100023df8 mov x24,x0
+100023dfc mov x0,x21
+100023e00 bl 0x100032c20
+100023e04 mov x20,x0
+100023e08 nop
+100023e0c ldr x0,0x100059760
+100023e10 bl 0x10002e920
+100023e14 mov x22,x0
+100023e18 mov x0,x23
+100023e1c bl 0x100032d00
+100023e20 mov x23,x0
+100023e24 mov w8,#0x101b
+100023e28 cmp w24,w8
+100023e2c b.ne 0x100023e50
+100023e30 mov x0,x21
+100023e34 bl 0x10002f240
+100023e38 mov x4,x0
+100023e3c mov x0,x22
+100023e40 mov x2,x23
+100023e44 mov x3,x20
+100023e48 bl 0x100030740
+100023e4c b 0x100023e60
+100023e50 mov x0,x22
+100023e54 mov x2,x23
+100023e58 mov x3,x20
+100023e5c bl 0x100030720
+100023e60 mov x1,x0
+100023e64 ldr x0,[x19, #0x8]
+100023e68 str x1,[sp, #0x8]
+100023e6c mov x2,x1
+100023e70 bl 0x100031b60
+100023e74 ldr x0,[sp, #0x8]
+100023e78 ldp x29,x30,[sp, #0x40]
+100023e7c ldp x20,x19,[sp, #0x30]
+100023e80 ldp x22,x21,[sp, #0x20]
+100023e84 ldp x24,x23,[sp, #0x10]
+100023e88 add sp,sp,#0x50
+100023e8c autibsp
+100023e90 eor x16,x30,x30, LSL #0x1
+100023e94 tbz x16,#0x3e,0x100023e9c
+100023e98 brk #0xc471
+100023e9c b 0x10002ea20
+
+/* WARNING: Function: _objc_release replaced with injection: _objc_release_fixup */
+/* Function Stack Size: 0x20 bytes */
+
+void PTPResponder::sentData_responseCode_(ID param_1,SEL param_2,ID param_3,ID param_4)
+
+{
+  code *pcVar1;
+  ID IVar2;
+  ID IVar3;
+  ID IVar4;
+  ID IVar5;
+  ulong unaff_x30;
+  
+  IVar2 = objc_stub::operationCode(param_3);
+  IVar3 = objc_stub::transactionID(param_3);
+  IVar4 = _objc_alloc(PTR_PTPOperationResponsePacket_100059760);
+  IVar5 = objc_stub::unsignedShortValue(param_4);
+  if ((int)IVar2 == 0x101b) {
+    IVar2 = objc_stub::bytesTransferred(param_3);
+    IVar2 = PTPOperationResponsePacket::initWithResponseCode_transactionID_parameter1_
+                      (IVar4,(unsigned_short)IVar5,(unsigned_int)IVar3,(unsigned_int)IVar2);
+  }
+  else {
+    IVar2 = PTPOperationResponsePacket::initWithResponseCode_transactionID_
+                      (IVar4,(unsigned_short)IVar5,(unsigned_int)IVar3);
+  }
+  objc_stub::sendResponse_(*(ID *)(param_1 + 8),IVar2);
+  if (((unaff_x30 ^ unaff_x30 << 1) >> 0x3e & 1) != 0) {
+                    /* WARNING: Does not return */
+    pcVar1 = (code *)SoftwareBreakpoint(0xc471,0x100023e9c);
+    (*pcVar1)();
+  }
+  return;
+}
+
+

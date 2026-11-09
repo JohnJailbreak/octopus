@@ -1,0 +1,557 @@
+===== 100012d6c PTPVirtualCamera::objectPropValueForHandle:withObjectPropertyCode:responseCode: =====
+XREF 10005d805 DATA null
+XREF 10003358c DATA null
+100012d6c pacibsp
+100012d70 sub sp,sp,#0x160
+100012d74 stp x28,x27,[sp, #0x100]
+100012d78 stp x26,x25,[sp, #0x110]
+100012d7c stp x24,x23,[sp, #0x120]
+100012d80 stp x22,x21,[sp, #0x130]
+100012d84 stp x20,x19,[sp, #0x140]
+100012d88 stp x29,x30,[sp, #0x150]
+100012d8c add x29,sp,#0x150
+100012d90 mov x23,x4
+100012d94 mov x19,x3
+100012d98 mov x20,x2
+100012d9c mov x22,x0
+100012da0 nop
+100012da4 ldr x8,0x100044518
+100012da8 ldr x8,[x8]
+100012dac stur x8,[x29, #-0x68]
+100012db0 bl 0x100028978
+100012db4 adr x21,0x100044d58
+100012db8 nop
+100012dbc mov x0,x21
+100012dc0 bl 0x100030b20
+100012dc4 cmp x0,#0x15
+100012dc8 b.cc 0x100012df0
+100012dcc adr x0,0x100044d58
+100012dd0 nop
+100012dd4 mov x2,#0x0
+100012dd8 mov w3,#0x12
+100012ddc bl 0x100032ac0
+100012de0 adr x2,0x100044d78
+100012de4 nop
+100012de8 bl 0x1000329e0
+100012dec mov x21,x0
+100012df0 sub x26,x29,#0x80
+100012df4 adrp x27,0x100059000
+100012df8 ldr x0,[x27, #0x700]
+100012dfc mov w8,w20
+100012e00 mov w9,w19
+100012e04 stp x8,x9,[sp]
+100012e08 adr x2,0x100046bb8
+100012e0c nop
+100012e10 bl 0x100032a40
+100012e14 mov x25,x0
+100012e18 nop
+100012e1c nop
+100012e20 ldr x24,0x10005a970
+100012e24 mov x0,x24
+100012e28 mov w1,#0x0
+100012e2c bl 0x10002eba0
+100012e30 cbz w0,0x100012e7c
+100012e34 mov x0,x21
+100012e38 bl 0x10002ed20
+100012e3c mov w8,#0x202
+100012e40 movk w8,#0x822, LSL #16
+100012e44 stur w8,[x29, #-0x80]
+100012e48 stur x0,[x26, #0x4]
+100012e4c mov w8,#0x842
+100012e50 sturh w8,[x29, #-0x74]
+100012e54 stur x25,[x26, #0xe]
+100012e58 adr x0,0x100000000
+100012e5c nop
+100012e60 adr x3,0x10003c434
+100012e64 nop
+100012e68 sub x4,x29,#0x80
+100012e6c mov x1,x24
+100012e70 mov w2,#0x0
+100012e74 mov w5,#0x16
+100012e78 bl 0x10002e6d0
+100012e7c nop
+100012e80 ldr x0,0x100059730
+100012e84 mov x2,#0x0
+100012e88 bl 0x10002f800
+100012e8c mov x21,x0
+100012e90 mov w8,#0x2001
+100012e94 strh w8,[x23]
+100012e98 nop
+100012e9c ldr x0,0x100059740
+100012ea0 mov x2,x20
+100012ea4 bl 0x100030dc0
+100012ea8 mov x2,x0
+100012eac mov x0,x22
+100012eb0 bl 0x100030f00
+100012eb4 mov x23,x0
+100012eb8 adrp x24,0x100059000
+100012ebc ldr x0,[x24, #0x7c0]
+100012ec0 bl 0x10002e9e0
+100012ec4 mov x1,x0
+100012ec8 mov x0,x23
+100012ecc bl 0x10002e9f0
+100012ed0 adrp x28,0x100059000
+100012ed4 tbnz w0,#0x0,0x100012ef0
+100012ed8 ldr x0,[x28, #0x7d8]
+100012edc bl 0x10002e9e0
+100012ee0 mov x1,x0
+100012ee4 mov x0,x23
+100012ee8 bl 0x10002e9f0
+100012eec tbz w0,#0x0,0x100013210
+100012ef0 ldr x0,[x24, #0x7c0]
+100012ef4 bl 0x10002e9e0
+100012ef8 mov x1,x0
+100012efc mov x0,x23
+100012f00 bl 0x10002e9f0
+100012f04 tbz w0,#0x0,0x100012fc4
+100012f08 bl 0x100028978
+100012f0c adr x24,0x100044d58
+100012f10 nop
+100012f14 mov x0,x24
+100012f18 bl 0x100030b20
+100012f1c cmp x0,#0x15
+100012f20 b.cc 0x100012f48
+100012f24 adr x0,0x100044d58
+100012f28 nop
+100012f2c mov x2,#0x0
+100012f30 mov w3,#0x12
+100012f34 bl 0x100032ac0
+100012f38 adr x2,0x100044d78
+100012f3c nop
+100012f40 bl 0x1000329e0
+100012f44 mov x24,x0
+100012f48 ldr x0,[x27, #0x700]
+100012f4c adr x2,0x100046bd8
+100012f50 nop
+100012f54 bl 0x100032a40
+100012f58 mov x26,x0
+100012f5c nop
+100012f60 nop
+100012f64 ldr x25,0x10005a970
+100012f68 mov x0,x25
+100012f6c mov w1,#0x0
+100012f70 bl 0x10002eba0
+100012f74 cbz w0,0x100012fc4
+100012f78 mov x0,x24
+100012f7c bl 0x10002ed20
+100012f80 mov w8,#0x202
+100012f84 movk w8,#0x822, LSL #16
+100012f88 stur w8,[x29, #-0x80]
+100012f8c sub x9,x29,#0x80
+100012f90 stur x0,[x9, #0x4]
+100012f94 mov w8,#0x842
+100012f98 sturh w8,[x29, #-0x74]
+100012f9c stur x26,[x9, #0xe]
+100012fa0 adr x0,0x100000000
+100012fa4 nop
+100012fa8 adr x3,0x10003c434
+100012fac nop
+100012fb0 sub x4,x29,#0x80
+100012fb4 mov x1,x25
+100012fb8 mov w2,#0x0
+100012fbc mov w5,#0x16
+100012fc0 bl 0x10002e6d0
+100012fc4 ldr x0,[x28, #0x7d8]
+100012fc8 bl 0x10002e9e0
+100012fcc mov x1,x0
+100012fd0 mov x0,x23
+100012fd4 bl 0x10002e9f0
+100012fd8 tbz w0,#0x0,0x100013098
+100012fdc bl 0x100028978
+100012fe0 adr x24,0x100044d58
+100012fe4 nop
+100012fe8 mov x0,x24
+100012fec bl 0x100030b20
+100012ff0 cmp x0,#0x15
+100012ff4 b.cc 0x10001301c
+100012ff8 adr x0,0x100044d58
+100012ffc nop
+100013000 mov x2,#0x0
+100013004 mov w3,#0x12
+100013008 bl 0x100032ac0
+10001300c adr x2,0x100044d78
+100013010 nop
+100013014 bl 0x1000329e0
+100013018 mov x24,x0
+10001301c ldr x0,[x27, #0x700]
+100013020 adr x2,0x100046bf8
+100013024 nop
+100013028 bl 0x100032a40
+10001302c mov x26,x0
+100013030 nop
+100013034 nop
+100013038 ldr x25,0x10005a970
+10001303c mov x0,x25
+100013040 mov w1,#0x0
+100013044 bl 0x10002eba0
+100013048 cbz w0,0x100013098
+10001304c mov x0,x24
+100013050 bl 0x10002ed20
+100013054 mov w8,#0x202
+100013058 movk w8,#0x822, LSL #16
+10001305c stur w8,[x29, #-0x80]
+100013060 sub x9,x29,#0x80
+100013064 stur x0,[x9, #0x4]
+100013068 mov w8,#0x842
+10001306c sturh w8,[x29, #-0x74]
+100013070 stur x26,[x9, #0xe]
+100013074 adr x0,0x100000000
+100013078 nop
+10001307c adr x3,0x10003c434
+100013080 nop
+100013084 sub x4,x29,#0x80
+100013088 mov x1,x25
+10001308c mov w2,#0x0
+100013090 mov w5,#0x16
+100013094 bl 0x10002e6d0
+100013098 bl 0x100028978
+10001309c adr x24,0x100044d58
+1000130a0 nop
+1000130a4 mov x0,x24
+1000130a8 bl 0x100030b20
+1000130ac cmp x0,#0x15
+1000130b0 b.cc 0x1000130d8
+1000130b4 adr x0,0x100044d58
+1000130b8 nop
+1000130bc mov x2,#0x0
+1000130c0 mov w3,#0x12
+1000130c4 bl 0x100032ac0
+1000130c8 adr x2,0x100044d78
+1000130cc nop
+1000130d0 bl 0x1000329e0
+1000130d4 mov x24,x0
+1000130d8 ldr x25,[x27, #0x700]
+1000130dc mov x0,x23
+1000130e0 bl 0x100030fa0
+1000130e4 bl 0x10002fc40
+1000130e8 str x0,[sp]
+1000130ec adr x2,0x100046c18
+1000130f0 nop
+1000130f4 mov x0,x25
+1000130f8 bl 0x100032a40
+1000130fc mov x26,x0
+100013100 nop
+100013104 nop
+100013108 ldr x25,0x10005a970
+10001310c mov x0,x25
+100013110 mov w1,#0x0
+100013114 bl 0x10002eba0
+100013118 cbz w0,0x100013168
+10001311c mov x0,x24
+100013120 bl 0x10002ed20
+100013124 mov w8,#0x202
+100013128 movk w8,#0x822, LSL #16
+10001312c stur w8,[x29, #-0x80]
+100013130 sub x9,x29,#0x80
+100013134 stur x0,[x9, #0x4]
+100013138 mov w8,#0x842
+10001313c sturh w8,[x29, #-0x74]
+100013140 stur x26,[x9, #0xe]
+100013144 adr x0,0x100000000
+100013148 nop
+10001314c adr x3,0x10003c434
+100013150 nop
+100013154 sub x4,x29,#0x80
+100013158 mov x1,x25
+10001315c mov w2,#0x0
+100013160 mov w5,#0x16
+100013164 bl 0x10002e6d0
+100013168 movi v0.2D,#0x0
+10001316c stp q0,q0,[sp, #0x30]
+100013170 stp q0,q0,[sp, #0x10]
+100013174 ldr x22,[x22, #0x78]
+100013178 add x2,sp,#0x10
+10001317c add x3,sp,#0x50
+100013180 mov x0,x22
+100013184 mov w4,#0x10
+100013188 bl 0x10002f640
+10001318c cbz x0,0x1000132c8
+100013190 mov x24,x0
+100013194 ldr x8,[sp, #0x20]
+100013198 ldr x26,[x8]
+10001319c mov x27,#0x0
+1000131a0 ldr x8,[sp, #0x20]
+1000131a4 ldr x8,[x8]
+1000131a8 cmp x8,x26
+1000131ac b.eq 0x1000131b8
+1000131b0 mov x0,x22
+1000131b4 bl 0x10002e9a0
+1000131b8 ldr x8,[sp, #0x18]
+1000131bc ldr x25,[x8, x27, LSL #0x3]
+1000131c0 mov x0,x25
+1000131c4 bl 0x1000315e0
+1000131c8 cmp w0,w19
+1000131cc b.ne 0x1000131e4
+1000131d0 mov x0,x25
+1000131d4 mov x2,x21
+1000131d8 mov x3,x23
+1000131dc mov x4,x20
+1000131e0 bl 0x100031120
+1000131e4 add x27,x27,#0x1
+1000131e8 cmp x24,x27
+1000131ec b.ne 0x1000131a0
+1000131f0 add x2,sp,#0x10
+1000131f4 add x3,sp,#0x50
+1000131f8 mov x0,x22
+1000131fc mov w4,#0x10
+100013200 bl 0x10002f640
+100013204 mov x24,x0
+100013208 cbnz x0,0x10001319c
+10001320c b 0x1000132c8
+100013210 bl 0x100028978
+100013214 adr x19,0x100044d58
+100013218 nop
+10001321c mov x0,x19
+100013220 bl 0x100030b20
+100013224 cmp x0,#0x15
+100013228 b.cc 0x100013250
+10001322c adr x0,0x100044d58
+100013230 nop
+100013234 mov x2,#0x0
+100013238 mov w3,#0x12
+10001323c bl 0x100032ac0
+100013240 adr x2,0x100044d78
+100013244 nop
+100013248 bl 0x1000329e0
+10001324c mov x19,x0
+100013250 ldr x0,[x27, #0x700]
+100013254 adr x2,0x100046c38
+100013258 nop
+10001325c bl 0x100032a40
+100013260 mov x22,x0
+100013264 nop
+100013268 nop
+10001326c ldr x20,0x10005a970
+100013270 mov x0,x20
+100013274 mov w1,#0x0
+100013278 bl 0x10002eba0
+10001327c cbz w0,0x1000132c8
+100013280 mov x0,x19
+100013284 bl 0x10002ed20
+100013288 mov w8,#0x202
+10001328c movk w8,#0x822, LSL #16
+100013290 stur w8,[x29, #-0x80]
+100013294 stur x0,[x26, #0x4]
+100013298 mov w8,#0x842
+10001329c sturh w8,[x29, #-0x74]
+1000132a0 stur x22,[x26, #0xe]
+1000132a4 adr x0,0x100000000
+1000132a8 nop
+1000132ac adr x3,0x10003c434
+1000132b0 nop
+1000132b4 sub x4,x29,#0x80
+1000132b8 mov x1,x20
+1000132bc mov w2,#0x0
+1000132c0 mov w5,#0x16
+1000132c4 bl 0x10002e6d0
+1000132c8 ldur x8,[x29, #-0x68]
+1000132cc nop
+1000132d0 ldr x9,0x100044518
+1000132d4 ldr x9,[x9]
+1000132d8 cmp x9,x8
+1000132dc b.ne 0x100013304
+1000132e0 mov x0,x21
+1000132e4 ldp x29,x30,[sp, #0x150]
+1000132e8 ldp x20,x19,[sp, #0x140]
+1000132ec ldp x22,x21,[sp, #0x130]
+1000132f0 ldp x24,x23,[sp, #0x120]
+1000132f4 ldp x26,x25,[sp, #0x110]
+1000132f8 ldp x28,x27,[sp, #0x100]
+1000132fc add sp,sp,#0x160
+100013300 retab
+100013304 bl 0x10002e690
+
+/* Function Stack Size: 0x20 bytes */
+
+ID PTPVirtualCamera::objectPropValueForHandle_withObjectPropertyCode_responseCode_
+             (ID param_1,SEL param_2,unsigned_int param_3,unsigned_short param_4,
+             unsigned_short *param_5)
+
+{
+  undefined *self;
+  int iVar1;
+  ID IVar2;
+  ID IVar3;
+  undefined8 uVar4;
+  ulong uVar5;
+  ID IVar6;
+  ID IVar7;
+  ID IVar8;
+  ulong uVar9;
+  undefined8 in_x6;
+  undefined8 in_x7;
+  cfstringStruct *pcVar10;
+  ID self_00;
+  long lVar11;
+  ID IVar12;
+  ulong uVar13;
+  undefined8 local_150;
+  long lStack_148;
+  long *local_140;
+  undefined8 uStack_138;
+  undefined8 local_130;
+  undefined8 uStack_128;
+  undefined8 uStack_120;
+  undefined8 uStack_118;
+  undefined1 auStack_110 [128];
+  undefined4 local_90;
+  ID local_8c;
+  undefined2 local_84;
+  ID local_82;
+  long local_78;
+  
+  uVar5 = (ulong)param_4;
+  uVar9 = (ulong)param_3;
+  local_78 = *(long *)PTR____stack_chk_guard_100044518;
+  ___ICOSLogCreate();
+  pcVar10 = &cf___;
+  IVar2 = objc_stub::length(0x100044d58);
+  if (0x14 < IVar2) {
+    IVar2 = objc_stub::substringWithRange_(0x100044d58,0,0x12);
+    pcVar10 = (cfstringStruct *)objc_stub::stringByAppendingString_(IVar2,&cf___);
+  }
+  uVar13 = uVar9;
+  IVar2 = NSString::stringWithFormat_
+                    ((ID)PTR__OBJC_CLASS___NSString_100059700,
+                     &cf____>objectPropValueForHandleForHandle0x_lxwith0x_x);
+  uVar4 = __gICOSLog;
+  iVar1 = _os_log_type_enabled(__gICOSLog,0);
+  if (iVar1 != 0) {
+    local_8c = objc_stub::UTF8String((ID)pcVar10);
+    local_90 = 0x8220202;
+    local_84 = 0x842;
+    local_82 = IVar2;
+    __os_log_impl(0x100000000,uVar4,0,"%{public}20s | %{public}@",&local_90,0x16,in_x6,in_x7,uVar13,
+                  uVar5);
+  }
+  IVar2 = NSMutableData::dataWithLength_((ID)PTR__OBJC_CLASS___NSMutableData_100059730,0);
+  *param_5 = 0x2001;
+  IVar3 = NSNumber::numberWithUnsignedInt_((ID)PTR__OBJC_CLASS___NSNumber_100059740,uVar9);
+  IVar3 = objectForObjectHandle_(param_1,IVar3);
+  uVar4 = _objc_opt_class(PTR_PTPFile_1000597c0);
+  uVar5 = _objc_opt_isKindOfClass(IVar3,uVar4);
+  if ((uVar5 & 1) == 0) {
+    uVar4 = _objc_opt_class(PTR_PTPFolder_1000597d8);
+    uVar5 = _objc_opt_isKindOfClass(IVar3,uVar4);
+    if ((uVar5 & 1) == 0) {
+      ___ICOSLogCreate();
+      pcVar10 = &cf___;
+      IVar3 = objc_stub::length(0x100044d58);
+      if (0x14 < IVar3) {
+        IVar3 = objc_stub::substringWithRange_(0x100044d58,0,0x12);
+        pcVar10 = (cfstringStruct *)objc_stub::stringByAppendingString_(IVar3,&cf___);
+      }
+      IVar3 = NSString::stringWithFormat_((ID)PTR__OBJC_CLASS___NSString_100059700,&cf_UnknownClass)
+      ;
+      uVar4 = __gICOSLog;
+      iVar1 = _os_log_type_enabled(__gICOSLog,0);
+      if (iVar1 != 0) {
+        local_8c = objc_stub::UTF8String((ID)pcVar10);
+        local_90 = 0x8220202;
+        local_84 = 0x842;
+        local_82 = IVar3;
+        __os_log_impl(0x100000000,uVar4,0,"%{public}20s | %{public}@",&local_90,0x16);
+      }
+      goto LAB_1000132c8;
+    }
+  }
+  uVar4 = _objc_opt_class(PTR_PTPFile_1000597c0);
+  uVar5 = _objc_opt_isKindOfClass(IVar3,uVar4);
+  if ((uVar5 & 1) != 0) {
+    ___ICOSLogCreate();
+    pcVar10 = &cf___;
+    IVar6 = objc_stub::length(0x100044d58);
+    if (0x14 < IVar6) {
+      IVar6 = objc_stub::substringWithRange_(0x100044d58,0,0x12);
+      pcVar10 = (cfstringStruct *)objc_stub::stringByAppendingString_(IVar6,&cf___);
+    }
+    IVar6 = NSString::stringWithFormat_((ID)PTR__OBJC_CLASS___NSString_100059700,&cf_FileClass);
+    uVar4 = __gICOSLog;
+    iVar1 = _os_log_type_enabled(__gICOSLog,0);
+    if (iVar1 != 0) {
+      local_8c = objc_stub::UTF8String((ID)pcVar10);
+      local_90 = 0x8220202;
+      local_84 = 0x842;
+      local_82 = IVar6;
+      __os_log_impl(0x100000000,uVar4,0,"%{public}20s | %{public}@",&local_90,0x16);
+    }
+  }
+  uVar4 = _objc_opt_class(PTR_PTPFolder_1000597d8);
+  uVar5 = _objc_opt_isKindOfClass(IVar3,uVar4);
+  if ((uVar5 & 1) != 0) {
+    ___ICOSLogCreate();
+    pcVar10 = &cf___;
+    IVar6 = objc_stub::length(0x100044d58);
+    if (0x14 < IVar6) {
+      IVar6 = objc_stub::substringWithRange_(0x100044d58,0,0x12);
+      pcVar10 = (cfstringStruct *)objc_stub::stringByAppendingString_(IVar6,&cf___);
+    }
+    IVar6 = NSString::stringWithFormat_((ID)PTR__OBJC_CLASS___NSString_100059700,&cf_FolderClass);
+    uVar4 = __gICOSLog;
+    iVar1 = _os_log_type_enabled(__gICOSLog,0);
+    if (iVar1 != 0) {
+      local_8c = objc_stub::UTF8String((ID)pcVar10);
+      local_90 = 0x8220202;
+      local_84 = 0x842;
+      local_82 = IVar6;
+      __os_log_impl(0x100000000,uVar4,0,"%{public}20s | %{public}@",&local_90,0x16);
+    }
+  }
+  ___ICOSLogCreate();
+  pcVar10 = &cf___;
+  IVar6 = objc_stub::length(0x100044d58);
+  if (0x14 < IVar6) {
+    IVar6 = objc_stub::substringWithRange_(0x100044d58,0,0x12);
+    pcVar10 = (cfstringStruct *)objc_stub::stringByAppendingString_(IVar6,&cf___);
+  }
+  self = PTR__OBJC_CLASS___NSString_100059700;
+  IVar6 = objc_stub::objectInfoDataset(IVar3);
+  IVar6 = objc_stub::filename(IVar6);
+  IVar7 = NSString::stringWithFormat_((ID)self,&cf_Inspecting___);
+  uVar4 = __gICOSLog;
+  iVar1 = _os_log_type_enabled(__gICOSLog,0);
+  if (iVar1 != 0) {
+    local_8c = objc_stub::UTF8String((ID)pcVar10);
+    local_90 = 0x8220202;
+    local_84 = 0x842;
+    local_82 = IVar7;
+    __os_log_impl(0x100000000,uVar4,0,"%{public}20s | %{public}@",&local_90,0x16,in_x6,in_x7,IVar6);
+  }
+  uStack_128 = 0;
+  local_130 = 0;
+  uStack_118 = 0;
+  uStack_120 = 0;
+  lStack_148 = 0;
+  local_150 = 0;
+  uStack_138 = 0;
+  local_140 = (long *)0x0;
+  IVar7 = *(ID *)(param_1 + 0x78);
+  IVar6 = objc_stub::countByEnumeratingWithState_objects_count_(IVar7,&local_150,auStack_110,0x10);
+  if (IVar6 != 0) {
+    lVar11 = *local_140;
+    do {
+      IVar12 = 0;
+      do {
+        if (*local_140 != lVar11) {
+          _objc_enumerationMutation(IVar7);
+        }
+        self_00 = *(ID *)(lStack_148 + IVar12 * 8);
+        IVar8 = objc_stub::propertyCode(self_00);
+        if ((uint)IVar8 == (uint)param_4) {
+          objc_stub::objectValue_withObject_andHandle_(self_00,IVar2,IVar3,uVar9);
+        }
+        IVar12 = IVar12 + 1;
+      } while (IVar6 != IVar12);
+      IVar6 = objc_stub::countByEnumeratingWithState_objects_count_
+                        (IVar7,&local_150,auStack_110,0x10);
+    } while (IVar6 != 0);
+  }
+LAB_1000132c8:
+  if (*(long *)PTR____stack_chk_guard_100044518 != local_78) {
+                    /* WARNING: Subroutine does not return */
+    ___stack_chk_fail();
+  }
+  return IVar2;
+}
+
+

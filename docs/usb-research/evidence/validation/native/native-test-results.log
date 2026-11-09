@@ -1,0 +1,71 @@
+cc -std=c11 -O1 -g -Wall -Wextra -Wpedantic -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -Wconversion -Wsign-conversion -c Octopus/Core/oct_backend_directory.c -o build/plain/Core/oct_backend_directory.o
+cc -std=c11 -O1 -g -Wall -Wextra -Wpedantic -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -Wconversion -Wsign-conversion -c Octopus/Core/oct_backend_memory.c -o build/plain/Core/oct_backend_memory.o
+cc -std=c11 -O1 -g -Wall -Wextra -Wpedantic -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -Wconversion -Wsign-conversion -c Octopus/Core/oct_compat.c -o build/plain/Core/oct_compat.o
+cc -std=c11 -O1 -g -Wall -Wextra -Wpedantic -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -Wconversion -Wsign-conversion -c Octopus/Core/oct_device.c -o build/plain/Core/oct_device.o
+cc -std=c11 -O1 -g -Wall -Wextra -Wpedantic -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -Wconversion -Wsign-conversion -c Octopus/Core/oct_diag.c -o build/plain/Core/oct_diag.o
+cc -std=c11 -O1 -g -Wall -Wextra -Wpedantic -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -Wconversion -Wsign-conversion -c Octopus/Core/oct_link.c -o build/plain/Core/oct_link.o
+cc -std=c11 -O1 -g -Wall -Wextra -Wpedantic -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -Wconversion -Wsign-conversion -c Octopus/Core/oct_log.c -o build/plain/Core/oct_log.o
+cc -std=c11 -O1 -g -Wall -Wextra -Wpedantic -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -Wconversion -Wsign-conversion -c Octopus/Core/oct_native.c -o build/plain/Core/oct_native.o
+cc -std=c11 -O1 -g -Wall -Wextra -Wpedantic -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -Wconversion -Wsign-conversion -c Octopus/Core/oct_native_io.c -o build/plain/Core/oct_native_io.o
+cc -std=c11 -O1 -g -Wall -Wextra -Wpedantic -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -Wconversion -Wsign-conversion -c Octopus/Core/oct_service.c -o build/plain/Core/oct_service.o
+cc -std=c11 -O1 -g -Wall -Wextra -Wpedantic -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -Wconversion -Wsign-conversion -c Octopus/Core/oct_sha256.c -o build/plain/Core/oct_sha256.o
+cc -std=c11 -O1 -g -Wall -Wextra -Wpedantic -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -Wconversion -Wsign-conversion -c Octopus/Core/oct_store.c -o build/plain/Core/oct_store.o
+cc -std=c11 -O1 -g -Wall -Wextra -Wpedantic -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -Wconversion -Wsign-conversion -c Octopus/Core/oct_usb.c -o build/plain/Core/oct_usb.o
+cc -std=c11 -O1 -g -Wall -Wextra -Wpedantic -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -Wconversion -Wsign-conversion -c Octopus/Core/oct_zip.c -o build/plain/Core/oct_zip.o
+cc -std=c11 -O1 -g -Wall -Wextra -Wpedantic -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -Wconversion -Wsign-conversion -c Octopus/Protocol/oct_ptp.c -o build/plain/Protocol/oct_ptp.o
+cc -std=c11 -O1 -g -Wall -Wextra -Wpedantic -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -Wconversion -Wsign-conversion -c Octopus/Protocol/oct_responder.c -o build/plain/Protocol/oct_responder.o
+cc -std=c11 -O1 -g -Wall -Wextra -Wpedantic -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror build/plain/Core/oct_backend_directory.o build/plain/Core/oct_backend_memory.o build/plain/Core/oct_compat.o build/plain/Core/oct_device.o build/plain/Core/oct_diag.o build/plain/Core/oct_link.o build/plain/Core/oct_log.o build/plain/Core/oct_native.o build/plain/Core/oct_native_io.o build/plain/Core/oct_service.o build/plain/Core/oct_sha256.o build/plain/Core/oct_store.o build/plain/Core/oct_usb.o build/plain/Core/oct_zip.o build/plain/Protocol/oct_ptp.o build/plain/Protocol/oct_responder.o Octopus/Tests/CoreTests/test_diag.c Octopus/Tests/CoreTests/test_link.c Octopus/Tests/CoreTests/test_log.c Octopus/Tests/CoreTests/test_main.c Octopus/Tests/CoreTests/test_native.c Octopus/Tests/CoreTests/test_native_io.c Octopus/Tests/CoreTests/test_protocol.c Octopus/Tests/CoreTests/test_responder.c Octopus/Tests/CoreTests/test_service.c Octopus/Tests/CoreTests/test_store.c Octopus/Tests/CoreTests/test_usb.c -lpthread -o build/core-tests
+TZ=UTC0 ./build/core-tests Octopus/Tests/CoreTests/fixtures
+log
+store
+protocol
+responder
+service
+link
+USB boundary
+Native observation journal
+Native lease IPC
+diagnostics
+95475 checks, 0 failures
+CC="cc" HELPER_CFLAGS="-std=c11 -O1 -g -Wall -Wextra -Wpedantic -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -Wconversion -Wsign-conversion" python3 Octopus/Tests/HelperTests/test_helper.py
+test_files_outside_the_download_folders_are_refused (__main__.HelperTests.test_files_outside_the_download_folders_are_refused) ... ok
+test_installer_that_cannot_start_or_fails (__main__.HelperTests.test_installer_that_cannot_start_or_fails) ... ok
+test_installs_with_trollstore_and_removes_the_download (__main__.HelperTests.test_installs_with_trollstore_and_removes_the_download) ... ok
+test_links_are_refused (__main__.HelperTests.test_links_are_refused) ... ok
+test_the_fallback_download_folder_and_ipa_are_accepted (__main__.HelperTests.test_the_fallback_download_folder_and_ipa_are_accepted) ... ok
+test_usage_errors (__main__.HelperTests.test_usage_errors) ... ok
+test_version (__main__.HelperTests.test_version) ... ok
+test_without_trollstore (__main__.HelperTests.test_without_trollstore) ... ok
+test_a_program_killed_by_a_signal (__main__.SpawnTests.test_a_program_killed_by_a_signal) ... ok
+test_a_program_that_cannot_start (__main__.SpawnTests.test_a_program_that_cannot_start) ... ok
+test_collects_stdout_and_stderr_and_the_exit_code (__main__.SpawnTests.test_collects_stdout_and_stderr_and_the_exit_code) ... ok
+test_output_is_capped (__main__.SpawnTests.test_output_is_capped) ... ok
+test_root_needs_persona_spawn (__main__.SpawnTests.test_root_needs_persona_spawn) ... skipped 'Linux has no persona spawn; macOS has one, for root only'
+test_the_child_gets_a_minimal_environment (__main__.SpawnTests.test_the_child_gets_a_minimal_environment) ... ok
+test_every_refusal_is_reported_when_no_folder_works (__main__.ZipTests.test_every_refusal_is_reported_when_no_folder_works) ... ok
+test_python_reads_every_entry (__main__.ZipTests.test_python_reads_every_entry) ... ok
+test_the_archive_falls_back_when_the_preferred_folder_fails (__main__.ZipTests.test_the_archive_falls_back_when_the_preferred_folder_fails)
+The iPhone's case: the app's temporary folder can't be created; the Octopus cache folder works. ... ok
+
+----------------------------------------------------------------------
+Ran 17 tests in 11.746s
+
+OK (skipped=1)
+python3 Octopus/Tests/RepoTests/test_repository.py
+test_the_version_being_built_has_an_entry (__main__.ChangelogTests.test_the_version_being_built_has_an_entry) ... ok
+test_anchors_resolve (__main__.ReadmeTests.test_anchors_resolve) ... ok
+test_badges_and_links_name_this_repository (__main__.ReadmeTests.test_badges_and_links_name_this_repository) ... ok
+test_links_resolve (__main__.ReadmeTests.test_links_resolve) ... ok
+test_repository_layout_exists (__main__.ReadmeTests.test_repository_layout_exists) ... ok
+test_background_task_is_permitted (__main__.UpdatePathTests.test_background_task_is_permitted) ... ok
+test_download_folders_match_the_helper (__main__.UpdatePathTests.test_download_folders_match_the_helper) ... ok
+test_entitlements_allow_starting_the_helper_as_root (__main__.UpdatePathTests.test_entitlements_allow_starting_the_helper_as_root) ... ok
+test_the_helper_is_where_the_updater_starts_it (__main__.UpdatePathTests.test_the_helper_is_where_the_updater_starts_it) ... ok
+test_the_updater_asks_this_repository (__main__.UpdatePathTests.test_the_updater_asks_this_repository) ... ok
+test_absent_properties_are_checked_before_use (__main__.WindowsScriptTests.test_absent_properties_are_checked_before_use) ... ok
+test_only_the_iphone_on_usb_is_selected (__main__.WindowsScriptTests.test_only_the_iphone_on_usb_is_selected) ... ok
+
+----------------------------------------------------------------------
+Ran 12 tests in 0.074s
+
+OK

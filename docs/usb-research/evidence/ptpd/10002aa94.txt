@@ -1,0 +1,111 @@
+===== 10002aa94 PTPDataPacket::copyToBuffer:numBytes: =====
+XREF 10005db99 DATA null
+XREF 1000352f4 DATA null
+XREF 10002ae28 CALL_OVERRIDE_UNCONDITIONAL PTPDataPacket::copyDataToWrappedBytes:forTransport:fromOffset:
+XREF 10002acac CALL_OVERRIDE_UNCONDITIONAL PTPDataPacket::copyToWrappedBytes:forTransport:
+XREF 10002ad18 CALL_OVERRIDE_UNCONDITIONAL PTPDataPacket::copyToWrappedBytes:forTransport:
+XREF 10002ad78 CALL_OVERRIDE_UNCONDITIONAL PTPDataPacket::copyToWrappedBytes:forTransport:
+10002aa94 pacibsp
+10002aa98 stp x22,x21,[sp, #-0x30]!
+10002aa9c stp x20,x19,[sp, #0x10]
+10002aaa0 stp x29,x30,[sp, #0x20]
+10002aaa4 add x29,sp,#0x20
+10002aaa8 cmp x3,#0x1
+10002aaac b.lt 0x10002ab5c
+10002aab0 mov x19,x0
+10002aab4 ldp x9,x8,[x0, #0x40]
+10002aab8 ldr x4,[x0, #0x38]
+10002aabc add x8,x8,x9
+10002aac0 sub x8,x8,x4
+10002aac4 cmp x8,x3
+10002aac8 csel x20,x8,x3,lt
+10002aacc cbz x20,0x10002ab60
+10002aad0 mov x21,x2
+10002aad4 ldr x0,[x19, #0x10]
+10002aad8 cbz x0,0x10002aaf8
+10002aadc bl 0x10002f220
+10002aae0 ldr x8,[x19, #0x38]
+10002aae4 add x1,x0,x8
+10002aae8 mov x0,x21
+10002aaec mov x2,x20
+10002aaf0 bl 0x10002e8d0
+10002aaf4 b 0x10002ab40
+10002aaf8 ldr w0,[x19, #0x20]
+10002aafc ldr x8,[x19, #0x28]
+10002ab00 cmp w0,#0x0
+10002ab04 b.le 0x10002ab20
+10002ab08 cbnz x8,0x10002ab24
+10002ab0c mov x1,x21
+10002ab10 mov x2,x20
+10002ab14 mov x3,x4
+10002ab18 bl 0x10002ebe0
+10002ab1c b 0x10002ab34
+10002ab20 cbz x8,0x10002ab5c
+10002ab24 mov x0,x8
+10002ab28 mov x2,x21
+10002ab2c mov x3,x20
+10002ab30 bl 0x100031720
+10002ab34 mov x20,x0
+10002ab38 cmn x0,#0x1
+10002ab3c b.eq 0x10002ab50
+10002ab40 ldr x8,[x19, #0x38]
+10002ab44 add x8,x8,x20
+10002ab48 str x8,[x19, #0x38]
+10002ab4c b 0x10002ab60
+10002ab50 adr x0,0x10003717a
+10002ab54 nop
+10002ab58 bl 0x10001fa04
+10002ab5c mov x20,#0x0
+10002ab60 mov x0,x20
+10002ab64 ldp x29,x30,[sp, #0x20]
+10002ab68 ldp x20,x19,[sp, #0x10]
+10002ab6c ldp x22,x21,[sp], #0x30
+10002ab70 retab
+
+/* Function Stack Size: 0x20 bytes */
+
+long_long PTPDataPacket::copyToBuffer_numBytes_
+                    (ID param_1,SEL param_2,void *param_3,long_long param_4)
+
+{
+  ID IVar1;
+  size_t sVar2;
+  
+  if ((long)param_4 < 1) {
+LAB_10002ab5c:
+    sVar2 = 0;
+  }
+  else {
+    sVar2 = (*(long *)(param_1 + 0x48) + *(long *)(param_1 + 0x40)) - *(long *)(param_1 + 0x38);
+    if ((long)param_4 <= (long)sVar2) {
+      sVar2 = param_4;
+    }
+    if (sVar2 == 0) {
+      return 0;
+    }
+    if (*(ID *)(param_1 + 0x10) == 0) {
+      IVar1 = *(ID *)(param_1 + 0x28);
+      if (*(int *)(param_1 + 0x20) < 1) {
+        if (IVar1 == 0) goto LAB_10002ab5c;
+LAB_10002ab24:
+        sVar2 = objc_stub::read_length_offset_(IVar1,param_3,sVar2);
+      }
+      else {
+        if (IVar1 != 0) goto LAB_10002ab24;
+        sVar2 = _pread(*(int *)(param_1 + 0x20),param_3,sVar2,*(long *)(param_1 + 0x38));
+      }
+      if (sVar2 == 0xffffffffffffffff) {
+        FUN_10001fa04("[PTPDataPacket copyToBuffer:numBytes:]");
+        goto LAB_10002ab5c;
+      }
+    }
+    else {
+      IVar1 = objc_stub::bytes(*(ID *)(param_1 + 0x10));
+      _memcpy(param_3,(void *)(IVar1 + *(long *)(param_1 + 0x38)),sVar2);
+    }
+    *(size_t *)(param_1 + 0x38) = *(long *)(param_1 + 0x38) + sVar2;
+  }
+  return sVar2;
+}
+
+

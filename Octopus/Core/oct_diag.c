@@ -5,7 +5,6 @@
 #define _POSIX_C_SOURCE 200809L
 #endif
 #include "oct_diag.h"
-#include "oct_bridge.h"
 #include "oct_compat.h"
 #include "oct_link.h"
 #include "oct_sha256.h"
@@ -258,45 +257,6 @@ static void adapter_lifecycle(oct_diag *d, oct_diag_result *out) { (void)d; run_
 
 static void adapter_usb_boundary(oct_diag *d, oct_diag_result *out) { (void)d; run_compat(out, oct_compat_usb_boundary); }
 
-static oct_status bridge_self_test(oct_compat_report *report) { return oct_bridge_self_test(NULL, report); }
-static void adapter_bridge(oct_diag *d, oct_diag_result *out) { (void)d; run_compat(out, bridge_self_test); }
-
-/* ---- Bridge application socket (native observation: connects to the running app socket) --- */
-
-static void bridge_app_socket(oct_diag *diag, oct_diag_result *out)
-{
-    (void)diag;
-    const char *path = OCT_BRIDGE_DEFAULT_SOCKET;
-    oct_bridge_client *client = NULL;
-    oct_status status = oct_bridge_client_connect(path, 500, &client);
-    if (status == OCT_E_STATE) {
-        report(out, OCT_DIAG_BLOCKED,
-               "Nothing is listening at %s. Enable USB Access in Octopus to start the bridge "
-               "socket server, then run diagnostics again.", path);
-        return;
-    }
-    if (status != OCT_OK) {
-        report(out, OCT_DIAG_BLOCKED,
-               "Cannot connect to %s: %s. Try again after enabling USB Access.", path, oct_status_name(status));
-        return;
-    }
-    out->checks++;
-    char info[104] = "";
-    oct_status ping = oct_bridge_client_ping(client, info, sizeof info, 1000);
-    out->checks++;
-    oct_bridge_client_destroy(client);
-    if (ping == OCT_OK) {
-        report(out, OCT_DIAG_PASS,
-               "The Octopus bridge socket is listening at %s and answered PING. "
-               "A native integration client can now connect here to route PTP traffic from Windows.",
-               info[0] ? info : path);
-    } else {
-        report(out, OCT_DIAG_FAIL,
-               "Connected to %s but PING timed out (%s). "
-               "The bridge may be starting up; try again in a moment.", path, oct_status_name(ping));
-    }
-}
-
 /* ---- The list -------------------------------------------------------------------------- */
 
 static void add(oct_diag *diag, const char *id, const char *group, const char *title, oct_diag_kind kind, int phase,
@@ -332,10 +292,6 @@ oct_status oct_diag_create(oct_diag **out)
         adapter_lifecycle);
     add(diag, "adapter.usb_boundary", "Transport adapter (simulated)", "USB interface and setup validation",
         OCT_DIAG_SIMULATED, -1, adapter_usb_boundary);
-    add(diag, "adapter.bridge", "Transport adapter (simulated)", "Bridge socket transport", OCT_DIAG_SIMULATED, -1,
-        adapter_bridge);
-    add(diag, "bridge.app_socket", "Bridge (native observation)",
-        "App bridge socket listener", OCT_DIAG_LOCAL, -1, bridge_app_socket);
     *out = diag;
     return OCT_OK;
 }

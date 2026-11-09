@@ -6,6 +6,31 @@
 #include <stdlib.h>
 #include <string.h>
 
+const char *oct_status_name(oct_status status)
+{
+    switch (status) {
+    case OCT_OK: return "ok";
+    case OCT_E_INVALID_ARGUMENT: return "invalid argument";
+    case OCT_E_NO_MEMORY: return "out of memory";
+    case OCT_E_INVALID_HANDLE: return "invalid object handle";
+    case OCT_E_INVALID_PARENT: return "invalid parent";
+    case OCT_E_NOT_DIRECTORY: return "not a directory";
+    case OCT_E_IS_DIRECTORY: return "is a directory";
+    case OCT_E_INVALID_NAME: return "invalid name";
+    case OCT_E_EXISTS: return "name already exists";
+    case OCT_E_WRITE_PROTECTED: return "write protected";
+    case OCT_E_PARTIAL_DELETION: return "partial deletion";
+    case OCT_E_OUT_OF_RANGE: return "out of range";
+    case OCT_E_TOO_LARGE: return "too large";
+    case OCT_E_NO_SPACE: return "no space";
+    case OCT_E_IO: return "I/O error";
+    case OCT_E_UNSUPPORTED: return "unsupported";
+    case OCT_E_STATE: return "invalid state";
+    case OCT_E_MALFORMED: return "malformed input";
+    }
+    return "unknown";
+}
+
 void oct_handle_list_free(oct_handle_list *list)
 {
     if (!list) return;
@@ -160,6 +185,7 @@ struct oct_store {
     object      root;
     char        description[OCT_LABEL_MAX + 1];
     char        volume_label[OCT_LABEL_MAX + 1];
+    uint32_t    max_objects;    /* see oct_store_options.max_objects */
 };
 
 static object *lookup(const oct_store *store, uint32_t handle)
@@ -188,6 +214,10 @@ static oct_status add_object(oct_store *store, object *parent, uint64_t node,
                              const char *name, const oct_node_stat *stat, object **out)
 {
     if (store->first_handle + store->table_length >= UINT32_MAX) return OCT_E_NO_SPACE;
+    /* The ceiling on objects tracked at once. A long browse of a real filesystem interns a node
+     * for every directory the host visits and never forgets one, so without this the table grows
+     * for as long as the session lasts. */
+    if (store->live >= store->max_objects) return OCT_E_TOO_LARGE;
     if (store->table_length == store->table_capacity) {
         if (store->table_capacity > UINT32_MAX / 2u) return OCT_E_NO_MEMORY;
         uint32_t capacity = store->table_capacity ? store->table_capacity * 2u : 32u;
@@ -321,6 +351,8 @@ oct_status oct_store_open(const oct_store_options *options, oct_backend backend,
     store->backend = backend;
     store->storage_id = options && options->storage_id ? options->storage_id : OCT_DEFAULT_STORAGE_ID;
     store->first_handle = first;
+    store->max_objects = options && options->max_objects ? options->max_objects
+                                                         : OCT_STORE_DEFAULT_MAX_OBJECTS;
     store->root.handle = OCT_ROOT;
     store->root.parent = OCT_ROOT;
     store->root.node = 0;
@@ -377,6 +409,8 @@ oct_status oct_store_storage_info(oct_store *store, oct_storage_info *out)
     return OCT_OK;
 }
 
+uint32_t oct_store_max_objects(const oct_store *store) { return store ? store->max_objects : 0; }
+
 oct_status oct_store_index_all(oct_store *store)
 {
     oct_handle_list list = { 0 };
@@ -429,7 +463,10 @@ oct_status oct_store_list(oct_store *store, uint32_t parent, bool recursive, oct
     for (uint32_t i = 0; status == OCT_OK && i < dir->child_count; i++) {
         status = handle_list_push(out, dir->children[i]);
     }
-    /* Breadth-first expansion; the list itself is the queue. */
+    if (status == OCT_OK && out->count > store->max_objects) status = OCT_E_TOO_LARGE;
+    /* Breadth-first expansion; the list itself is the queue. The budget is checked on every
+     * directory, so a tree that is too large to enumerate fails promptly and bounded rather
+     * than growing the list until the allocator refuses. */
     for (uint32_t i = 0; recursive && status == OCT_OK && i < out->count; i++) {
         object *o = lookup(store, out->handles[i]);
         if (!o || !o->is_directory) continue;
@@ -437,6 +474,7 @@ oct_status oct_store_list(oct_store *store, uint32_t parent, bool recursive, oct
         for (uint32_t k = 0; status == OCT_OK && k < o->child_count; k++) {
             status = handle_list_push(out, o->children[k]);
         }
+        if (status == OCT_OK && out->count > store->max_objects) status = OCT_E_TOO_LARGE;
     }
     if (status != OCT_OK) out->count = 0;
     return status;

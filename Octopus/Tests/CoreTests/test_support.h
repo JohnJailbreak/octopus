@@ -64,7 +64,8 @@ void run_service_tests(void);
 void run_log_tests(void);
 void run_link_tests(void);
 void run_usb_tests(void);
-void run_bridge_tests(void);
+void run_native_tests(void);
+void run_native_io_tests(void);
 void run_diag_tests(void);
 
 oct_store *open_synthetic(bool scratch);

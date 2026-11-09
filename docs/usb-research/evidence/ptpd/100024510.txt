@@ -1,0 +1,50 @@
+===== 100024510 PTPResponder::transportActivated =====
+XREF 10005dac3 DATA null
+XREF 100034b7c DATA null
+100024510 pacibsp
+100024514 stp x20,x19,[sp, #-0x20]!
+100024518 stp x29,x30,[sp, #0x10]
+10002451c add x29,sp,#0x10
+100024520 mov x19,x0
+100024524 nop
+100024528 ldr x0,0x100059830
+10002452c bl 0x10002e920
+100024530 ldp x2,x3,[x19, #0x50]
+100024534 bl 0x1000305e0
+100024538 str x0,[x19, #0x10]
+10002453c str wzr,[x19, #0x8c]
+100024540 strb wzr,[x19, #0x88]
+100024544 mov x2,x19
+100024548 ldp x29,x30,[sp, #0x10]
+10002454c ldp x20,x19,[sp], #0x20
+100024550 autibsp
+100024554 eor x16,x30,x30, LSL #0x1
+100024558 tbz x16,#0x3e,0x100024560
+10002455c brk #0xc471
+100024560 b 0x100031d60
+
+/* Function Stack Size: 0x10 bytes */
+
+void PTPResponder::transportActivated(ID param_1,SEL param_2)
+
+{
+  code *pcVar1;
+  ID IVar2;
+  ulong unaff_x30;
+  
+  IVar2 = _objc_alloc(PTR_PTPVirtualCamera_100059830);
+  IVar2 = PTPVirtualCamera::initWithName_andPath_
+                    (IVar2,*(ID *)(param_1 + 0x50),*(ID *)(param_1 + 0x58));
+  *(ID *)(param_1 + 0x10) = IVar2;
+  *(undefined4 *)(param_1 + 0x8c) = 0;
+  *(undefined1 *)(param_1 + 0x88) = 0;
+  if (((unaff_x30 ^ unaff_x30 << 1) >> 0x3e & 1) != 0) {
+                    /* WARNING: Does not return */
+    pcVar1 = (code *)SoftwareBreakpoint(0xc471,0x100024560);
+    (*pcVar1)();
+  }
+  PTPVirtualCamera::setDelegate_(IVar2,param_1);
+  return;
+}
+
+

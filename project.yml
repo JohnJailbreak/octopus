@@ -9,7 +9,7 @@ settings:
   base:
     # The release series. CI publishes MARKETING_VERSION plus the run number (0.2.42), the version the app's updater
     # compares; docs/CHANGELOG.md needs an entry for it (Octopus/Tests/RepoTests).
-    MARKETING_VERSION: "0.5"
+    MARKETING_VERSION: "0.4"
     CURRENT_PROJECT_VERSION: "1"
     SWIFT_VERSION: "5.0"
     IPHONEOS_DEPLOYMENT_TARGET: "17.0"

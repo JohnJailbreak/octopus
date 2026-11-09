@@ -1,0 +1,146 @@
+/* Deterministic provider boundary test. These stand-in Objective-C methods
+ * exercise the real overlay/core implementation, not USB or Apple behavior. */
+#import <Foundation/Foundation.h>
+#import <objc/runtime.h>
+#import <CommonCrypto/CommonDigest.h>
+#import "../OctopusProvider.h"
+#import "../../Protocol/oct_ptp.h"
+#include <assert.h>
+#include <stdio.h>
+#include <string.h>
+
+static bool authorized;
+static uint64_t authorizationEpoch=1;
+static unsigned events;
+bool OCTNativeProviderEnabled(void) { return authorized; }
+uint64_t OCTNativeAuthorizationEpoch(void) { return authorizationEpoch; }
+void OCTNativeProviderEvent(const char *event,uint32_t handle,int32_t result) {
+    (void)event;(void)handle;(void)result;events++;
+}
+
+@interface PTPVirtualCamera : NSObject
+@property BOOL storageCollision;
+@property BOOL handleCollision;
+@property NSUInteger ordinaryCalls;
+@property BOOL validWildcard;
+- (id)allStorageIDs;
+- (id)objectForObjectHandle:(id)handle;
+- (id)storageInfoDatasetForStorageID:(uint32_t)storageID;
+- (id)objectInfoDatasetForObjectHandle:(uint32_t)handle;
+- (id)objectHandlesInStorage:(uint32_t)s forObjectFormatCode:(uint16_t)f inAssociation:(uint32_t)a responseCode:(uint16_t *)r;
+- (id)dataSourceForObjectHandle:(uint32_t)h responseCode:(uint16_t *)r size:(uint32_t *)s;
+- (id)objectPropValueForHandle:(uint32_t)h withObjectPropertyCode:(uint16_t)p responseCode:(uint16_t *)r;
+- (id)objectPropListForHandle:(uint32_t)h withObjectFormatCode:(uint32_t)f andPropertyCode:(uint32_t)p andPropertyGroup:(uint32_t)g andDepth:(uint32_t)d responseCode:(uint16_t *)r;
+- (id)objectPropertiesSupportedForObjectFormatCode:(uint16_t)f responseCode:(uint16_t *)r;
+@end
+@implementation PTPVirtualCamera
+- (id)allStorageIDs { return self.storageCollision ? @[@0x10001,@(OCT_NATIVE_STORAGE_ID)] : @[@0x10001]; }
+- (id)objectForObjectHandle:(id)handle {
+    if([handle unsignedIntValue]==42)return @"photo";
+    return self.handleCollision && [handle unsignedIntValue]==OCT_NATIVE_FIRST_HANDLE ? @"collision" : nil;
+}
+- (id)storageInfoDatasetForStorageID:(uint32_t)s { self.ordinaryCalls++;return s==0x10001?@"photo-storage":nil; }
+- (id)objectInfoDatasetForObjectHandle:(uint32_t)h { self.ordinaryCalls++;return h==42?@"photo-info":nil; }
+- (id)objectHandlesInStorage:(uint32_t)s forObjectFormatCode:(uint16_t)f inAssociation:(uint32_t)a responseCode:(uint16_t *)r {
+    (void)f;(void)a;self.ordinaryCalls++;*r=(s==0x10001||s==UINT32_MAX)?OCT_RC_OK:OCT_RC_INVALID_STORAGE_ID;
+    return *r==OCT_RC_OK?@[@42]:nil;
+}
+- (id)dataSourceForObjectHandle:(uint32_t)h responseCode:(uint16_t *)r size:(uint32_t *)s {
+    self.ordinaryCalls++;*r=h==42?OCT_RC_OK:OCT_RC_INVALID_OBJECT_HANDLE;*s=h==42?5:0;return h==42?@"photo":nil;
+}
+- (id)objectPropValueForHandle:(uint32_t)h withObjectPropertyCode:(uint16_t)p responseCode:(uint16_t *)r {
+    (void)p;self.ordinaryCalls++;*r=h==42?OCT_RC_OK:OCT_RC_INVALID_OBJECT_HANDLE;return h==42?[@"photo" dataUsingEncoding:NSUTF8StringEncoding]:nil;
+}
+- (id)objectPropListForHandle:(uint32_t)h withObjectFormatCode:(uint32_t)f andPropertyCode:(uint32_t)p andPropertyGroup:(uint32_t)g andDepth:(uint32_t)d responseCode:(uint16_t *)r {
+    (void)h;(void)f;(void)p;(void)g;(void)d;self.ordinaryCalls++;*r=OCT_RC_OK;
+    if(!self.validWildcard)return nil;
+    /* One native property: photo handle 42, UINT16 ObjectFormat, JPEG. */
+    const uint8_t bytes[]={1,0,0,0,42,0,0,0,2,0xdc,4,0,1,0x38};
+    return [NSData dataWithBytes:bytes length:sizeof(bytes)];
+}
+- (id)objectPropertiesSupportedForObjectFormatCode:(uint16_t)f responseCode:(uint16_t *)r {
+    (void)f;self.ordinaryCalls++;*r=OCT_RC_OK;return @[@0xdc02];
+}
+@end
+
+@interface InheritedCamera : PTPVirtualCamera @end
+@implementation InheritedCamera @end
+
+@interface NSObject (ProviderResultTest)
+- (NSData *)content;
+- (NSString *)filename;
+- (uint64_t)length;
+- (int64_t)read:(void *)buffer length:(uint64_t)length offset:(int64_t)offset;
+@end
+
+static uint32_t findNamed(PTPVirtualCamera *camera,NSArray *handles,NSString *name) {
+    for(NSNumber *h in handles)if([[[camera objectInfoDatasetForObjectHandle:h.unsignedIntValue] filename] isEqualToString:name])return h.unsignedIntValue;
+    return 0;
+}
+
+int main(void) { @autoreleasepool {
+    NSString *reason=nil;
+    assert(!OCTRuntimeCheck("MissingCamera","allStorageIDs","@16@0:8",&reason));
+    assert(!OCTRuntimeCheck("InheritedCamera","allStorageIDs","@16@0:8",&reason));
+    assert(!OCTRuntimeCheck("PTPVirtualCamera","allStorageIDs","v16@0:8",&reason));
+    assert(OCTProviderValidate(&reason));
+    assert(OCTProviderInstall(&reason));assert(OCTProviderInstall(&reason));
+    PTPVirtualCamera *camera=[PTPVirtualCamera new];
+    assert([[camera allStorageIDs] isEqual:@[@0x10001]]);
+    authorized=true;
+    assert(([[camera allStorageIDs] isEqual:@[@0x10001,@(OCT_NATIVE_STORAGE_ID)]]));
+    assert([[camera storageInfoDatasetForStorageID:0x10001] isEqual:@"photo-storage"]);
+    assert([[camera objectInfoDatasetForObjectHandle:42] isEqual:@"photo-info"]);
+    NSData *storage=[[camera storageInfoDatasetForStorageID:OCT_NATIVE_STORAGE_ID] content];assert(storage.length>20);
+    oct_reader sr;oct_reader_init(&sr,storage.bytes,storage.length);(void)oct_read_u16(&sr);(void)oct_read_u16(&sr);assert(oct_read_u16(&sr)==1);
+    uint16_t code=0;uint32_t size=0;
+    NSArray *all=[camera objectHandlesInStorage:OCT_NATIVE_STORAGE_ID forObjectFormatCode:0 inAssociation:0 responseCode:&code];
+    assert(code==OCT_RC_OK&&all.count==6);
+    NSArray *combined=[camera objectHandlesInStorage:UINT32_MAX forObjectFormatCode:0 inAssociation:0 responseCode:&code];
+    assert(code==OCT_RC_OK&&combined.count==7&&[combined containsObject:@42]);
+    NSArray *root=[camera objectHandlesInStorage:OCT_NATIVE_STORAGE_ID forObjectFormatCode:0 inAssociation:UINT32_MAX responseCode:&code];
+    assert(code==OCT_RC_OK&&root.count==3);
+    uint32_t docs=findNamed(camera,root,@"Documents");assert(docs);
+    NSArray *children=[camera objectHandlesInStorage:UINT32_MAX forObjectFormatCode:0 inAssociation:docs responseCode:&code];
+    assert(code==OCT_RC_OK&&children.count==2&&![children containsObject:@42]);
+    uint32_t example=findNamed(camera,children,@"example.txt");assert(example);
+    id source=[camera dataSourceForObjectHandle:example responseCode:&code size:&size];
+    assert(code==OCT_RC_OK&&size==76&&[source length]==76);
+    uint8_t bytes[76],partial[19];
+    assert([source read:bytes length:76 offset:0]==76);
+    assert([source read:partial length:sizeof(partial) offset:13]==(int64_t)sizeof(partial));assert(!memcmp(bytes+13,partial,sizeof(partial)));
+    uint8_t hash[CC_SHA256_DIGEST_LENGTH];CC_SHA256(bytes,sizeof(bytes),hash);
+    NSMutableString *hex=[NSMutableString string];for(size_t i=0;i<sizeof(hash);i++)[hex appendFormat:@"%02x",hash[i]];
+    assert([hex isEqualToString:@"aeeb6cba90d7d6adfcd42d673f64897f26cfcc479c5cf489a86146e09a9d2bd2"]);
+    assert([source read:partial length:19 offset:76]==0);assert([source read:partial length:19 offset:77]==-1);
+    assert([source read:partial length:19 offset:-1]==-1);assert([source read:NULL length:1 offset:0]==-1);
+    /* Compare to the independently exercised portable provider and responder. */
+    oct_backend backend;oct_store *store=NULL;oct_synthetic_options options={0};
+    assert(oct_synthetic_backend_create(&options,&backend)==OCT_OK);assert(oct_store_open(NULL,backend,&store)==OCT_OK);
+    uint32_t folder,file;assert(oct_store_find(store,0,"Documents",&folder)==OCT_OK);assert(oct_store_find(store,folder,"example.txt",&file)==OCT_OK);
+    uint8_t expected[76];size_t count=0;assert(oct_store_read(store,file,0,expected,sizeof(expected),&count)==OCT_OK);assert(count==76&&!memcmp(expected,bytes,76));oct_store_close(store);
+    NSData *protection=[camera objectPropValueForHandle:example withObjectPropertyCode:OCT_PROP_PROTECTION_STATUS responseCode:&code];
+    assert(code==OCT_RC_OK&&protection.length==2&&((const uint8_t *)protection.bytes)[0]==1);
+    assert([camera objectPropValueForHandle:example withObjectPropertyCode:0xdead responseCode:&code]==nil&&code==OCT_RC_INVALID_OBJECT_PROP_CODE);
+    NSData *props=[camera objectPropListForHandle:example withObjectFormatCode:0 andPropertyCode:UINT32_MAX andPropertyGroup:0 andDepth:0 responseCode:&code];
+    assert(code==OCT_RC_OK&&props.length>4);
+    assert([camera objectPropListForHandle:UINT32_MAX withObjectFormatCode:0 andPropertyCode:UINT32_MAX andPropertyGroup:0 andDepth:0 responseCode:&code]==nil);
+    camera.validWildcard=YES;
+    NSData *merged=[camera objectPropListForHandle:UINT32_MAX withObjectFormatCode:0 andPropertyCode:UINT32_MAX andPropertyGroup:0 andDepth:0 responseCode:&code];
+    oct_reader mr;oct_reader_init(&mr,merged.bytes,merged.length);assert(oct_read_u32(&mr)>1);assert(oct_read_u32(&mr)==42);
+    camera.handleCollision=YES;assert([[camera allStorageIDs] isEqual:@[@0x10001]]);
+    assert([camera objectInfoDatasetForObjectHandle:example]==nil);
+    camera.handleCollision=NO;camera.storageCollision=YES;
+    assert([[camera allStorageIDs] count]==2); /* no duplicate synthetic ID */
+    assert([camera storageInfoDatasetForStorageID:OCT_NATIVE_STORAGE_ID]==nil);
+    camera.storageCollision=NO;
+    authorized=false;authorizationEpoch++;
+    assert([[camera allStorageIDs] isEqual:@[@0x10001]]);
+    assert([camera dataSourceForObjectHandle:example responseCode:&code size:&size]==nil);
+    assert([source read:bytes length:1 offset:0]==-1); /* queued data source revocation */
+    authorized=true;
+    assert([source read:bytes length:1 offset:0]==-1); /* old lease cannot resume */
+    assert([[camera objectInfoDatasetForObjectHandle:42] isEqual:@"photo-info"]);
+    assert(camera.ordinaryCalls>0&&events>0);
+    puts("PASS native provider: hierarchy, merged Photos enumeration, data/partial reads, properties, collisions, revocation (LOCAL boundary test)");
+} return 0; }

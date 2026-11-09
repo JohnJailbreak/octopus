@@ -1,0 +1,151 @@
+===== 100005910 PTPDeviceUSBTransport::setConnected: =====
+XREF 10005d726 DATA null
+XREF 10003308c DATA null
+XREF 100005850 CALL_OVERRIDE_UNCONDITIONAL PTPDeviceUSBTransport::stop
+XREF 10000902c CALL_OVERRIDE_UNCONDITIONAL PTPDeviceUSBTransport::readBulkData
+XREF 100008578 CALL_OVERRIDE_UNCONDITIONAL PTPDeviceUSBTransport::writeBulkData:
+XREF 1000065a0 CALL_OVERRIDE_UNCONDITIONAL PTPDeviceUSBTransport::deactivate
+XREF 100006444 CALL_OVERRIDE_UNCONDITIONAL PTPDeviceUSBTransport::activate:
+100005910 pacibsp
+100005914 sub sp,sp,#0x70
+100005918 stp x24,x23,[sp, #0x30]
+10000591c stp x22,x21,[sp, #0x40]
+100005920 stp x20,x19,[sp, #0x50]
+100005924 stp x29,x30,[sp, #0x60]
+100005928 add x29,sp,#0x60
+10000592c nop
+100005930 ldr x8,0x100044518
+100005934 ldr x8,[x8]
+100005938 str x8,[sp, #0x28]
+10000593c nop
+100005940 ldrsw x24,0x1000599b4
+100005944 ldrb w8,[x0, x24]
+100005948 cmp w8,w2
+10000594c b.eq 0x100005a34
+100005950 mov x19,x2
+100005954 mov x20,x0
+100005958 bl 0x100028978
+10000595c nop
+100005960 nop
+100005964 ldr x21,0x1000445c8
+100005968 mov x0,x21
+10000596c bl 0x100030b20
+100005970 cmp x0,#0x15
+100005974 b.cc 0x100005998
+100005978 mov x0,x21
+10000597c mov x2,#0x0
+100005980 mov w3,#0x12
+100005984 bl 0x100032ac0
+100005988 adr x2,0x100044d78
+10000598c nop
+100005990 bl 0x1000329e0
+100005994 mov x21,x0
+100005998 nop
+10000599c ldr x0,0x100059700
+1000059a0 adr x8,0x1000358c5
+1000059a4 nop
+1000059a8 adr x9,0x1000358c1
+1000059ac nop
+1000059b0 cmp w19,#0x0
+1000059b4 csel x8,x9,x8,ne
+1000059b8 str x8,[sp]
+1000059bc adr x2,0x100045058
+1000059c0 nop
+1000059c4 bl 0x100032a40
+1000059c8 mov x23,x0
+1000059cc nop
+1000059d0 nop
+1000059d4 ldr x22,0x10005a970
+1000059d8 mov x0,x22
+1000059dc mov w1,#0x0
+1000059e0 bl 0x10002eba0
+1000059e4 cbz w0,0x100005a30
+1000059e8 mov x0,x21
+1000059ec bl 0x10002ed20
+1000059f0 mov w8,#0x202
+1000059f4 movk w8,#0x822, LSL #16
+1000059f8 str w8,[sp, #0x10]
+1000059fc stur x0,[sp, #0x14]
+100005a00 mov w8,#0x842
+100005a04 strh w8,[sp, #0x1c]
+100005a08 stur x23,[sp, #0x1e]
+100005a0c adr x0,0x100000000
+100005a10 nop
+100005a14 adr x3,0x10003c434
+100005a18 nop
+100005a1c add x4,sp,#0x10
+100005a20 mov x1,x22
+100005a24 mov w2,#0x0
+100005a28 mov w5,#0x16
+100005a2c bl 0x10002e6d0
+100005a30 strb w19,[x20, x24]
+100005a34 ldr x8,[sp, #0x28]
+100005a38 nop
+100005a3c ldr x9,0x100044518
+100005a40 ldr x9,[x9]
+100005a44 cmp x9,x8
+100005a48 b.ne 0x100005a64
+100005a4c ldp x29,x30,[sp, #0x60]
+100005a50 ldp x20,x19,[sp, #0x50]
+100005a54 ldp x22,x21,[sp, #0x40]
+100005a58 ldp x24,x23,[sp, #0x30]
+100005a5c add sp,sp,#0x70
+100005a60 retab
+100005a64 bl 0x10002e690
+
+/* Function Stack Size: 0x14 bytes */
+
+void PTPDeviceUSBTransport::setConnected_(ID param_1,SEL param_2,bool param_3)
+
+{
+  undefined8 uVar1;
+  ID IVar2;
+  undefined *self;
+  undefined8 in_x6;
+  undefined8 in_x7;
+  long lVar3;
+  undefined1 auVar4 [16];
+  char *pcVar5;
+  undefined4 local_60;
+  ID local_5c;
+  undefined2 local_54;
+  ID local_52;
+  long local_48;
+  
+  auVar4._8_8_ = param_2;
+  auVar4._0_8_ = param_1;
+  local_48 = *(long *)PTR____stack_chk_guard_100044518;
+  lVar3 = (long)_connected;
+  if (*(byte *)(param_1 + lVar3) != param_3) {
+    ___ICOSLogCreate();
+    self = PTR_cf_<USB>_1000445c8;
+    IVar2 = objc_stub::length((ID)PTR_cf_<USB>_1000445c8);
+    if (0x14 < IVar2) {
+      IVar2 = objc_stub::substringWithRange_((ID)self,0,0x12);
+      self = (undefined *)objc_stub::stringByAppendingString_(IVar2,&cf___);
+    }
+    pcVar5 = "YES";
+    if (param_3 == 0) {
+      pcVar5 = "NO";
+    }
+    IVar2 = NSString::stringWithFormat_((ID)PTR__OBJC_CLASS___NSString_100059700,&cf_Connected__s);
+    uVar1 = __gICOSLog;
+    auVar4 = _os_log_type_enabled(__gICOSLog,0);
+    if (auVar4._0_4_ != 0) {
+      local_5c = objc_stub::UTF8String((ID)self);
+      local_60 = 0x8220202;
+      local_54 = 0x842;
+      local_52 = IVar2;
+      auVar4 = __os_log_impl(0x100000000,uVar1,0,"%{public}20s | %{public}@",&local_60,0x16,in_x6,
+                             in_x7,pcVar5);
+    }
+    *(char *)(param_1 + lVar3) = (char)param_3;
+  }
+  if (*(long *)PTR____stack_chk_guard_100044518 == local_48) {
+    return;
+  }
+                    /* WARNING: Subroutine does not return */
+  ___stack_chk_fail(auVar4._0_8_,auVar4._8_8_);
+}
+
+

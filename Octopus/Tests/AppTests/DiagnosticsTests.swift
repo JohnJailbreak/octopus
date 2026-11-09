@@ -5,7 +5,6 @@ import XCTest
 extension DiagnosticsEnvironment {
     static let sample = DiagnosticsEnvironment(serviceState: "Disabled", transportState: "Transport unavailable",
                                                transportFailure: "", transportTransactions: 0,
-                                               bridgeActive: false, bridgeSocketPath: "", bridgeClientConnected: false,
                                                settings: ["haptics": "default"])
 }
 
@@ -21,16 +20,9 @@ final class DiagnosticsTests: XCTestCase {
 
     func testTheCoreChecksPassAndSayWhichAreSimulated() {
         let core = CoreDiagnostics()
-        XCTAssertEqual(core.count, 20)
+        XCTAssertEqual(core.count, 18)
         for index in 0..<core.count {
             let result = core.run(index)
-            if result.id == "bridge.app_socket" {
-                // It connects to the app's real socket. No test starts one, so nothing listens:
-                // BLOCKED, local, and nothing was exchanged. It must never PASS on a guess.
-                XCTAssertEqual(result.status, .blocked, result.detail)
-                XCTAssertEqual(result.kind, .local)
-                continue
-            }
             XCTAssertEqual(result.status, .pass, "\(result.id): \(result.detail)")
             XCTAssertEqual(result.kind, result.id.hasPrefix("adapter.") ? .simulated : .local, result.id)
             XCTAssertGreaterThan(result.checks, 0, result.id)
@@ -42,7 +34,7 @@ final class DiagnosticsTests: XCTestCase {
         let runner = DiagnosticsRunner()
         await runner.run(environment: .sample, includeNetwork: false)
         XCTAssertFalse(runner.running)
-        XCTAssertGreaterThan(runner.planned, 23)
+        XCTAssertGreaterThan(runner.planned, 20)
         XCTAssertEqual(runner.results.count, runner.planned)
         XCTAssertEqual(Set(runner.results.map(\.id)).count, runner.results.count)
         let failed = runner.results.filter { $0.status == .fail }
@@ -56,11 +48,6 @@ final class DiagnosticsTests: XCTestCase {
         // Without any file, the results still leave as text.
         XCTAssertTrue(runner.resultsText.contains("[BLOCKED] USB transport for Octopus"), runner.resultsText)
         XCTAssertTrue(runner.resultsText.contains("[PASS] MTP enumeration of the read-only storage"))
-        // Bridge checks are BLOCKED in Simulator (no app socket running).
-        XCTAssertNotNil(runner.results.first { $0.id == "bridge.app_active" })
-        XCTAssertNotNil(runner.results.first { $0.id == "bridge.client_connected" })
-        // The native component isn't installed in the Simulator, so its log is absent.
-        XCTAssertEqual(runner.results.first { $0.id == "bridge.tweak_log" }?.status, .blocked)
     }
 
     /// A scratch folder for one test, removed afterwards.
@@ -142,7 +129,7 @@ final class DiagnosticsTests: XCTestCase {
                                                                 folder.appendingPathComponent("fallback").path])
         let archive = try XCTUnwrap(runner.archive, "the archive makes Export Diagnostics available")
         XCTAssertNil(runner.exportProblem)
-        XCTAssertEqual(verify(archive), 9 + DebugLog.files().count + Diagnostics.tweakLogFiles().count)
+        XCTAssertEqual(verify(archive), 9 + DebugLog.files().count) // nine files and the logs
     }
 
     func testTheDebugLogExportFallsBackToo() throws {

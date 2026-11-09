@@ -1,4 +1,7 @@
 #include "test_support.h"
+#include <stdio.h>
+#include <unistd.h>
+#include <sys/stat.h>
 
 void client_open(client *c, bool scratch)
 {
@@ -630,8 +633,73 @@ static void test_transcript(void)
     client_close(&c);
 }
 
+/* A small file at `path`, for the directory-backed tests below. */
+static void write_file(const char *path, const char *text)
+{
+    FILE *file = fopen(path, "w");
+    CHECK(file != NULL);
+    if (file) {
+        CHECK(fputs(text, file) >= 0);
+        CHECK_EQ(fclose(file), 0);
+    }
+}
+
+/*
+ * A host asking for the whole hierarchy over a store whose budget can't cover it must be told
+ * that specification by depth is unsupported, and must still be able to enumerate one directory
+ * at a time. Without this the responder would walk an entire filesystem inside one USB
+ * transaction. See oct_store_options.max_objects.
+ */
+static void test_whole_hierarchy_over_budget(void)
+{
+    char root[] = "/tmp/octopus-depth-XXXXXX", path[512];
+    CHECK(mkdtemp(root) != NULL);
+    snprintf(path, sizeof path, "%s/%s", root, OCT_DISPOSABLE_MARKER);
+    write_file(path, "disposable\n");
+    for (int d = 0; d < 4; d++) {
+        snprintf(path, sizeof path, "%s/dir%d", root, d);
+        CHECK_EQ(mkdir(path, 0755), 0);
+        for (int f = 0; f < 5; f++) {
+            snprintf(path, sizeof path, "%s/dir%d/f%d.txt", root, d, f);
+            write_file(path, "y");
+        }
+    }
+    oct_backend backend;
+    oct_store *store = NULL;
+    oct_responder *r = NULL;
+    oct_store_options options = { .max_objects = 12 };
+    CHECK_OK(oct_directory_backend_create(root, &backend));
+    CHECK_OK(oct_store_open(&options, backend, &store));
+    CHECK_OK(oct_responder_create(store, NULL, &r));
+    oct_buf out;
+    oct_buf_init(&out, 0);
+    oct_exchange exchange = { 0 };
+    uint32_t session = 1;
+    CHECK_OK(oct_exchange_run(r, OCT_OP_OPEN_SESSION, 0, &session, 1, false, NULL, 0, &out, &exchange));
+
+    uint32_t whole[3] = { 0xFFFFFFFFu, 0, 0 };          /* association 0: everything */
+    CHECK_OK(oct_exchange_run(r, OCT_OP_GET_OBJECT_HANDLES, 1, whole, 3, false, NULL, 0, &out, &exchange));
+    CHECK_EQ(exchange.response_code, OCT_RC_SPECIFICATION_BY_DEPTH_UNSUPPORTED);
+    CHECK(!exchange.has_data);
+
+    uint32_t top[3] = { 0xFFFFFFFFu, 0, 0xFFFFFFFFu };  /* association 0xFFFFFFFF: the root level */
+    CHECK_OK(oct_exchange_run(r, OCT_OP_GET_OBJECT_HANDLES, 2, top, 3, false, NULL, 0, &out, &exchange));
+    CHECK_EQ(exchange.response_code, OCT_RC_OK);
+    CHECK(exchange.has_data);
+    CHECK_EQ(exchange.data_length, 4u + 4u * 4u);       /* a count and the four directories */
+
+    /* GetNumObjects takes the same path, so it answers the same way. */
+    CHECK_OK(oct_exchange_run(r, OCT_OP_GET_NUM_OBJECTS, 3, whole, 3, false, NULL, 0, &out, &exchange));
+    CHECK_EQ(exchange.response_code, OCT_RC_SPECIFICATION_BY_DEPTH_UNSUPPORTED);
+
+    oct_buf_free(&out);
+    oct_responder_destroy(r);
+    oct_store_close(store);
+}
+
 void run_responder_tests(void)
 {
+    test_whole_hierarchy_over_budget();
     test_sessions();
     test_enumeration_operations();
     test_properties();

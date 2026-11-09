@@ -25,8 +25,10 @@ int main(int argc, char **argv)
     run_link_tests();
     printf("USB boundary\n");
     run_usb_tests();
-    printf("bridge transport\n");
-    run_bridge_tests();
+    printf("Native observation journal\n");
+    run_native_tests();
+    printf("Native lease IPC\n");
+    run_native_io_tests();
     printf("diagnostics\n");
     run_diag_tests();
     printf("%d checks, %d failures\n", test_checks, test_failures);

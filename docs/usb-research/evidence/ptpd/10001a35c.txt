@@ -1,0 +1,102 @@
+===== 10001a35c PTPOperationResponsePacket::initWithUSBBuffer: =====
+XREF 10005d92b DATA null
+XREF 100033f5c DATA null
+XREF 1000097ec CALL_OVERRIDE_UNCONDITIONAL PTPDeviceUSBTransport::handleBulkData:result:
+10001a35c pacibsp
+10001a360 sub sp,sp,#0x50
+10001a364 stp x22,x21,[sp, #0x20]
+10001a368 stp x20,x19,[sp, #0x30]
+10001a36c stp x29,x30,[sp, #0x40]
+10001a370 add x29,sp,#0x40
+10001a374 ldr w21,[x2]
+10001a378 ldrh w8,[x2, #0x4]
+10001a37c sub w9,w21,#0x21
+10001a380 cmn w9,#0x15
+10001a384 ccmp w8,#0x3,#0x0,cs
+10001a388 b.eq 0x10001a394
+10001a38c mov x19,#0x0
+10001a390 b 0x10001a414
+10001a394 mov x20,x2
+10001a398 nop
+10001a39c ldr x8,0x1000598c0
+10001a3a0 stp x0,x8,[sp, #0x10]
+10001a3a4 nop
+10001a3a8 ldr x1,0x100058750
+10001a3ac add x0,sp,#0x10
+10001a3b0 bl 0x10002e9d0
+10001a3b4 mov x19,x0
+10001a3b8 cbz x0,0x10001a414
+10001a3bc add x8,x20,#0x6
+10001a3c0 str x8,[sp, #0x8]
+10001a3c4 add x0,sp,#0x8
+10001a3c8 bl 0x10001d918
+10001a3cc strh w0,[x19, #0xc]
+10001a3d0 add x0,sp,#0x8
+10001a3d4 bl 0x10001d9ac
+10001a3d8 str w0,[x19, #0x10]
+10001a3dc sub w8,w21,#0xc
+10001a3e0 lsr w9,w8,#0x2
+10001a3e4 str w9,[x19, #0x8]
+10001a3e8 cmp w8,#0x4
+10001a3ec b.cc 0x10001a414
+10001a3f0 mov x20,#0x0
+10001a3f4 add x21,x19,#0x14
+10001a3f8 add x0,sp,#0x8
+10001a3fc bl 0x10001d9ac
+10001a400 str w0,[x21, x20, LSL #0x2]
+10001a404 add x20,x20,#0x1
+10001a408 ldrsw x8,[x19, #0x8]
+10001a40c cmp x20,x8
+10001a410 b.lt 0x10001a3f8
+10001a414 mov x0,x19
+10001a418 ldp x29,x30,[sp, #0x40]
+10001a41c ldp x20,x19,[sp, #0x30]
+10001a420 ldp x22,x21,[sp, #0x20]
+10001a424 add sp,sp,#0x50
+10001a428 retab
+
+/* Function Stack Size: 0x18 bytes */
+
+ID PTPOperationResponsePacket::initWithUSBBuffer_(ID param_1,SEL param_2,void *param_3)
+
+{
+  int iVar1;
+  uint uVar2;
+  undefined2 uVar3;
+  undefined4 uVar4;
+  ID IVar5;
+  long lVar6;
+  long local_48;
+  ID local_40;
+  undefined *puStack_38;
+  
+  iVar1 = *(int *)param_3;
+  if (iVar1 - 0x21U < 0xffffffeb || *(short *)((long)param_3 + 4) != 3) {
+    IVar5 = 0;
+  }
+  else {
+    puStack_38 = PTR_PTPOperationResponsePacket_1000598c0;
+    local_40 = param_1;
+    IVar5 = NSObject::init((ID)&local_40,PTR_s_init_100058750);
+    if (IVar5 != 0) {
+      local_48 = (long)param_3 + 6;
+      uVar3 = FUN_10001d918(&local_48);
+      *(undefined2 *)(IVar5 + 0xc) = uVar3;
+      uVar4 = FUN_10001d9ac(&local_48);
+      *(undefined4 *)(IVar5 + 0x10) = uVar4;
+      uVar2 = iVar1 - 0xc;
+      *(uint *)(IVar5 + 8) = uVar2 >> 2;
+      if (3 < uVar2) {
+        lVar6 = 0;
+        do {
+          uVar4 = FUN_10001d9ac(&local_48);
+          *(undefined4 *)(IVar5 + 0x14 + lVar6 * 4) = uVar4;
+          lVar6 = lVar6 + 1;
+        } while (lVar6 < *(int *)(IVar5 + 8));
+      }
+    }
+  }
+  return IVar5;
+}
+
+

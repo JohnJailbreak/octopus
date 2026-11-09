@@ -11,6 +11,7 @@ import SwiftUI
 struct DiagnosticsWindow: View {
     @EnvironmentObject private var runner: DiagnosticsRunner
     @EnvironmentObject private var service: ServiceController
+    @ObservedObject private var native = NativeIntegration.shared
 
     var body: some View {
         VStack(spacing: 0) {
@@ -21,6 +22,20 @@ struct DiagnosticsWindow: View {
             Rectangle().fill(Theme.hairline).frame(height: 1)
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Toggle("Observe native USB (experimental)", isOn: $native.observe)
+                        Toggle("Expose synthetic storage (experimental)", isOn: $native.synthetic)
+                            .disabled(!native.observe || (!native.synthetic && !providerPrerequisite))
+                        Text(native.detail)
+                            .font(.system(size: 12)).foregroundStyle(Theme.secondary)
+                        Text("Requires the optional native companion. Keep Octopus open with USB Access enabled. Turning this off stops new exposure; reconnect USB to refresh Explorer.")
+                            .font(.system(size: 12)).foregroundStyle(Theme.chevron)
+                        if native.observe && !providerPrerequisite {
+                            Text("First open the iPhone in Explorer in observer mode, then run diagnostics. Storage exposure requires successful native storage requests in that process.")
+                                .font(.system(size: 12)).foregroundStyle(Theme.chevron)
+                        }
+                    }
+                    .font(.system(size: 14)).padding(.vertical, 12)
                     ForEach(groups, id: \.self) { group in
                         Text(group.uppercased())
                             .font(.system(size: 12, weight: .semibold))
@@ -54,6 +69,11 @@ struct DiagnosticsWindow: View {
         var seen: [String] = []
         for result in runner.results where !seen.contains(result.group) { seen.append(result.group) }
         return seen
+    }
+
+    private var providerPrerequisite: Bool {
+        guard let capture = runner.environment?.nativeCapture else { return false }
+        return capture.expectedLease == native.token && capture.validationProblem == nil && capture.report?.providerEligible == true
     }
 
     private var header: some View {
@@ -151,7 +171,7 @@ private struct DiagnosticRow: View {
                 HStack(spacing: 6) {
                     Text(result.title).font(.system(size: 15)).foregroundStyle(.white)
                     if result.kind != .local {
-                        Text(result.kind == .simulated ? "Simulated" : "External")
+                        Text(result.kind.label)
                             .font(.system(size: 11, weight: .semibold))
                             .foregroundStyle(Theme.secondary)
                             .padding(.horizontal, 6)

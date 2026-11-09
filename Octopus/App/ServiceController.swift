@@ -259,7 +259,6 @@ final class CoreService: @unchecked Sendable {
 
     private let handle: OpaquePointer
     private let queue = DispatchQueue(label: "octopus.core.service")
-    private(set) var activeBridge: BridgeTransport?
 
     init() {
         var created: OpaquePointer?
@@ -287,17 +286,16 @@ final class CoreService: @unchecked Sendable {
     }
 
     func start(_ configuration: CoreConfiguration) -> [CoreEvent] {
-        startService(configuration, bridgeAt: OCT_BRIDGE_DEFAULT_SOCKET)
+        var config = oct_service_config()
+        config.seed_time = 0
+        config.scratch = configuration.scratch
+        config.self_test = configuration.selfTest
+        _ = oct_service_start(handle, &config)
+        return drainEvents()
     }
 
     func stop() -> [CoreEvent] {
         _ = oct_service_stop(handle)
-        // Bridge driver_stop was called by the service; now release our C objects.
-        if activeBridge != nil {
-            // Detach before releasing the C objects, so the service never holds a dangling context.
-            _ = oct_service_set_transport(handle, nil)
-            activeBridge = nil
-        }
         return drainEvents()
     }
 
@@ -305,59 +303,6 @@ final class CoreService: @unchecked Sendable {
         _ = oct_service_self_test(handle)
         return drainEvents()
     }
-
-    /// Attaches a bridge transport for this enable cycle, or leaves the service transportless when
-    /// the socket folder is unusable. Never fails the enable: a missing bridge only means Windows
-    /// can't reach Octopus, which is how every build before this one behaved.
-    private func attachBridge(socketPath: String) {
-        guard activeBridge == nil else { return }
-        if let reason = BridgeTransport.prepareSocketFolder(for: socketPath) {
-            DebugLog.log(.info, "app.bridge", "socket_folder",
-                         "No bridge this session: \(reason). Octopus runs as a local service only.")
-            return
-        }
-        guard let bridge = BridgeTransport(socketPath: socketPath) else {
-            DebugLog.log(.warning, "app.bridge", "create_failed",
-                         "The bridge objects couldn't be created; running without a transport")
-            return
-        }
-        guard oct_service_set_transport(handle, &bridge.transport) == OCT_OK else {
-            DebugLog.log(.warning, "app.bridge", "transport_refused",
-                         "The service refused the bridge transport; running without one")
-            return
-        }
-        activeBridge = bridge
-        DebugLog.log(.info, "app.bridge", "transport_set", "Bridge transport attached at \(bridge.socketPath)")
-    }
-
-    /// Starts with a bridge on a caller-chosen socket, for tests that need a writable path.
-    func startWithBridge(at socketPath: String, _ configuration: CoreConfiguration) -> [CoreEvent] {
-        startService(configuration, bridgeAt: socketPath)
-    }
-
-    /// Enables the service, with a bridge on `socketPath` when its folder is usable. If enabling
-    /// with the bridge fails — say something that isn't a socket already sits at the path — the
-    /// bridge is detached and the service is enabled once more without it, so the bridge can cost
-    /// Windows access but never the local service. Both attempts' events are returned.
-    private func startService(_ configuration: CoreConfiguration, bridgeAt socketPath: String) -> [CoreEvent] {
-        attachBridge(socketPath: socketPath)
-        var config = oct_service_config()
-        config.seed_time = 0
-        config.scratch = configuration.scratch
-        config.self_test = configuration.selfTest
-        guard oct_service_start(handle, &config) != OCT_OK, activeBridge != nil else { return drainEvents() }
-        let failed = drainEvents()
-        DebugLog.log(.warning, "app.bridge", "start_failed",
-                     "Enabling with the bridge failed; enabling again without it, as a local service")
-        _ = oct_service_set_transport(handle, nil)
-        activeBridge = nil
-        _ = oct_service_start(handle, &config)
-        return failed + drainEvents()
-    }
-
-    var bridgeSocketPath: String { activeBridge?.socketPath ?? "" }
-    var bridgeClientConnected: Bool { activeBridge?.clientConnected ?? false }
-    var bridgeActive: Bool { activeBridge != nil }
 
     func state() -> ServiceState {
         ServiceState(oct_service_get_state(handle))
@@ -451,77 +396,6 @@ final class CoreService: @unchecked Sendable {
     }
 }
 
-// MARK: - Bridge transport wrapper
-
-/// Owns the C objects that make up the bridge socket transport for one enable/disable cycle.
-/// The bridge is created before `CoreService.start(...)` and destroyed after `CoreService.stop()`.
-///
-/// The socket lives at one fixed path, because the ptpd integration is a separate process and can
-/// only look in a place agreed in advance. When that folder can't be made or written — on the
-/// Simulator there is no /var/mobile at all — no bridge is attached and the app runs exactly as it
-/// did before, local service only, rather than failing to enable.
-final class BridgeTransport: @unchecked Sendable {
-    private let bridge: OpaquePointer  // oct_bridge *
-    private let link: OpaquePointer    // oct_link *
-    var transport: oct_transport       // copy: ops/context remain valid while bridge/link live
-
-    /// The folder holding the socket, created if missing and proven writable with a probe file.
-    /// Returns nil with the reason when the folder can't be used.
-    static func prepareSocketFolder(for socketPath: String) -> String? {
-        // A Unix socket's path must fit sun_path: 104 bytes on Darwin, including the terminator.
-        let bytes = socketPath.utf8.count
-        guard bytes > 0, bytes <= 103 else {
-            return "the socket path is \(bytes) bytes; a socket path can be at most 103"
-        }
-        let folder = (socketPath as NSString).deletingLastPathComponent
-        let manager = FileManager.default
-        do {
-            try manager.createDirectory(atPath: folder, withIntermediateDirectories: true)
-        } catch {
-            return "\(folder) can't be created: \(error.localizedDescription)"
-        }
-        let probe = (folder as NSString).appendingPathComponent(".octopus-bridge-probe")
-        guard manager.createFile(atPath: probe, contents: Data()) else {
-            return "\(folder) exists but refused a file"
-        }
-        try? manager.removeItem(atPath: probe)
-        return nil
-    }
-
-    /// Returns nil if the bridge or link objects can't be created.
-    init?(socketPath: String) {
-        var rawBridge: OpaquePointer? = nil
-        guard oct_bridge_create(socketPath, &rawBridge) == OCT_OK, let rawBridge else {
-            DebugLog.log(.error, "app.bridge", "create_failed", "oct_bridge_create failed for \(socketPath)")
-            return nil
-        }
-        var rawLink: OpaquePointer? = nil
-        var rawTransport = oct_transport()
-        guard oct_bridge_link_create(rawBridge, &rawLink, &rawTransport) == OCT_OK, let rawLink else {
-            DebugLog.log(.error, "app.bridge", "link_failed", "oct_bridge_link_create failed")
-            oct_bridge_destroy(rawBridge)
-            return nil
-        }
-        bridge = rawBridge
-        link = rawLink
-        transport = rawTransport
-    }
-
-    deinit {
-        // oct_bridge_destroy also calls bridge_driver_stop if still running (safe no-op after service stop).
-        oct_bridge_destroy(bridge)
-        oct_link_destroy(link)
-    }
-
-    /// Whether a client (the ptpd tweak or a diagnostic probe) is currently connected to the socket.
-    var clientConnected: Bool { oct_bridge_client_connected(bridge) }
-
-    /// The socket path, for display and diagnostics.
-    var socketPath: String {
-        String(cString: oct_bridge_socket_path(bridge))
-    }
-}
-
 // MARK: - Controller
 
 /// Connects the SwiftUI screens to the core: runs operations off the main
@@ -538,12 +412,8 @@ final class ServiceController: ObservableObject {
     @Published private(set) var tree: [StorageEntry] = []
     @Published private(set) var log: [LogEntry] = []
     @Published private(set) var sheet = ActivitySheetState()
-    @Published private(set) var bridgeActive = false
-    @Published private(set) var bridgeSocketPath = ""
-    @Published private(set) var bridgeClientConnected = false
 
     let core: CoreService
-    private var backgroundTask: UIBackgroundTaskIdentifier = .invalid
     private let pacing: Pacing
     private var operation: Task<Void, Never>?
     private var lineCounter = 0
@@ -589,6 +459,7 @@ final class ServiceController: ObservableObject {
     }
 
     func disable() {
+        NativeIntegration.shared.revoke()
         DebugLog.log(.info, "app", "request", "Disable USB Access")
         run(title: "Disabling") { core in core.stop() }
     }
@@ -607,9 +478,7 @@ final class ServiceController: ObservableObject {
     func refresh() {
         status = core.status()
         state = status.state
-        bridgeActive = core.bridgeActive
-        bridgeSocketPath = core.bridgeSocketPath
-        bridgeClientConnected = core.bridgeClientConnected
+        NativeIntegration.shared.sync(serviceActive: isActive)
         let seen = observedStages.union([ConnectionStage(service: state), ConnectionStage(transport: status.transportState)])
         if seen != observedStages { observedStages = seen }
         lastError = core.lastError()
@@ -689,41 +558,6 @@ final class ServiceController: ObservableObject {
         refresh()
         withAnimation(Motion.sheet) { sheet.isPresented = false }
         isBusy = false
-    }
-
-    // MARK: - Backgrounding
-
-    /// Call from MainScreen.onChange(of: scenePhase) to manage the bridge background task.
-    func handleScenePhase(_ phase: ScenePhase) {
-        if phase == .background {
-            startBackgroundTask()
-        } else if phase != .inactive {
-            endBackgroundTask()
-        }
-    }
-
-    /// iOS suspends apps after ~10 s in the background. This requests extra time (~30 s) so an
-    /// in-progress Windows file operation can complete cleanly. Users should keep Octopus in the
-    /// foreground while transferring files for reliable operation.
-    private func startBackgroundTask() {
-        guard isActive, backgroundTask == .invalid else { return }
-        DebugLog.log(.info, "app.bridge", "background_task_start",
-                     "Background task requested; keep Octopus foreground for uninterrupted file access")
-        backgroundTask = UIApplication.shared.beginBackgroundTask(withName: "Octopus bridge") { [weak self] in
-            // Expiration: iOS is about to suspend us. Log, but don't stop the service —
-            // the bridge socket stays alive until iOS actually suspends the process.
-            DebugLog.log(.warning, "app.bridge", "background_task_expired",
-                         "Background time expired; the bridge socket may be suspended by iOS. "
-                         + "Bring Octopus to the foreground to resume file access.")
-            self?.endBackgroundTask()
-        }
-    }
-
-    private func endBackgroundTask() {
-        guard backgroundTask != .invalid else { return }
-        UIApplication.shared.endBackgroundTask(backgroundTask)
-        backgroundTask = .invalid
-        DebugLog.log(.debug, "app.bridge", "background_task_end", "Background task ended")
     }
 
     private func pause(_ seconds: Double) async {

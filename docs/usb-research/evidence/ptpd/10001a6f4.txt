@@ -1,0 +1,16 @@
+===== 10001a6f4 PTPOperationResponsePacket::responseCode =====
+XREF 10005d935 DATA null
+XREF 100033f98 DATA null
+XREF 10001a1e8 CALL_OVERRIDE_UNCONDITIONAL PTPOperationResponsePacket::copyWithZone:
+10001a6f4 ldrh w0,[x0, #0xc]
+10001a6f8 ret
+
+/* Function Stack Size: 0x10 bytes */
+
+unsigned_short PTPOperationResponsePacket::responseCode(ID param_1,SEL param_2)
+
+{
+  return *(unsigned_short *)(param_1 + 0xc);
+}
+
+

@@ -26,6 +26,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Unit tests, the update helper and the repository checks
         run: make test
+      - name: Optional native package structure and reproducibility
+        run: python3 Octopus/Tests/RepoTests/test_native_package.py
       - name: Sanitizers (address, undefined behaviour, leaks)
         run: make sanitize
       - name: ThreadSanitizer (the debug log and the transport adapter)
@@ -34,50 +36,6 @@ jobs:
         run: make fuzz FUZZ_RUNS=300000
       - name: Static analysis
         run: make analyze
-
-  tweak:
-    name: Native integration tweak (Theos, arm64e)
-    runs-on: macos-15
-    steps:
-      - uses: actions/checkout@v4
-      # The tweak needs an iOS SDK and the Logos preprocessor, so it builds on macOS.
-      # Linux can't compile it at all: it includes Apple SDK headers, and Logos directives
-      # (%hook, %orig, %ctor) aren't valid Objective-C until logos.pl has rewritten them.
-      - name: Install Theos, ldid and dpkg
-        run: |
-          brew install --quiet ldid dpkg
-          git clone --quiet --recursive --depth 1 https://github.com/theos/theos.git "$HOME/theos"
-          # Theos wants an SDK under $THEOS/sdks; Xcode's iPhoneOS SDK covers Foundation,
-          # the Objective-C runtime and mach-o, which is all this tweak includes.
-          sdk="$(xcrun --sdk iphoneos --show-sdk-path)"
-          mkdir -p "$HOME/theos/sdks"
-          ln -sfn "$sdk" "$HOME/theos/sdks/$(basename "$sdk")"
-          echo "THEOS=$HOME/theos" >> "$GITHUB_ENV"
-      - name: Where Theos adds Clang's module flags
-        run: |
-          # Evidence for the module-map fix in Octopus/Bridge/Makefile: where these flags come from,
-          # and so whether they land before or after the tweak's own CFLAGS.
-          grep -rnE -- '-fmodules|implicit-module-maps' "$THEOS/makefiles" | head -20 || true
-      - name: Build the tweak
-        working-directory: Octopus/Bridge
-        # messages=yes prints every compile and link command in full, so a failure shows its flags.
-        run: make clean all messages=yes
-      - name: Package the rootless DEB
-        working-directory: Octopus/Bridge
-        run: |
-          make package messages=yes
-          ls -la packages/
-          # Record what the package contains, so the layout is reviewable without installing it.
-          for deb in packages/*.deb; do
-            echo "== $deb"
-            dpkg-deb --info "$deb"
-            dpkg-deb --contents "$deb"
-          done
-      - uses: actions/upload-artifact@v4
-        with:
-          name: OctopusBridge-deb
-          path: Octopus/Bridge/packages/*.deb
-          if-no-files-found: error
 
   app:
     name: iOS app (Xcode)
@@ -134,6 +92,33 @@ jobs:
           name: OctopusTests-xcresult
           path: build/OctopusTests.xcresult
           if-no-files-found: ignore
+
+  # An experimental companion failure is visible as a failing check but cannot
+  # suppress the established IPA/TIPA build or publication. It is never installed.
+  native:
+    name: Experimental native companion (arm64e)
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Version
+        id: version
+        run: echo "version=$(bash tools/release_version.sh)" >> "$GITHUB_OUTPUT"
+      - name: Toolchain and signer
+        run: |
+          xcodebuild -version
+          brew install ldid
+      - name: Native provider implementation tests (macOS Foundation)
+        run: bash tools/test_provider.sh
+      - name: Build optional arm64e rootless native companion
+        run: bash tools/build_native.sh "${{ steps.version.outputs.version }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OctopusNative-experimental-${{ steps.version.outputs.version }}
+          path: |
+            build/native/*.deb
+            build/native/*.deb.sha256
+            build/native/*.deb.json
+          if-no-files-found: error
 
   release:
     name: Publish release

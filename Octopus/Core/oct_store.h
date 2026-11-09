@@ -61,6 +61,10 @@ const char *oct_status_name(oct_status status);
  * at most 254 UTF-16 code units plus its terminator. Both limits apply. */
 #define OCT_NAME_MAX        255
 #define OCT_NAME_UTF16_MAX  254
+/* Enough for a deep browse of a real filesystem without letting one enumeration exhaust memory
+ * inside ptpd: at ~96 bytes per tracked object this is a few megabytes. */
+#define OCT_STORE_DEFAULT_MAX_OBJECTS 65536u
+
 #define OCT_LABEL_MAX       63
 
 typedef struct oct_object_info {
@@ -181,6 +185,16 @@ typedef struct oct_store_options {
     uint32_t    first_handle;  /* 0 selects 1 */
     const char *description;   /* NULL selects "Octopus" */
     const char *volume_label;  /* NULL selects the description */
+    /* The most handles one enumeration may return, and the ceiling on objects the store will
+     * track at once. 0 selects OCT_STORE_DEFAULT_MAX_OBJECTS.
+     *
+     * This exists because PTP's GetObjectHandles asks for the whole hierarchy when the host
+     * passes association 0, which on a filesystem-backed store means walking everything below
+     * the root. Over a real filesystem that never finishes: the handle list and the object
+     * table grow until the allocator fails, inside Apple's ptpd. A store that exceeds the
+     * budget answers OCT_E_TOO_LARGE instead, which the responder reports to the host as
+     * "specification by depth unsupported" so it enumerates one directory at a time. */
+    uint32_t    max_objects;
 } oct_store_options;
 
 /* Takes ownership of `backend` in all cases. */
@@ -193,6 +207,8 @@ uint32_t   oct_store_object_count(const oct_store *store);
 const char *oct_store_backend_kind(const oct_store *store);
 oct_status oct_store_storage_info(oct_store *store, oct_storage_info *out);
 oct_status oct_store_index_all(oct_store *store);
+/* The budget in force, for diagnostics and for callers that size their own buffers. */
+uint32_t   oct_store_max_objects(const oct_store *store);
 
 oct_status oct_store_get(oct_store *store, uint32_t handle, oct_object_info *out);
 oct_status oct_store_find(oct_store *store, uint32_t parent, const char *name,

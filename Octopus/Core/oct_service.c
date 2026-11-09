@@ -770,7 +770,7 @@ static oct_status start_locked(oct_service *s, uint32_t operation)
     oct_backend backend;
     oct_status status = oct_synthetic_backend_create(&synthetic, &backend);
     if (status == OCT_OK) {
-        oct_store_options options = { 0, 0, "Octopus", "Octopus" };
+        oct_store_options options = { .description = "Octopus", .volume_label = "Octopus" };
         status = oct_store_open(&options, backend, &s->store);
     }
     oct_handle_list list = { 0 };

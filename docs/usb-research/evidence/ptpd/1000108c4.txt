@@ -1,0 +1,18 @@
+===== 1000108c4 PTPVirtualCamera::allStorageIDs =====
+XREF 10005d7d2 DATA null
+XREF 100033418 DATA null
+1000108c4 ldr x0,[x0, #0x30]
+1000108c8 b 0x10002ef40
+
+/* Function Stack Size: 0x10 bytes */
+
+ID PTPVirtualCamera::allStorageIDs(ID param_1,SEL param_2)
+
+{
+  ID IVar1;
+  
+  IVar1 = objc_stub::allKeys(*(ID *)(param_1 + 0x30));
+  return IVar1;
+}
+
+

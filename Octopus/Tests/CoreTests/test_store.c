@@ -277,7 +277,8 @@ static void test_partial_deletion_and_capacity(void)
     CHECK_EQ(oct_memory_backend_add(&backend, area, "huge.bin", false, "0123456789", 10, true, SEED_TIME, NULL),
              OCT_E_NO_SPACE);
     oct_store *store = NULL;
-    oct_store_options options = { 0x00020001u, 100, "Test store", "Label" };
+    oct_store_options options = { .storage_id = 0x00020001u, .first_handle = 100,
+                                  .description = "Test store", .volume_label = "Label" };
     CHECK_OK(oct_store_open(&options, backend, &store));
     uint32_t handle = find(store, OCT_ROOT, "area"), file = 0, deleted = 0;
     CHECK_EQ(handle, 100); /* first_handle honoured */
@@ -354,6 +355,161 @@ static void write_file(const char *path, const char *text)
     if (!file) return;
     fwrite(text, 1, strlen(text), file);
     fclose(file);
+}
+
+/*
+ * The enumeration budget. PTP asks for the whole hierarchy when the host passes association 0,
+ * which over a real filesystem walks everything below the root. These checks prove a store that
+ * exceeds its budget says so, bounded, instead of growing until the allocator fails, and that
+ * per-directory listing keeps working afterwards so a host can still browse.
+ */
+/*
+ * The contract the native data source relies on: Apple's writer asks for a download one chunk at
+ * a time through -read:length:offset:, which becomes oct_store_read at an offset. These checks
+ * cover a file past the responder's buffered-transfer ceiling, so a download neither holds the
+ * whole file in memory nor is capped by OCT_PTP_MAX_TRANSFER, plus the boundaries the writer
+ * depends on: the end of the file reads nothing and succeeds, past it is an error rather than
+ * silent zeros, and an oversized request is clamped to what remains.
+ */
+static void test_chunked_streaming_reads(void)
+{
+    char root[] = "/tmp/octopus-stream-XXXXXX", path[512];
+    CHECK(mkdtemp(root) != NULL);
+    snprintf(path, sizeof path, "%s/%s", root, OCT_DISPOSABLE_MARKER);
+    write_file(path, "disposable\n");
+    /* Larger than OCT_PTP_MAX_TRANSFER so the buffered path could not serve it. */
+    const uint64_t size = (uint64_t)OCT_PTP_MAX_TRANSFER + 1024u;
+    snprintf(path, sizeof path, "%s/big.bin", root);
+    FILE *file = fopen(path, "wb");
+    CHECK(file != NULL);
+    if (file) {
+        /* One check for the whole write, not one per byte: a check per byte would add tens of
+         * millions of assertions to the suite and tell us nothing more. */
+        bool written = true;
+        for (uint64_t i = 0; i < size; i++) {
+            if (fputc((int)((i * 31u + (i >> 13)) & 0xFF), file) == EOF) { written = false; break; }
+        }
+        CHECK(written);
+        CHECK_EQ(fclose(file), 0);
+    }
+    snprintf(path, sizeof path, "%s/folder", root);
+    CHECK_EQ(mkdir(path, 0755), 0);
+
+    oct_backend backend;
+    oct_store *store = NULL;
+    CHECK_OK(oct_directory_backend_create(root, &backend));
+    CHECK_OK(oct_store_open(NULL, backend, &store));
+    uint32_t handle = find(store, OCT_ROOT, "big.bin");
+    CHECK(handle != 0);
+    oct_object_info info;
+    CHECK_OK(oct_store_get(store, handle, &info));
+    CHECK_EQ(info.size, size);
+    CHECK(!info.is_directory);
+
+    const size_t chunk = 64u * 1024u;
+    uint8_t *buffer = malloc(chunk);
+    CHECK(buffer != NULL);
+    uint64_t offset = 0;
+    uint32_t wrong = 0;
+    while (buffer && offset < size) {
+        size_t got = 0;
+        CHECK_OK(oct_store_read(store, handle, offset, buffer, chunk, &got));
+        CHECK(got > 0);
+        if (!got) break;
+        for (size_t i = 0; i < got; i++) {
+            uint64_t index = offset + i;
+            if (buffer[i] != (uint8_t)((index * 31u + (index >> 13)) & 0xFF)) wrong++;
+        }
+        offset += got;
+    }
+    CHECK_EQ(wrong, 0u);
+    CHECK_EQ(offset, size);
+
+    if (buffer) {
+        /* A request past the end of the file is clamped to what remains, never over-read. */
+        size_t got = 0;
+        CHECK_OK(oct_store_read(store, handle, size - 10, buffer, chunk, &got));
+        CHECK_EQ(got, 10u);
+        /* Exactly at the end: no bytes, and no error, so the writer finishes cleanly. */
+        got = 1;
+        CHECK_OK(oct_store_read(store, handle, size, buffer, chunk, &got));
+        CHECK_EQ(got, 0u);
+        /* Past the end is refused. */
+        CHECK_EQ(oct_store_read(store, handle, size + 1, buffer, chunk, &got), OCT_E_OUT_OF_RANGE);
+        /* A directory has no bytes to stream, and an unknown handle is refused. */
+        uint32_t folder = find(store, OCT_ROOT, "folder");
+        CHECK(folder != 0);
+        CHECK_EQ(oct_store_read(store, folder, 0, buffer, chunk, &got), OCT_E_IS_DIRECTORY);
+        CHECK_EQ(oct_store_read(store, 0, 0, buffer, chunk, &got), OCT_E_INVALID_HANDLE);
+    }
+    free(buffer);
+    oct_store_close(store);
+}
+
+static void test_enumeration_budget(void)
+{
+    char root[] = "/tmp/octopus-budget-XXXXXX", path[512];
+    CHECK(mkdtemp(root) != NULL);
+    snprintf(path, sizeof path, "%s/%s", root, OCT_DISPOSABLE_MARKER);
+    write_file(path, "disposable\n");
+    /* A tree that is small but deeper and wider than the budget set below: 4 directories of 5
+     * files each, so a recursive walk sees 24 objects and a single directory sees at most 5. */
+    for (int d = 0; d < 4; d++) {
+        snprintf(path, sizeof path, "%s/dir%d", root, d);
+        CHECK_EQ(mkdir(path, 0755), 0);
+        for (int f = 0; f < 5; f++) {
+            snprintf(path, sizeof path, "%s/dir%d/file%d.txt", root, d, f);
+            write_file(path, "x");
+        }
+    }
+
+    oct_backend backend;
+    oct_store *store = NULL;
+    /* 12 fits the four directories and one of them expanded (4 + 5 = 9), but not the whole
+     * hierarchy (24) and not a second directory (14). */
+    oct_store_options options = { .max_objects = 12 };
+    CHECK_OK(oct_directory_backend_create(root, &backend));
+    CHECK_OK(oct_store_open(&options, backend, &store));
+    CHECK_EQ(oct_store_max_objects(store), 12u);
+
+    /* The whole hierarchy exceeds the budget: refused, with nothing returned. */
+    oct_handle_list list = { 0 };
+    CHECK_EQ(oct_store_list(store, OCT_ROOT, true, &list), OCT_E_TOO_LARGE);
+    CHECK_EQ(list.count, 0u);
+    oct_handle_list_free(&list);
+
+    /* One directory at a time still works, which is how a host browses after being told that
+     * specification by depth is unsupported. */
+    CHECK_OK(oct_store_list(store, OCT_ROOT, false, &list));
+    CHECK_EQ(list.count, 4u);
+    uint32_t first = list.handles[0];
+    oct_handle_list_free(&list);
+    CHECK_OK(oct_store_list(store, first, false, &list));
+    CHECK_EQ(list.count, 5u);
+    oct_handle_list_free(&list);
+
+    /* Browsing more directories eventually reaches the ceiling on tracked objects. The store
+     * reports it rather than growing without limit for the length of a session. */
+    oct_handle_list top = { 0 };
+    CHECK_OK(oct_store_list(store, OCT_ROOT, false, &top));
+    oct_status status = OCT_OK;
+    for (uint32_t i = 1; i < top.count && status == OCT_OK; i++) {
+        status = oct_store_list(store, top.handles[i], false, &list);
+        oct_handle_list_free(&list);
+    }
+    oct_handle_list_free(&top);
+    CHECK_EQ(status, OCT_E_TOO_LARGE);
+    CHECK(oct_store_object_count(store) <= oct_store_max_objects(store));
+    oct_store_close(store);
+
+    /* The default budget enumerates this tree whole. */
+    CHECK_OK(oct_directory_backend_create(root, &backend));
+    CHECK_OK(oct_store_open(NULL, backend, &store));
+    CHECK_EQ(oct_store_max_objects(store), OCT_STORE_DEFAULT_MAX_OBJECTS);
+    CHECK_OK(oct_store_list(store, OCT_ROOT, true, &list));
+    CHECK_EQ(list.count, 24u);
+    oct_handle_list_free(&list);
+    oct_store_close(store);
 }
 
 static void test_directory_backend(void)
@@ -450,4 +606,6 @@ void run_store_tests(void)
     test_partial_deletion_and_capacity();
     test_names();
     test_directory_backend();
+    test_enumeration_budget();
+    test_chunked_streaming_reads();
 }
