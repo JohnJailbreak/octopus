@@ -12,6 +12,8 @@
 #include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
+#include <errno.h>
+#include <stdio.h>
 #include <os/log.h>
 
 /*
@@ -29,7 +31,20 @@
  * Updated only on the constructor thread before the timer starts, then only on the timer's serial
  * queue, so the struct needs no lock.
  */
-static oct_native_signal startup;
+static oct_native_signal startup={.lease_stage=OCT_NATIVE_IO_NOT_ATTEMPTED,
+                                  .status_stage=OCT_NATIVE_IO_NOT_ATTEMPTED};
+static oct_native_detail startupDetail={.image_index=255};
+
+/*
+ * The process's own loaded images, behind the interface oct_device_select_image takes, so the
+ * device uses dyld and the tests use a list they build. ptpd carries Dopamine's systemhook
+ * bootstrap and, under ElleKit, this dylib, so the executable is not assumed to come first: the
+ * 9 November run rejected a ptpd whose bytes are byte-identical to the reference, which is what
+ * reading the wrong image's header would look like.
+ */
+static uint32_t dyldCount(void *context){(void)context;return _dyld_image_count();}
+static const char *dyldName(void *context,uint32_t index){(void)context;return _dyld_get_image_name(index);}
+static const void *dyldHeader(void *context,uint32_t index){(void)context;return _dyld_get_image_header(index);}
 static os_log_t startupLog;
 static os_log_t startup_log(void){return startupLog?startupLog:OS_LOG_DEFAULT;}
 static void raise_phase(uint8_t phase){if(phase>startup.phase)startup.phase=phase;}
@@ -37,6 +52,7 @@ static uint8_t clamp_errno(int error){return error<0?0:(error>255?255:(uint8_t)e
 static void post_startup(void){
     startup.pid=(uint16_t)(getpid()&0xFFFF);
     oct_status posted=oct_native_signal_publish(&startup);
+    oct_native_detail_publish(&startupDetail);
     static bool reportedPostFailure;
     if(posted!=OCT_OK&&!reportedPostFailure){reportedPostFailure=true;
         os_log_error(startup_log(),"startup signal could not be posted: %{public}s",oct_status_name(posted));}
@@ -194,11 +210,49 @@ static BOOL compatible(NSString **reason){
     char build[64]={0};size_t size=sizeof build;
     if(sysctlbyname("kern.osversion",build,&size,NULL,0)==0)kernelBuild=[NSString stringWithUTF8String:build];
     if(os.majorVersion!=17||os.minorVersion!=0||os.patchVersion!=0){startup.identity=OCT_NATIVE_IDENTITY_WRONG_SYSTEM;*reason=@"Requires iOS 17.0.0";return NO;}
-    const struct mach_header_64 *header=(const struct mach_header_64*)_dyld_get_image_header(0);
+    oct_image_source images={dyldCount,dyldName,dyldHeader,NULL};
+    uint32_t imageIndex=UINT32_MAX;oct_macho_identity found={0};
+    oct_image_outcome outcome=oct_device_select_image(&images,"/usr/libexec/ptpd",&imageIndex,&found);
+    startupDetail.image_count=(uint8_t)(_dyld_image_count()>255?255:_dyld_image_count());
+    startupDetail.image_index=(uint8_t)(imageIndex>254?255:imageIndex);
+    /* Six bytes of whatever UUID was read, so a wrong image names itself next run. */
+    if(found.uuid[0]){
+        for(unsigned i=0;i<6;i++){
+            char pair[3]={found.uuid[i*2+(i>=4?1:0)],found.uuid[i*2+1+(i>=4?1:0)],0};
+            startupDetail.uuid_prefix[i]=(uint8_t)strtoul(pair,NULL,16);
+        }
+    }
+    if(outcome!=OCT_IMAGE_FOUND){
+        switch(outcome){
+        case OCT_IMAGE_NOT_PRESENT: startup.identity=OCT_NATIVE_IDENTITY_NO_IMAGE; break;
+        case OCT_IMAGE_AMBIGUOUS: startup.identity=OCT_NATIVE_IDENTITY_AMBIGUOUS_IMAGE; break;
+        case OCT_IMAGE_NO_HEADER: startup.identity=OCT_NATIVE_IDENTITY_NO_HEADER; break;
+        case OCT_IMAGE_NOT_MACHO: case OCT_IMAGE_HEADER_TOO_LARGE:
+            startup.identity=OCT_NATIVE_IDENTITY_BAD_HEADER; break;
+        case OCT_IMAGE_MALFORMED: startup.identity=OCT_NATIVE_IDENTITY_MALFORMED_HEADER; break;
+        case OCT_IMAGE_NOT_EXECUTABLE: startup.identity=OCT_NATIVE_IDENTITY_NOT_EXECUTABLE; break;
+        default: startup.identity=OCT_NATIVE_IDENTITY_NO_IMAGE; break;
+        }
+        os_log_error(startup_log(),"ptpd image not usable: %{public}s (index %u of %u)",
+                     oct_image_outcome_name(outcome),imageIndex,_dyld_image_count());
+        *reason=[NSString stringWithFormat:@"ptpd image not usable: %s",oct_image_outcome_name(outcome)];
+        return NO;
+    }
+    const struct mach_header_64 *header=(const struct mach_header_64*)dyldHeader(NULL,imageIndex);
     oct_macho_identity identity={0}; /* read below even when parsing is short-circuited */
-    if(!header||header->sizeofcmds>65536||oct_device_parse_identity((const uint8_t*)header,32+(size_t)header->sizeofcmds,&identity)!=OCT_OK||strcmp(identity.uuid,"FFD54FC7-0508-3AB8-8D17-2F698B611E10")||identity.cpu_type!=0x100000c||identity.cpu_subtype!=0x80000002){/* Blame the architecture only when the parse succeeded and reported a different one. */startup.identity=(identity.uuid[0]&&(identity.cpu_type!=0x100000c||identity.cpu_subtype!=0x80000002))?OCT_NATIVE_IDENTITY_WRONG_ARCHITECTURE:OCT_NATIVE_IDENTITY_WRONG_UUID;*reason=@"Loaded ptpd UUID/architecture mismatch";return NO;}
+    (void)header;
+    if(strcmp(found.uuid,"FFD54FC7-0508-3AB8-8D17-2F698B611E10")){
+        startup.identity=OCT_NATIVE_IDENTITY_WRONG_UUID;
+        os_log_error(startup_log(),"ptpd UUID is %{public}s, expected FFD54FC7-0508-3AB8-8D17-2F698B611E10",found.uuid);
+        *reason=[NSString stringWithFormat:@"ptpd UUID is %s",found.uuid];return NO;
+    }
+    if(found.cpu_type!=0x100000c||found.cpu_subtype!=0x80000002){
+        startup.identity=OCT_NATIVE_IDENTITY_WRONG_ARCHITECTURE;
+        *reason=[NSString stringWithFormat:@"ptpd is cpu 0x%x/0x%x, expected arm64e",found.cpu_type,found.cpu_subtype];
+        return NO;
+    }
     NSError *error=nil;NSData *bytes=[NSData dataWithContentsOfFile:@"/usr/libexec/ptpd" options:NSDataReadingMappedIfSafe error:&error];
-    if(!bytes||bytes.length>8*1024*1024){startup.identity=OCT_NATIVE_IDENTITY_WRONG_DIGEST;*reason=@"Cannot verify on-disk ptpd";return NO;}
+    if(!bytes||bytes.length>8*1024*1024){startup.identity=OCT_NATIVE_IDENTITY_UNREADABLE_FILE;*reason=@"Cannot read /usr/libexec/ptpd to check its digest";return NO;}
     uint8_t digest[CC_SHA256_DIGEST_LENGTH];CC_SHA256(bytes.bytes,(CC_LONG)bytes.length,digest);
     NSMutableString *hash=[NSMutableString string];for(unsigned i=0;i<sizeof digest;i++)[hash appendFormat:@"%02x",digest[i]];
     if(![hash isEqualToString:@"a1742358da3e257204a0f190211cda26a155dfe0dabb3c9fa572117460085dcb"]){startup.identity=OCT_NATIVE_IDENTITY_WRONG_DIGEST;*reason=@"ptpd hash mismatch";return NO;}
@@ -233,8 +287,27 @@ static void publish(void){
     };
     NSData *json=[NSJSONSerialization dataWithJSONObject:report options:NSJSONWritingSortedKeys error:nil];
     if(!json||json.length>65536)return;
+    /*
+     * The shared folder is refused inside ptpd's sandbox: the 9 November run measured EPERM when
+     * opening it, from both ptpd processes, with the folder owned by the same uid ptpd runs as.
+     * Retrying once a second for the life of the process only fills the system log with sandbox
+     * denials, so a refusal is recorded once and then retried rarely, in case the situation
+     * changes (the app recreating the folder, a different build of the companion). The startup
+     * signal carries the stage and errno regardless, so nothing is lost by not retrying.
+     */
+    static unsigned refusals;static uint64_t nextAttemptMs;
+    if(refusals&&now()<nextAttemptMs)return;
     oct_native_io_failure failure;
     oct_native_io_write_detailed(OCT_NATIVE_DIRECTORY,"status",json.bytes,json.length,&failure);
+    bool refused=failure.stage!=OCT_NATIVE_IO_OK&&(failure.error==EPERM||failure.error==EACCES);
+    if(refused){
+        if(!refusals)os_log_error(startup_log(),"the shared folder is refused in this process; backing off");
+        if(refusals<16)refusals++;
+        /* 30 s, then a minute, up to roughly eight minutes. */
+        nextAttemptMs=now()+(uint64_t)30000*(refusals<5?(1u<<(refusals-1)):16u);
+    } else {
+        refusals=0;nextAttemptMs=0;
+    }
     if(failure.stage!=startup.status_stage||clamp_errno(failure.error)!=startup.status_error){
         if(failure.stage==OCT_NATIVE_IO_OK)os_log(startup_log(),"status written");
         else os_log_error(startup_log(),"status write failed at %{public}s, errno %d",oct_native_io_stage_name(failure.stage),failure.error);
@@ -260,14 +333,35 @@ __attribute__((constructor)) static void startObserver(void){
         dispatch_source_set_event_handler(timer,^{@autoreleasepool{
             char token[33]={0};uint64_t until=0;unsigned wanted=0;
             if(match){
-                oct_native_io_failure leaseFailure;
-                wanted=oct_native_read_lease_detailed(OCT_NATIVE_DIRECTORY,now(),&until,token,&leaseFailure);
-                if(leaseFailure.stage!=startup.lease_stage||clamp_errno(leaseFailure.error)!=startup.lease_error){
-                    if(leaseFailure.stage==OCT_NATIVE_IO_OK)os_log(startup_log(),"lease read");
-                    else os_log_error(startup_log(),"lease read failed at %{public}s, errno %d",oct_native_io_stage_name(leaseFailure.stage),leaseFailure.error);
+                /*
+                 * Authorization arrives by notification, not by file: the shared folder is refused
+                 * in this process. Whatever the word asks for, only observation is granted, because
+                 * any process on the device can post to this name; see oct_native_lease_effective.
+                 * The file is still read when it is readable, so a build on a phone where the
+                 * folder works keeps the stronger channel, and a lease from either source must be
+                 * current for hooks to stay installed.
+                 */
+                oct_native_lease_word granted;
+                oct_native_lease_mode effective=OCT_NATIVE_LEASE_NONE;
+                oct_status leaseStatus=oct_native_lease_read(&granted);
+                if(leaseStatus==OCT_OK){
+                    effective=oct_native_lease_effective(&granted,now());
+                    if(granted.mode==OCT_NATIVE_LEASE_EXPOSE&&effective!=OCT_NATIVE_LEASE_EXPOSE){
+                        static bool reportedRefusal;
+                        if(!reportedRefusal){reportedRefusal=true;
+                            os_log_error(startup_log(),"exposure was requested over the notification channel and refused; observation only");}
+                    }
                 }
-                startup.lease_stage=(uint8_t)leaseFailure.stage;startup.lease_error=clamp_errno(leaseFailure.error);
-                if(wanted)raise_phase(OCT_NATIVE_PHASE_LEASE);
+                startup.lease_stage=(uint8_t)(leaseStatus==OCT_OK?OCT_NATIVE_IO_OK:
+                                              (leaseStatus==OCT_E_STATE?OCT_NATIVE_IO_CONTENT:OCT_NATIVE_IO_READ));
+                startup.lease_error=0;
+                /* The observer runs in mode 1; exposure (mode 2) is never reachable from here. */
+                wanted=effective==OCT_NATIVE_LEASE_OBSERVE?1u:0u;
+                if(wanted){
+                    until=granted.deadline_ms;
+                    snprintf(token,sizeof token,"notify-%u",(unsigned)granted.generation);
+                    raise_phase(OCT_NATIVE_PHASE_LEASE);
+                }
             }
             NSString *current=[NSString stringWithUTF8String:token];
             pthread_mutex_lock(&lock);

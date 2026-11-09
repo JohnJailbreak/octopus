@@ -293,9 +293,25 @@ enum Diagnostics {
                 } else {
                     status = .fail
                 }
+                // The signal word is full at 64 bits, so the UUID the companion actually read comes
+                // over a second notification. Without it, a mismatch cannot say which image was
+                // inspected, which is exactly what cost a cycle on 9 November.
+                var extra = ""
+                var read = oct_native_detail()
+                if oct_native_detail_read(&read) == OCT_OK {
+                    let prefix = read.uuid_prefix
+                    let bytes = [prefix.0, prefix.1, prefix.2, prefix.3, prefix.4, prefix.5]
+                    let uuid = bytes.map { String(format: "%02X", $0) }.joined()
+                    extra = bytes.allSatisfy({ $0 == 0 })
+                        ? " No UUID was read."
+                        : " UUID read began \(uuid), expected FFD54FC705 08."
+                    extra += read.image_index == 255
+                        ? " No image matched /usr/libexec/ptpd among \(read.image_count) loaded."
+                        : " Matched image \(read.image_index) of \(read.image_count)."
+                }
                 return result("native.startup_signal", "Native integration", "Companion startup signal", .nativeObservation,
                               status, detail + " Signal word \(String(format: "%016llx", oct_native_signal_pack(&signal)))"
-                                  + (present ? "." : " (none posted)."), checks: 1)
+                                  + (present ? "." : " (none posted).") + extra, checks: 1)
             },
             step("native.observer", "Native integration", "Native observer compatibility and authorization", .nativeObservation) {
                 nativeCapture(environment).result(transactions: false)

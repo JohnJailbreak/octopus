@@ -38,6 +38,10 @@ typedef enum oct_native_io_stage {
     OCT_NATIVE_IO_CLOSE,
     OCT_NATIVE_IO_RENAME,
     OCT_NATIVE_IO_CONTENT,            /* read fine, but the bytes are not a valid record */
+    /* Never tried. Zero means success, so without this a field left at its default reads as
+     * "succeeded": the 9 November capture reported the lease stage as ok when the lease had in
+     * fact never been read, because identity rejection stopped the companion first. */
+    OCT_NATIVE_IO_NOT_ATTEMPTED,
 } oct_native_io_stage;
 
 typedef struct oct_native_io_failure {
@@ -65,7 +69,73 @@ unsigned oct_native_read_lease_detailed(const char *directory, uint64_t now_ms, 
  * status_stage:4 lease_error:8 status_error:8 pid:16 check:8, where check is the XOR of the other
  * seven bytes, so a foreign or corrupted word is rejected rather than misread. */
 #define OCT_NATIVE_SIGNAL_NAME    "com.parv.octopus.native.signal"
-#define OCT_NATIVE_SIGNAL_VERSION 1u
+#define OCT_NATIVE_SIGNAL_VERSION 1u  /* what 0.4.24 posted; still accepted when reading */
+#define OCT_NATIVE_SIGNAL_VERSION_2 2u /* adds the identity codes and stages above */
+
+/* A second notification carrying what will not fit in the first. The status word is full at 64
+ * bits, and the single most useful missing fact is the UUID the companion actually read, which is
+ * 128 bits. This carries its first eight bytes, which is enough to tell "read ptpd's UUID" from
+ * "read some other image's", plus the image index and how many images were enumerated. Absent is
+ * not an error: the status word stands alone. */
+#define OCT_NATIVE_DETAIL_NAME "com.parv.octopus.native.detail"
+
+typedef struct oct_native_detail {
+    uint8_t  uuid_prefix[6]; /* first six bytes of the UUID read, zero if none was */
+    uint8_t  image_index;    /* index of the matching image, 255 when there was none */
+    uint8_t  image_count;    /* images enumerated, saturating at 255 */
+} oct_native_detail;
+
+/* ---- Authorization carried by notification ---------------------------------------------
+ *
+ * The file the app writes its lease into cannot be read from inside ptpd: the 9 November run
+ * measured EPERM opening that folder, from both ptpd processes, with the folder owned by the same
+ * uid ptpd runs as. The notification channel is the one route proven to cross that boundary, so
+ * authorization travels the same way.
+ *
+ * What this is NOT. A Darwin notification name is not an authenticated channel: any process on the
+ * device can register the same name and set its state, and there is no shared secret to sign with,
+ * because every place the two could keep one is either unreadable from ptpd or readable by anyone
+ * who can post. Replay within the window is possible. So this word is treated as an unauthenticated
+ * hint, and what a hint may switch on is limited accordingly:
+ *
+ *   - OBSERVE is accepted. It installs passive hooks that forward Apple's own flows unchanged and
+ *     record operation codes, transaction numbers and counts. No filenames or payloads are kept,
+ *     and nothing is served to the host.
+ *   - EXPOSE is refused from this channel, always, whatever the word says. Serving synthetic or
+ *     real files to a host is not something a forgeable hint may enable; that waits for a channel
+ *     whose sender can be established.
+ *
+ * The expiry is carried as milliseconds since boot so a word left behind by an earlier boot cannot
+ * read as current, and is clamped to the 15 second lease the app already uses. The check byte
+ * rejects a corrupted or foreign word; it is not a signature and does not pretend to be. */
+#define OCT_NATIVE_LEASE_NAME    "com.parv.octopus.native.lease"
+#define OCT_NATIVE_LEASE_VERSION 1u
+
+typedef enum oct_native_lease_mode {
+    OCT_NATIVE_LEASE_NONE = 0,
+    OCT_NATIVE_LEASE_OBSERVE,  /* passive observation only */
+    OCT_NATIVE_LEASE_EXPOSE,   /* refused from this channel */
+} oct_native_lease_mode;
+
+typedef struct oct_native_lease_word {
+    uint8_t  mode;        /* oct_native_lease_mode */
+    uint64_t deadline_ms; /* milliseconds since boot, 40 bits, about 34 years */
+    uint16_t generation;  /* changes when the app restarts, so a stale word is noticed */
+} oct_native_lease_word;
+
+uint64_t oct_native_lease_pack(const oct_native_lease_word *lease);
+bool     oct_native_lease_unpack(uint64_t word, oct_native_lease_word *out);
+/* What a reader at `now_ms` may act on: OBSERVE only while unexpired, NONE otherwise. EXPOSE is
+ * downgraded to NONE here, not at the call site, so no caller can forget to. */
+oct_native_lease_mode oct_native_lease_effective(const oct_native_lease_word *lease, uint64_t now_ms);
+
+oct_status oct_native_lease_publish(const oct_native_lease_word *lease);
+oct_status oct_native_lease_read(oct_native_lease_word *out);
+
+uint64_t   oct_native_detail_pack(const oct_native_detail *detail);
+bool       oct_native_detail_unpack(uint64_t word, oct_native_detail *out);
+oct_status oct_native_detail_publish(const oct_native_detail *detail);
+oct_status oct_native_detail_read(oct_native_detail *out);
 
 typedef enum oct_native_phase {
     OCT_NATIVE_PHASE_NONE = 0,
@@ -77,14 +147,25 @@ typedef enum oct_native_phase {
     OCT_NATIVE_PHASE_HOOKED,       /* the observer hooks are installed */
 } oct_native_phase;
 
+/* One code per cause. The first seven are version 1's, unchanged, so a signal from 0.4.24 still
+ * decodes; the rest are new in version 2 and separate the four conditions that version lumped
+ * into WRONG_UUID. Fifteen values is the limit of the field. */
 typedef enum oct_native_identity {
     OCT_NATIVE_IDENTITY_UNKNOWN = 0,
     OCT_NATIVE_IDENTITY_COMPATIBLE,
     OCT_NATIVE_IDENTITY_WRONG_PROCESS,
     OCT_NATIVE_IDENTITY_WRONG_SYSTEM,
-    OCT_NATIVE_IDENTITY_WRONG_UUID,
+    OCT_NATIVE_IDENTITY_WRONG_UUID,          /* a UUID was read and it differs */
     OCT_NATIVE_IDENTITY_WRONG_ARCHITECTURE,
-    OCT_NATIVE_IDENTITY_WRONG_DIGEST,
+    OCT_NATIVE_IDENTITY_WRONG_DIGEST,        /* the on-disk SHA-256 differs */
+    OCT_NATIVE_IDENTITY_NO_IMAGE = 7,        /* no loaded image is /usr/libexec/ptpd */
+    OCT_NATIVE_IDENTITY_AMBIGUOUS_IMAGE,     /* more than one claims that path */
+    OCT_NATIVE_IDENTITY_NO_HEADER,           /* listed, but dyld gave no header */
+    OCT_NATIVE_IDENTITY_BAD_HEADER,          /* not a thin 64-bit Mach-O, or oversized */
+    OCT_NATIVE_IDENTITY_MALFORMED_HEADER,    /* load commands did not parse */
+    OCT_NATIVE_IDENTITY_NOT_EXECUTABLE,      /* parsed, but not MH_EXECUTE */
+    OCT_NATIVE_IDENTITY_UNREADABLE_FILE,     /* /usr/libexec/ptpd could not be read to digest */
+    OCT_NATIVE_IDENTITY_LAST = OCT_NATIVE_IDENTITY_UNREADABLE_FILE,
 } oct_native_identity;
 
 typedef enum oct_native_hooks {

@@ -380,12 +380,58 @@ static void test_startup_signal(void)
 
     CHECK(!oct_native_signal_unpack(0, &back));                    /* never posted */
     CHECK(!oct_native_signal_unpack(word ^ (1ull << 30), &back));  /* one flipped bit */
-    CHECK(!oct_native_signal_unpack((word & ~0xFull) | 2u, &back)); /* another version */
+    CHECK(!oct_native_signal_unpack((word & ~0xFull) | 3u, &back)); /* a version we don't know */
+    CHECK(!oct_native_signal_unpack((word & ~0xFull), &back));       /* version 0 */
+    /* A word from 0.4.24 still decodes: version 1, with that version's field ranges. Built by
+     * hand because pack() now writes version 2. This is the compatibility the migration promises. */
+    uint64_t v1 = (word & ~0xFull) | 1u;
+    v1 &= 0x00FFFFFFFFFFFFFFull;
+    uint8_t check = 0;
+    for (unsigned i = 0; i < 7; i++) check ^= (uint8_t)(v1 >> (8 * i));
+    v1 |= (uint64_t)check << 56;
+    CHECK(oct_native_signal_unpack(v1, &back));
+    CHECK_EQ(back.phase, s.phase);
+    CHECK_EQ(back.identity, s.identity);
+    CHECK_EQ(back.pid, s.pid);
+    /* But a value only version 2 can mean is refused inside a version 1 word. */
+    oct_native_signal future = { .phase = OCT_NATIVE_PHASE_IDENTITY,
+                                 .identity = OCT_NATIVE_IDENTITY_NO_IMAGE, .pid = 1 };
+    uint64_t as_v1 = (oct_native_signal_pack(&future) & ~0xFull) | 1u;
+    as_v1 &= 0x00FFFFFFFFFFFFFFull;
+    check = 0;
+    for (unsigned i = 0; i < 7; i++) check ^= (uint8_t)(as_v1 >> (8 * i));
+    as_v1 |= (uint64_t)check << 56;
+    CHECK(!oct_native_signal_unpack(as_v1, &back));
+    CHECK(oct_native_signal_unpack(oct_native_signal_pack(&future), &back)); /* fine as version 2 */
+    CHECK_EQ(back.identity, (uint8_t)OCT_NATIVE_IDENTITY_NO_IMAGE);
+
+    /* Not attempted is not success. */
+    oct_native_signal untried = { .phase = OCT_NATIVE_PHASE_IDENTITY,
+                                  .identity = OCT_NATIVE_IDENTITY_COMPATIBLE,
+                                  .lease_stage = OCT_NATIVE_IO_NOT_ATTEMPTED,
+                                  .status_stage = OCT_NATIVE_IO_NOT_ATTEMPTED, .pid = 1 };
+    CHECK(oct_native_signal_unpack(oct_native_signal_pack(&untried), &back));
+    CHECK_EQ(back.lease_stage, (uint8_t)OCT_NATIVE_IO_NOT_ATTEMPTED);
+    CHECK(back.lease_stage != (uint8_t)OCT_NATIVE_IO_OK);
+
+    /* The detail word: the UUID actually read, where it was found, and how many images there were. */
+    oct_native_detail detail = { .uuid_prefix = { 0xFF, 0xD5, 0x4F, 0xC7, 0x05, 0x08 },
+                                 .image_index = 7, .image_count = 42 };
+    oct_native_detail detail_back;
+    CHECK(oct_native_detail_unpack(oct_native_detail_pack(&detail), &detail_back));
+    CHECK(memcmp(&detail, &detail_back, sizeof detail) == 0);
+    CHECK(!oct_native_detail_unpack(0, &detail_back));        /* nothing posted */
+    CHECK(!oct_native_detail_unpack(1, NULL));
+    oct_native_detail none = { .image_index = 255, .image_count = 3 };
+    CHECK(oct_native_detail_unpack(oct_native_detail_pack(&none), &detail_back));
+    CHECK_EQ(detail_back.image_index, 255);                   /* no match, still reported */
+    CHECK_EQ(detail_back.uuid_prefix[0], 0);
+
     oct_native_signal bad = s;
     bad.phase = 15;                                                /* out of range, check recomputed */
     CHECK(!oct_native_signal_unpack(oct_native_signal_pack(&bad), &back));
     bad = s;
-    bad.lease_stage = 14;
+    bad.lease_stage = 15;
     CHECK(!oct_native_signal_unpack(oct_native_signal_pack(&bad), &back));
     CHECK(!oct_native_signal_unpack(word, NULL));
 
@@ -441,6 +487,78 @@ static void test_signal_verdicts(void)
     CHECK_EQ(oct_native_signal_describe(&s, true, 1152, NULL, 0), OCT_NATIVE_VERDICT_RUNNING); /* no buffer */
 }
 
+/*
+ * Authorization carried by notification. The file-based lease cannot be read inside ptpd, so this
+ * is the channel that replaces it; it is unauthenticated, and these tests pin down exactly what it
+ * is therefore allowed to switch on.
+ */
+static void test_lease_word(void)
+{
+    oct_native_lease_word out;
+    const uint64_t now = 1000000;
+
+    /* A current observe lease is honoured. */
+    oct_native_lease_word observe = { .mode = OCT_NATIVE_LEASE_OBSERVE,
+                                      .deadline_ms = now + 10000, .generation = 7 };
+    uint64_t word = oct_native_lease_pack(&observe);
+    CHECK(oct_native_lease_unpack(word, &out));
+    CHECK_EQ(out.mode, (uint8_t)OCT_NATIVE_LEASE_OBSERVE);
+    CHECK_EQ(out.deadline_ms, observe.deadline_ms);
+    CHECK_EQ(out.generation, observe.generation);
+    CHECK_EQ(oct_native_lease_effective(&out, now), OCT_NATIVE_LEASE_OBSERVE);
+
+    /* Exposure is refused from this channel however it is asked for, because any process can post
+     * here. This is the whole reason the provider stays off. */
+    oct_native_lease_word expose = { .mode = OCT_NATIVE_LEASE_EXPOSE, .deadline_ms = now + 1000 };
+    CHECK(oct_native_lease_unpack(oct_native_lease_pack(&expose), &out)); /* decodes */
+    CHECK_EQ(out.mode, (uint8_t)OCT_NATIVE_LEASE_EXPOSE);                 /* and says so */
+    CHECK_EQ(oct_native_lease_effective(&out, now), OCT_NATIVE_LEASE_NONE); /* but grants nothing */
+
+    /* Expiry, to the millisecond. */
+    CHECK_EQ(oct_native_lease_effective(&observe, observe.deadline_ms - 1), OCT_NATIVE_LEASE_OBSERVE);
+    CHECK_EQ(oct_native_lease_effective(&observe, observe.deadline_ms), OCT_NATIVE_LEASE_NONE);
+    CHECK_EQ(oct_native_lease_effective(&observe, observe.deadline_ms + 60000), OCT_NATIVE_LEASE_NONE);
+
+    /* Replay of a word from an earlier boot: the deadline is milliseconds since boot, so after a
+     * restart the clock is small again and a large deadline is too far ahead to honour. */
+    oct_native_lease_word old_boot = { .mode = OCT_NATIVE_LEASE_OBSERVE, .deadline_ms = 900000000 };
+    CHECK_EQ(oct_native_lease_effective(&old_boot, 5000), OCT_NATIVE_LEASE_NONE);
+
+    /* A word granting more than the app is allowed to grant is not honoured. */
+    oct_native_lease_word greedy = { .mode = OCT_NATIVE_LEASE_OBSERVE,
+                                     .deadline_ms = now + OCT_NATIVE_LEASE_MS + 1 };
+    CHECK_EQ(oct_native_lease_effective(&greedy, now), OCT_NATIVE_LEASE_NONE);
+    oct_native_lease_word exact = { .mode = OCT_NATIVE_LEASE_OBSERVE,
+                                    .deadline_ms = now + OCT_NATIVE_LEASE_MS };
+    CHECK_EQ(oct_native_lease_effective(&exact, now), OCT_NATIVE_LEASE_OBSERVE);
+
+    /* No lease, no deadline, nothing posted, a corrupted word, an unknown version or mode. */
+    oct_native_lease_word none = { .mode = OCT_NATIVE_LEASE_NONE, .deadline_ms = now + 1000 };
+    CHECK_EQ(oct_native_lease_effective(&none, now), OCT_NATIVE_LEASE_NONE);
+    oct_native_lease_word undated = { .mode = OCT_NATIVE_LEASE_OBSERVE, .deadline_ms = 0 };
+    CHECK_EQ(oct_native_lease_effective(&undated, now), OCT_NATIVE_LEASE_NONE);
+    CHECK_EQ(oct_native_lease_effective(NULL, now), OCT_NATIVE_LEASE_NONE);
+    CHECK(!oct_native_lease_unpack(0, &out));
+    CHECK(!oct_native_lease_unpack(word ^ (1ull << 20), &out));
+    CHECK(!oct_native_lease_unpack((word & ~0xFull) | 2u, &out));
+    CHECK(!oct_native_lease_unpack(word, NULL));
+    uint64_t bad_mode = (word & ~0xF0ull) | (0xFull << 4);
+    uint8_t fixed = 0;
+    for (unsigned i = 0; i < 7; i++) fixed ^= (uint8_t)(bad_mode >> (8 * i));
+    bad_mode = (bad_mode & 0x00FFFFFFFFFFFFFFull) | (uint64_t)fixed << 56;
+    CHECK(!oct_native_lease_unpack(bad_mode, &out)); /* check byte valid, mode is not */
+
+    /* The app restarting shows up as a different generation, so a reader can notice. */
+    oct_native_lease_word restarted = observe;
+    restarted.generation = 8;
+    CHECK(oct_native_lease_pack(&restarted) != word);
+    /* The deadline field holds the whole 40 bits it claims. */
+    oct_native_lease_word wide = { .mode = OCT_NATIVE_LEASE_OBSERVE, .deadline_ms = 0xFFFFFFFFFFull };
+    CHECK(oct_native_lease_unpack(oct_native_lease_pack(&wide), &out));
+    CHECK_EQ(out.deadline_ms, 0xFFFFFFFFFFull);
+    CHECK_EQ(oct_native_lease_pack(NULL), 0u);
+}
+
 void run_native_io_tests(void)
 {
     test_detailed_failures();
@@ -448,6 +566,7 @@ void run_native_io_tests(void)
     test_detailed_lease_reads();
     test_startup_signal();
     test_signal_verdicts();
+    test_lease_word();
     char directory[512], path[1024];
     const char *temporary = getenv("OCT_NATIVE_TEST_TMP");
     int count = snprintf(directory, sizeof directory, "%s/octopus-native-XXXXXX", temporary ? temporary : "/tmp");

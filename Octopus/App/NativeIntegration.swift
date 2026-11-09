@@ -33,6 +33,14 @@ final class NativeIntegration: ObservableObject {
         token = ""
         #if !targetEnvironment(simulator)
         _ = oct_native_io_remove_lease(OCT_NATIVE_DIRECTORY)
+        // Withdraw the notification too, and move the generation on, so a word captured a moment
+        // ago cannot be replayed as this app's grant. A companion that misses this still stops
+        // within the 15-second deadline.
+        generation = generation &+ 1
+        var cleared = oct_native_lease_word()
+        cleared.mode = UInt8(OCT_NATIVE_LEASE_NONE.rawValue)
+        cleared.generation = generation
+        _ = oct_native_lease_publish(&cleared)
         #endif
         guard wanted != 0 else {
             detail = observe ? "Enable USB Access and keep Octopus open to authorize the native experiment."
@@ -50,6 +58,9 @@ final class NativeIntegration: ObservableObject {
         }
     }
 
+    /// Changes on every grant and withdrawal, so a companion can see this app restart.
+    private var generation: UInt16 = UInt16.random(in: 0...255)
+
     private func renew() {
         #if targetEnvironment(simulator)
         detail = "Native ptpd integration is unavailable in the Simulator."
@@ -62,10 +73,28 @@ final class NativeIntegration: ObservableObject {
         catch { detail = "Native lease directory: \(error.localizedDescription)"; return }
         let result = oct_native_write_lease(OCT_NATIVE_DIRECTORY, token, leasedMode, UInt64(now))
         let error = errno
-        detail = result == OCT_OK
-            ? (leasedMode == 2 ? "Synthetic provider authorized while Octopus stays open. Run diagnostics after using Explorer."
-                              : "Read-only native observer authorized while Octopus stays open. Run diagnostics after using Explorer.")
-            : "Native lease failed: status \(result.rawValue), errno \(error)."
+        // The file above cannot be read from inside ptpd: the 9 November run measured EPERM opening
+        // that folder there. So the same grant also goes out as a notification, which is the one
+        // route proven to cross ptpd's sandbox. It only ever authorizes observation, whatever mode
+        // is asked for, because any process can post to that name; the companion enforces that in
+        // oct_native_lease_effective, and the file remains the only route that could ever carry
+        // exposure. Both are published so a phone where the folder does work keeps the stronger one.
+        var posted = OCT_E_UNSUPPORTED
+        if leasedMode != 0 {
+            var word = oct_native_lease_word()
+            word.mode = UInt8(leasedMode == 2 ? OCT_NATIVE_LEASE_EXPOSE.rawValue
+                                              : OCT_NATIVE_LEASE_OBSERVE.rawValue)
+            word.deadline_ms = UInt64(now) + UInt64(OCT_NATIVE_LEASE_MS)
+            word.generation = generation
+            posted = oct_native_lease_publish(&word)
+        }
+        let channel = posted == OCT_OK ? "notification"
+                    : (result == OCT_OK ? "file" : "neither channel")
+        detail = (result == OCT_OK || posted == OCT_OK)
+            ? (leasedMode == 2
+               ? "Observer authorized over \(channel). Synthetic exposure is not granted over the notification channel and stays off."
+               : "Read-only native observer authorized over \(channel) while Octopus stays open. Run diagnostics after using Explorer.")
+            : "Native lease failed: file status \(result.rawValue) errno \(error); notification status \(posted.rawValue)."
         #endif
     }
 }
