@@ -65,3 +65,74 @@ Only after the native integration exists: correlate a real Windows command with 
 ```
 
 Expected 76 bytes and `aeeb6cba90d7d6adfcd42d673f64897f26cfcc479c5cf489a86146e09a9d2bd2`. Recheck photo copy, unplug/reconnect, close/reopen session and disable behavior. Capture genuine request fixtures only with provenance. Do not begin root browsing/writes until these acceptance criteria pass.
+
+---
+
+## Physical-device diagnostic captures — v0.4.9 results (November 2026)
+
+Four diagnostic archives were collected from an iPhone 13 / iOS 17.0 / Dopamine device:
+
+| Stage | Label | Clock |
+|-------|-------|-------|
+| 01 | disconnected | 22:47 |
+| 02 | connected (cable in, trust dialog accepted, Explorer opened) | 22:53 |
+| 03 | after-explorer (photo browsed and copied through Windows) | 22:54:00 |
+| 04 | after-unplug | 22:54:28 |
+
+Each ZIP contained:
+- `octopus-debug.log` — cumulative (stage N includes all stage 1..N entries)
+- `diagnostics-report.json` — per-run check results
+
+### Verified runtime observations
+
+**ptpd identity confirmed.**
+UUID `FFD54FC7-0508-3AB8-8D17-2F698B611E10` and SHA-256 `a1742358…085dcb` match the
+analysed reference binary across all four stages. The analysed map is valid for this device.
+
+**ptpd lifecycle on USB connect.**
+ptpd was absent (no PID) in stage 01. It appeared as PID 39376 in stage 02 and remained at
+the same PID through stages 03 and 04. This confirms launchd fires ptpd on USB connect and
+leaves it running after the cable is unplugged — consistent with the binary analysis.
+
+**IOKit PTP registry match present in the disconnected state.**
+The device reported 1 IOKit PTP match in stage 01 (cable disconnected, ptpd not running).
+This is a USB configuration descriptor registration — the firmware declares the PTP interface
+regardless of whether a cable is attached. It is **not** a signal that a cable is connected or
+that the PTP interface is active. The diagnostic check `device.ptp_registry` correctly labels
+this as an IOKit registry observation, not a live-connection indicator.
+
+**Zero external USB transactions reached Octopus in all four stages.**
+The transport was `OCT_TRANSPORT_UNAVAILABLE` in every stage. No PTP commands, data phases, or
+response containers were handled by oct_service. This is expected: v0.4.x builds provide no
+means for an external host to route USB traffic to the Octopus responder. The Windows–Photos
+copy in stage 03 went exclusively through ptpd's existing PTP/IP transport — Octopus was
+not involved.
+
+### Clarified inferences (not directly observed)
+
+- The stage labels (01 disconnected, 02 connected, 03 after-explorer, 04 after-unplug) are
+  inferred from log timestamps and ptpd PID changes. No hardware telemetry distinguishes
+  the stages directly.
+
+- Photos transfer worked in stage 03 through Apple's ptpd. This is a strong inference from
+  ptpd being present and no Octopus transactions being recorded — it is not a byte-level
+  trace of the Photos transfer path.
+
+### Key finding for OctopusBridge design
+
+The `addStorage:` decompilation at offset `0x10000daf0` shows that when the storages
+dictionary already contains 1 entry, ptpd logs "Two storages cannot co-exist, should quit"
+but **still executes the dictionary insert** (the `b.ne` at `0x10000db40` checks count==1
+but both branches converge at the actual insert). Registering a second storage does not
+hard-crash ptpd and does not prevent Photos from functioning. This evidence supports the
+`OctopusBridge addStorage:` injection strategy used in v0.5.
+
+### Remaining unknown
+
+The exact set of Objective-C methods ptpd calls on a PTPStorage object when routing
+GetObjectHandles, GetObjectInfo and GetObject is not directly observable from the binary
+analysis alone. The OctopusBridge v0.5 implementation intercepts at the PTPVirtualCamera
+dispatch methods (confirmed decompiled) rather than relying on a complete PTPStorage
+protocol conformance. If ptpd calls storage-object methods not intercepted by the hooks, a
+Frida runtime observation inside a live ptpd process would identify them. This remains the
+primary open evidence item before full end-to-end validation.

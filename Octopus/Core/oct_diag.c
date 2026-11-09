@@ -5,6 +5,7 @@
 #define _POSIX_C_SOURCE 200809L
 #endif
 #include "oct_diag.h"
+#include "oct_bridge.h"
 #include "oct_compat.h"
 #include "oct_link.h"
 #include "oct_sha256.h"
@@ -257,6 +258,42 @@ static void adapter_lifecycle(oct_diag *d, oct_diag_result *out) { (void)d; run_
 
 static void adapter_usb_boundary(oct_diag *d, oct_diag_result *out) { (void)d; run_compat(out, oct_compat_usb_boundary); }
 
+/* ---- The bridge socket probe (not simulated, not external: it probes a local socket) ------- */
+
+static void adapter_bridge_probe(oct_diag *diag, oct_diag_result *out)
+{
+    (void)diag;
+    const char *path = OCT_BRIDGE_DEFAULT_SOCKET;
+    oct_bridge_client *client = NULL;
+    oct_status status = oct_bridge_client_connect(path, 500, &client);
+    if (status == OCT_E_STATE) {
+        /* Nothing is listening on the socket: the tweak is not installed or not loaded. */
+        report(out, OCT_DIAG_BLOCKED,
+               "No integration client is running at %s. Install and enable the OctopusBridge "
+               "package from Sileo to route Windows PTP requests to this responder.", path);
+        return;
+    }
+    if (status != OCT_OK) {
+        report(out, OCT_DIAG_BLOCKED,
+               "Couldn't connect to the bridge socket at %s: %s", path, oct_status_name(status));
+        return;
+    }
+    char info[128] = "";
+    oct_status ping = oct_bridge_client_ping(client, info, sizeof info, 1000);
+    out->checks++;
+    oct_bridge_client_destroy(client);
+    if (ping == OCT_OK) {
+        report(out, OCT_DIAG_PASS,
+               "Bridge socket answered PING at %s. The ptpd integration is active and "
+               "connected to this responder. PTP requests from Windows will be routed here.",
+               info[0] ? info : path);
+    } else {
+        report(out, OCT_DIAG_FAIL,
+               "Connected to %s but the PING timed out (%s). "
+               "The bridge may be starting up; try again in a moment.", path, oct_status_name(ping));
+    }
+}
+
 /* ---- The list -------------------------------------------------------------------------- */
 
 static void add(oct_diag *diag, const char *id, const char *group, const char *title, oct_diag_kind kind, int phase,
@@ -292,6 +329,8 @@ oct_status oct_diag_create(oct_diag **out)
         adapter_lifecycle);
     add(diag, "adapter.usb_boundary", "Transport adapter (simulated)", "USB interface and setup validation",
         OCT_DIAG_SIMULATED, -1, adapter_usb_boundary);
+    add(diag, "adapter.bridge", "Transport adapter (native observation)",
+        "Bridge socket probe (OctopusBridge integration)", OCT_DIAG_LOCAL, -1, adapter_bridge_probe);
     *out = diag;
     return OCT_OK;
 }

@@ -5,6 +5,57 @@ run number (0.2.42 is a push of 0.2), so the versions below are the ones where s
 notes, its commit messages, are on its [release page](https://github.com/m9z2w4d8vw-blip/octopus/releases) and in
 the app's changelog.
 
+## v0.5
+
+### Core: Unix socket bridge transport (oct_bridge)
+
+- New `oct_bridge` module: a Unix domain socket transport that connects Octopus's PTP
+  responder to an external integration client without IOKit, driver registration, or
+  USB descriptor conflicts.
+- Wire protocol: 5-byte header (1 type + 4 length LE), 12 message types covering
+  host attach/detach, bulk data, interrupt events, bus reset, suspend/resume, class
+  requests and keepalive ping/pong.
+- Default socket path: `/var/mobile/Library/Caches/Octopus/octopus-bridge.sock`.
+- 8 new test suites: wire encoding, ping/pong, full MTP round-trip, class requests,
+  lifecycle messages, unknown message drop, client disconnect/reconnect, stop/start cycle.
+- Fixed a heap-buffer-overflow in the HOST_DETACHED log path (reason string was not
+  null-terminated before printf).
+
+### Diagnostics: bridge socket probe
+
+- New `adapter.bridge` check: connects to the bridge socket and sends a PING.
+  Reports PASS (integration active), BLOCKED (socket not present — tweak not installed)
+  or FAIL (socket exists but no response).
+
+### ptpd integration: OctopusBridge tweak
+
+- New `Octopus/Bridge/OctopusBridge.m` Logos tweak (Theos, rootless Dopamine, ARM64e).
+- Before hooking anything, verifies the running ptpd binary's UUID and SHA-256 against
+  the analysed reference (`FFD54FC7-0508-3AB8-8D17-2F698B611E10`). Silently exits on
+  mismatch to protect Photos.
+- Hooks `PTPVirtualCamera initWithName:andPath:` to call `addStorage:` with an
+  `OctopusPTPStorage` proxy (storage ID 0x00020001), registering Octopus as a second
+  PTP storage in ptpd's routing table.
+- Hooks `storageInfoDatasetForStorageID:`, `objectHandlesInStorage:...`,
+  `dataSourceForObjectHandle:responseCode:size:` to serve Octopus objects for handle
+  range 0x80000001–0x8FFFFFFF, fetching bytes from the bridge socket.
+- Hooks `PTPResponder transportActivated` / `transportDeactivated` to send
+  HOST_ATTACHED and HOST_DETACHED to the Octopus app.
+
+### Docs
+
+- `docs/usb-research/runtime-validation.md`: four physical-device diagnostic captures
+  (stages 01–04, v0.4.9, iPhone 13 / iOS 17.0) analysed and documented. Key findings:
+  ptpd UUID and SHA-256 confirmed at runtime; IOKit PTP match is a config-descriptor
+  registration, not a live-connection indicator; `addStorage:` insert proceeds even when
+  the "two storages cannot co-exist" log fires.
+
+### Tests
+
+- C core: 3,470 checks, 0 failures.
+- ASan/UBSan (make sanitize): 0 errors.
+- TSan (make tsan): 0 data-race warnings.
+
 ## v0.4
 
 ### Unreleased USB engineering
