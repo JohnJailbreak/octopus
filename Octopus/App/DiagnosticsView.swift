@@ -72,8 +72,21 @@ struct DiagnosticsWindow: View {
     }
 
     private var providerPrerequisite: Bool {
-        guard let capture = runner.environment?.nativeCapture else { return false }
-        return capture.expectedLease == native.token && capture.validationProblem == nil && capture.report?.providerEligible == true
+        // The status file this used to read is written into a folder ptpd's sandbox refuses, so on
+        // the current device it never appeared and this toggle could never unlock. The companion
+        // now also posts its state by notification, which is the direction proven to cross that
+        // boundary; either source may satisfy the prerequisite, and both require the companion to
+        // have reported itself eligible after seeing a real host ask for storage.
+        if let capture = runner.environment?.nativeCapture,
+           capture.expectedLease == native.token, capture.validationProblem == nil,
+           capture.report?.providerEligible == true {
+            return true
+        }
+        var runtime = oct_native_runtime()
+        guard oct_native_runtime_read(&runtime) == OCT_OK else { return false }
+        let eligible = runtime.flags & UInt8(OCT_NATIVE_RUNTIME_ELIGIBLE.rawValue) != 0
+        let hooked = runtime.flags & UInt8(OCT_NATIVE_RUNTIME_HOOKED.rawValue) != 0
+        return eligible && hooked
     }
 
     private var header: some View {

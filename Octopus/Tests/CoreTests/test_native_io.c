@@ -507,11 +507,20 @@ static void test_lease_word(void)
     CHECK_EQ(out.generation, observe.generation);
     CHECK_EQ(oct_native_lease_effective(&out, now), OCT_NATIVE_LEASE_OBSERVE);
 
-    /* Exposure is refused from this channel however it is asked for, because any process can post
-     * here. This is the whole reason the provider stays off. */
-    oct_native_lease_word expose = { .mode = OCT_NATIVE_LEASE_EXPOSE, .deadline_ms = now + 1000 };
-    CHECK(oct_native_lease_unpack(oct_native_lease_pack(&expose), &out)); /* decodes */
-    CHECK_EQ(out.mode, (uint8_t)OCT_NATIVE_LEASE_EXPOSE);                 /* and says so */
+    /* The synthetic tree may be exposed: it is six objects this code builds from constants, with
+     * no user data in it, so a forged grant would show a host Octopus's own sample files. */
+    oct_native_lease_word synthetic = { .mode = OCT_NATIVE_LEASE_EXPOSE_SYNTHETIC,
+                                        .deadline_ms = now + 1000 };
+    CHECK(oct_native_lease_unpack(oct_native_lease_pack(&synthetic), &out));
+    CHECK_EQ(oct_native_lease_effective(&out, now), OCT_NATIVE_LEASE_EXPOSE_SYNTHETIC);
+    CHECK_EQ(oct_native_lease_effective(&out, now + 2000), OCT_NATIVE_LEASE_NONE); /* still expires */
+
+    /* Real files are refused however they are asked for, because any process can post here, and
+     * the request grants nothing rather than being downgraded to something lesser. */
+    oct_native_lease_word files = { .mode = OCT_NATIVE_LEASE_EXPOSE_FILESYSTEM,
+                                    .deadline_ms = now + 1000 };
+    CHECK(oct_native_lease_unpack(oct_native_lease_pack(&files), &out)); /* decodes */
+    CHECK_EQ(out.mode, (uint8_t)OCT_NATIVE_LEASE_EXPOSE_FILESYSTEM);     /* and says so */
     CHECK_EQ(oct_native_lease_effective(&out, now), OCT_NATIVE_LEASE_NONE); /* but grants nothing */
 
     /* Expiry, to the millisecond. */
@@ -559,6 +568,44 @@ static void test_lease_word(void)
     CHECK_EQ(oct_native_lease_pack(NULL), 0u);
 }
 
+/* The companion's runtime state, which replaces the status file the sandbox blocks. The
+ * synthetic-storage toggle waits on the eligibility bit, so this is what unlocks it. */
+static void test_runtime_word(void)
+{
+    oct_native_runtime out;
+    oct_native_runtime live = { .mode = 2,
+                                .flags = OCT_NATIVE_RUNTIME_HOOKED | OCT_NATIVE_RUNTIME_ELIGIBLE |
+                                         OCT_NATIVE_RUNTIME_SAW_IDS | OCT_NATIVE_RUNTIME_SAW_INFO,
+                                .commands = 1234, .responses = 1200, .provider_events = 42 };
+    CHECK(oct_native_runtime_unpack(oct_native_runtime_pack(&live), &out));
+    CHECK(memcmp(&live, &out, sizeof live) == 0);
+    CHECK(out.flags & OCT_NATIVE_RUNTIME_ELIGIBLE);
+
+    /* Every field at its maximum survives, so a busy session is not mistaken for an empty one. */
+    oct_native_runtime full = { .mode = 2, .flags = 0xF, .commands = 0xFFFF,
+                                .responses = 0xFFFF, .provider_events = 0xFF };
+    CHECK(oct_native_runtime_unpack(oct_native_runtime_pack(&full), &out));
+    CHECK(memcmp(&full, &out, sizeof full) == 0);
+
+    /* Nothing observed yet is distinguishable from nothing posted. */
+    oct_native_runtime quiet = { .mode = 1, .flags = OCT_NATIVE_RUNTIME_HOOKED };
+    CHECK(oct_native_runtime_unpack(oct_native_runtime_pack(&quiet), &out));
+    CHECK_EQ(out.commands, 0);
+    CHECK_EQ(out.mode, 1);
+    CHECK(!(out.flags & OCT_NATIVE_RUNTIME_ELIGIBLE));
+    CHECK(!oct_native_runtime_unpack(0, &out));                 /* never posted */
+
+    /* Corrupted, unknown version, impossible mode. */
+    uint64_t word = oct_native_runtime_pack(&live);
+    CHECK(!oct_native_runtime_unpack(word ^ (1ull << 20), &out));
+    CHECK(!oct_native_runtime_unpack((word & ~0xFull) | 2u, &out));
+    CHECK(!oct_native_runtime_unpack(word, NULL));
+    CHECK_EQ(oct_native_runtime_pack(NULL), 0u);
+    oct_native_runtime impossible = { .mode = 3 };
+    uint64_t bad = oct_native_runtime_pack(&impossible);
+    CHECK(!oct_native_runtime_unpack(bad, &out)); /* check byte valid, mode is not */
+}
+
 void run_native_io_tests(void)
 {
     test_detailed_failures();
@@ -567,6 +614,7 @@ void run_native_io_tests(void)
     test_startup_signal();
     test_signal_verdicts();
     test_lease_word();
+    test_runtime_word();
     char directory[512], path[1024];
     const char *temporary = getenv("OCT_NATIVE_TEST_TMP");
     int count = snprintf(directory, sizeof directory, "%s/octopus-native-XXXXXX", temporary ? temporary : "/tmp");

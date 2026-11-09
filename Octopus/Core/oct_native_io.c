@@ -339,7 +339,7 @@ bool oct_native_lease_unpack(uint64_t word, oct_native_lease_word *out)
     if (!word || (word & 0xFu) != OCT_NATIVE_LEASE_VERSION) return false;
     if ((uint8_t)(word >> 56) != lease_check(word & 0x00FFFFFFFFFFFFFFull)) return false;
     uint8_t mode = (uint8_t)((word >> 4) & 0xFu);
-    if (mode > OCT_NATIVE_LEASE_EXPOSE) return false;
+    if (mode > OCT_NATIVE_LEASE_EXPOSE_FILESYSTEM) return false;
     out->mode = mode;
     out->deadline_ms = (word >> 8) & 0xFFFFFFFFFFull;
     out->generation = (uint16_t)((word >> 48) & 0xFFu);
@@ -352,9 +352,38 @@ oct_native_lease_mode oct_native_lease_effective(const oct_native_lease_word *le
     if (!lease->deadline_ms || now_ms >= lease->deadline_ms) return OCT_NATIVE_LEASE_NONE;
     /* Further ahead than the app is allowed to grant: a clock anomaly or a forged word. */
     if (lease->deadline_ms - now_ms > OCT_NATIVE_LEASE_MS) return OCT_NATIVE_LEASE_NONE;
-    /* Exposure never comes from this channel, decided here so no caller can forget. */
-    if (lease->mode == OCT_NATIVE_LEASE_EXPOSE) return OCT_NATIVE_LEASE_NONE;
-    return OCT_NATIVE_LEASE_OBSERVE;
+    /* Real files never come from this channel, decided here so no caller can forget. A request
+     * for them is not downgraded to something lesser: it grants nothing at all. */
+    if (lease->mode == OCT_NATIVE_LEASE_EXPOSE_FILESYSTEM) return OCT_NATIVE_LEASE_NONE;
+    return (oct_native_lease_mode)lease->mode;
+}
+
+
+uint64_t oct_native_runtime_pack(const oct_native_runtime *runtime)
+{
+    if (!runtime) return 0;
+    uint64_t word = (uint64_t)(OCT_NATIVE_RUNTIME_VERSION & 0xFu)
+                  | (uint64_t)(runtime->mode & 0xFu) << 4
+                  | (uint64_t)(runtime->flags & 0xFu) << 8
+                  | (uint64_t)runtime->commands << 12
+                  | (uint64_t)runtime->responses << 28
+                  | (uint64_t)runtime->provider_events << 44;
+    return word | (uint64_t)lease_check(word) << 56;
+}
+
+bool oct_native_runtime_unpack(uint64_t word, oct_native_runtime *out)
+{
+    if (!out) return false;
+    memset(out, 0, sizeof *out);
+    if (!word || (word & 0xFu) != OCT_NATIVE_RUNTIME_VERSION) return false;
+    if ((uint8_t)(word >> 56) != lease_check(word & 0x00FFFFFFFFFFFFFFull)) return false;
+    out->mode = (uint8_t)((word >> 4) & 0xFu);
+    out->flags = (uint8_t)((word >> 8) & 0xFu);
+    out->commands = (uint16_t)((word >> 12) & 0xFFFFu);
+    out->responses = (uint16_t)((word >> 28) & 0xFFFFu);
+    out->provider_events = (uint8_t)((word >> 44) & 0xFFu);
+    if (out->mode > 2) return false;
+    return true;
 }
 
 static bool sandbox_like(uint8_t stage, uint8_t error)
@@ -512,6 +541,23 @@ oct_status oct_native_lease_publish(const oct_native_lease_word *lease)
     return notify_write(OCT_NATIVE_LEASE_NAME, &token, oct_native_lease_pack(lease));
 }
 
+oct_status oct_native_runtime_publish(const oct_native_runtime *runtime)
+{
+    static int token = -1;
+    if (!runtime) return OCT_E_INVALID_ARGUMENT;
+    return notify_write(OCT_NATIVE_RUNTIME_NAME, &token, oct_native_runtime_pack(runtime));
+}
+
+oct_status oct_native_runtime_read(oct_native_runtime *out)
+{
+    if (!out) return OCT_E_INVALID_ARGUMENT;
+    memset(out, 0, sizeof *out);
+    uint64_t word = 0;
+    oct_status status = notify_read(OCT_NATIVE_RUNTIME_NAME, &word);
+    if (status != OCT_OK) return status;
+    return oct_native_runtime_unpack(word, out) ? OCT_OK : OCT_E_STATE;
+}
+
 oct_status oct_native_lease_read(oct_native_lease_word *out)
 {
     if (!out) return OCT_E_INVALID_ARGUMENT;
@@ -536,6 +582,16 @@ oct_status oct_native_detail_publish(const oct_native_detail *detail)
 oct_status oct_native_lease_publish(const oct_native_lease_word *lease)
 {
     (void)lease;
+    return OCT_E_UNSUPPORTED;
+}
+oct_status oct_native_runtime_publish(const oct_native_runtime *runtime)
+{
+    (void)runtime;
+    return OCT_E_UNSUPPORTED;
+}
+oct_status oct_native_runtime_read(oct_native_runtime *out)
+{
+    if (out) memset(out, 0, sizeof *out);
     return OCT_E_UNSUPPORTED;
 }
 oct_status oct_native_lease_read(oct_native_lease_word *out)

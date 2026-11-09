@@ -82,7 +82,7 @@ final class NativeIntegration: ObservableObject {
         var posted = OCT_E_UNSUPPORTED
         if leasedMode != 0 {
             var word = oct_native_lease_word()
-            word.mode = UInt8(leasedMode == 2 ? OCT_NATIVE_LEASE_EXPOSE.rawValue
+            word.mode = UInt8(leasedMode == 2 ? OCT_NATIVE_LEASE_EXPOSE_SYNTHETIC.rawValue
                                               : OCT_NATIVE_LEASE_OBSERVE.rawValue)
             word.deadline_ms = UInt64(now) + UInt64(OCT_NATIVE_LEASE_MS)
             word.generation = generation
@@ -92,7 +92,7 @@ final class NativeIntegration: ObservableObject {
                     : (result == OCT_OK ? "file" : "neither channel")
         detail = (result == OCT_OK || posted == OCT_OK)
             ? (leasedMode == 2
-               ? "Observer authorized over \(channel). Synthetic exposure is not granted over the notification channel and stays off."
+               ? "Synthetic storage authorized over \(channel) while Octopus stays open. Reconnect USB, then look for a second volume in Explorer."
                : "Read-only native observer authorized over \(channel) while Octopus stays open. Run diagnostics after using Explorer.")
             : "Native lease failed: file status \(result.rawValue) errno \(error); notification status \(posted.rawValue)."
         #endif

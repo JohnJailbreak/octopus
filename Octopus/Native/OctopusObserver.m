@@ -238,9 +238,6 @@ static BOOL compatible(NSString **reason){
         *reason=[NSString stringWithFormat:@"ptpd image not usable: %s",oct_image_outcome_name(outcome)];
         return NO;
     }
-    const struct mach_header_64 *header=(const struct mach_header_64*)dyldHeader(NULL,imageIndex);
-    oct_macho_identity identity={0}; /* read below even when parsing is short-circuited */
-    (void)header;
     if(strcmp(found.uuid,"FFD54FC7-0508-3AB8-8D17-2F698B611E10")){
         startup.identity=OCT_NATIVE_IDENTITY_WRONG_UUID;
         os_log_error(startup_log(),"ptpd UUID is %{public}s, expected FFD54FC7-0508-3AB8-8D17-2F698B611E10",found.uuid);
@@ -346,17 +343,19 @@ __attribute__((constructor)) static void startObserver(void){
                 oct_status leaseStatus=oct_native_lease_read(&granted);
                 if(leaseStatus==OCT_OK){
                     effective=oct_native_lease_effective(&granted,now());
-                    if(granted.mode==OCT_NATIVE_LEASE_EXPOSE&&effective!=OCT_NATIVE_LEASE_EXPOSE){
+                    if(granted.mode==OCT_NATIVE_LEASE_EXPOSE_FILESYSTEM&&effective==OCT_NATIVE_LEASE_NONE){
                         static bool reportedRefusal;
                         if(!reportedRefusal){reportedRefusal=true;
-                            os_log_error(startup_log(),"exposure was requested over the notification channel and refused; observation only");}
+                            os_log_error(startup_log(),"real-file exposure was requested over the notification channel and refused; it grants nothing");}
                     }
                 }
                 startup.lease_stage=(uint8_t)(leaseStatus==OCT_OK?OCT_NATIVE_IO_OK:
                                               (leaseStatus==OCT_E_STATE?OCT_NATIVE_IO_CONTENT:OCT_NATIVE_IO_READ));
                 startup.lease_error=0;
-                /* The observer runs in mode 1; exposure (mode 2) is never reachable from here. */
-                wanted=effective==OCT_NATIVE_LEASE_OBSERVE?1u:0u;
+                /* Mode 1 observes; mode 2 additionally serves the synthetic tree, which is what
+                 * OCTNativeProviderEnabled requires. Real files are never reachable from here. */
+                wanted=effective==OCT_NATIVE_LEASE_EXPOSE_SYNTHETIC?2u:
+                       (effective==OCT_NATIVE_LEASE_OBSERVE?1u:0u);
                 if(wanted){
                     until=granted.deadline_ms;
                     snprintf(token,sizeof token,"notify-%u",(unsigned)granted.generation);
@@ -392,6 +391,24 @@ __attribute__((constructor)) static void startObserver(void){
             }
             pthread_mutex_lock(&lock);oct_native_authorize(&journal,authorized());pthread_mutex_unlock(&lock);
             publish();
+            /* The counters also go out by notification, because the folder publish() writes into
+             * is refused in this process. This is what the app reads to decide whether the
+             * synthetic-storage toggle may be offered. */
+            {
+                oct_native_snapshot live;oct_native_get_snapshot(&journal,&live);
+                oct_native_runtime runtime={0};
+                runtime.mode=(uint8_t)atomic_load(&mode);
+                if(atomic_load(&ready))runtime.flags|=OCT_NATIVE_RUNTIME_HOOKED;
+                if(atomic_load(&providerReady))runtime.flags|=OCT_NATIVE_RUNTIME_ELIGIBLE;
+                unsigned seen=atomic_load(&observedStorage);
+                if(seen&1)runtime.flags|=OCT_NATIVE_RUNTIME_SAW_IDS;
+                if(seen&2)runtime.flags|=OCT_NATIVE_RUNTIME_SAW_INFO;
+                /* Counts saturate rather than wrap, so a long session cannot read as a quiet one. */
+                runtime.commands=(uint16_t)(live.commands>0xFFFFu?0xFFFFu:live.commands);
+                runtime.responses=(uint16_t)(live.paired_responses>0xFFFFu?0xFFFFu:live.paired_responses);
+                runtime.provider_events=(uint8_t)(providerEvents>0xFFu?0xFFu:providerEvents);
+                oct_native_runtime_publish(&runtime);
+            }
             post_startup();
         }});
         /* Before dispatch_resume: once resumed, the handler runs on its own queue and owns `startup`. */

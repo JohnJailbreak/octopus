@@ -101,9 +101,13 @@ typedef struct oct_native_detail {
  *   - OBSERVE is accepted. It installs passive hooks that forward Apple's own flows unchanged and
  *     record operation codes, transaction numbers and counts. No filenames or payloads are kept,
  *     and nothing is served to the host.
- *   - EXPOSE is refused from this channel, always, whatever the word says. Serving synthetic or
- *     real files to a host is not something a forgeable hint may enable; that waits for a channel
- *     whose sender can be established.
+ *   - EXPOSE_SYNTHETIC is accepted. What it exposes is the six-object tree this code builds in
+ *     memory from constants: a demo text file and its folders. There is no user data in it, so a
+ *     forged grant would show a connected host Octopus's own sample files and nothing else, which
+ *     is a different thing from reading someone's phone. Apple's own storages are untouched.
+ *   - EXPOSE_FILESYSTEM is refused from this channel, always, whatever the word says. Serving real
+ *     files is where a forged grant would matter, and it waits for a channel whose sender can be
+ *     established. The read-only backend is not connected to the live provider either way.
  *
  * The expiry is carried as milliseconds since boot so a word left behind by an earlier boot cannot
  * read as current, and is clamped to the 15 second lease the app already uses. The check byte
@@ -113,8 +117,9 @@ typedef struct oct_native_detail {
 
 typedef enum oct_native_lease_mode {
     OCT_NATIVE_LEASE_NONE = 0,
-    OCT_NATIVE_LEASE_OBSERVE,  /* passive observation only */
-    OCT_NATIVE_LEASE_EXPOSE,   /* refused from this channel */
+    OCT_NATIVE_LEASE_OBSERVE,           /* passive observation only */
+    OCT_NATIVE_LEASE_EXPOSE_SYNTHETIC,  /* the built-in six-object tree */
+    OCT_NATIVE_LEASE_EXPOSE_FILESYSTEM, /* real files: refused from this channel */
 } oct_native_lease_mode;
 
 typedef struct oct_native_lease_word {
@@ -131,6 +136,38 @@ oct_native_lease_mode oct_native_lease_effective(const oct_native_lease_word *le
 
 oct_status oct_native_lease_publish(const oct_native_lease_word *lease);
 oct_status oct_native_lease_read(oct_native_lease_word *out);
+
+/* ---- The companion's runtime state, without the blocked folder ----------------------------
+ *
+ * The status JSON is written into a folder ptpd cannot open, so the app could not learn whether
+ * hooks are installed or whether the provider is eligible, and the synthetic-storage toggle, which
+ * waits on exactly that, could never unlock. These counters travel the proven direction instead.
+ * Bounded by construction: counts saturate rather than wrap, and nothing identifying a file or a
+ * payload is carried, only how many commands and responses were seen.
+ *
+ * version:4 mode:4 flags:4 commands:16 responses:16 provider_events:8 check:8, 60 of 64 bits. */
+#define OCT_NATIVE_RUNTIME_NAME    "com.parv.octopus.native.runtime"
+#define OCT_NATIVE_RUNTIME_VERSION 1u
+
+enum {
+    OCT_NATIVE_RUNTIME_HOOKED    = 1u << 0, /* observer hooks are installed */
+    OCT_NATIVE_RUNTIME_ELIGIBLE  = 1u << 1, /* the provider's own checks passed */
+    OCT_NATIVE_RUNTIME_SAW_IDS   = 1u << 2, /* a real GetStorageIDs arrived from a host */
+    OCT_NATIVE_RUNTIME_SAW_INFO  = 1u << 3, /* a real GetStorageInfo arrived from a host */
+};
+
+typedef struct oct_native_runtime {
+    uint8_t  mode;            /* 0 none, 1 observing, 2 serving the synthetic tree */
+    uint8_t  flags;           /* the OCT_NATIVE_RUNTIME_* bits above */
+    uint16_t commands;        /* host commands seen, saturating at 65535 */
+    uint16_t responses;       /* Apple responses paired with them, saturating */
+    uint8_t  provider_events; /* provider calls served, saturating at 255 */
+} oct_native_runtime;
+
+uint64_t   oct_native_runtime_pack(const oct_native_runtime *runtime);
+bool       oct_native_runtime_unpack(uint64_t word, oct_native_runtime *out);
+oct_status oct_native_runtime_publish(const oct_native_runtime *runtime);
+oct_status oct_native_runtime_read(oct_native_runtime *out);
 
 uint64_t   oct_native_detail_pack(const oct_native_detail *detail);
 bool       oct_native_detail_unpack(uint64_t word, oct_native_detail *out);
