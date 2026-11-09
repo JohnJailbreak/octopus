@@ -22,6 +22,23 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <stdlib.h>
+
+#define ROOT_CAPACITY 1024
+#define PATH_CAPACITY 2048
+
+/*
+ * The backend refuses a root with a symlink in any component, by design. On macOS /tmp is a
+ * symlink to /private/tmp, as /var is to /private/var on iOS, so a temporary tree's path must be
+ * resolved first, exactly as a real caller must resolve its root. Rewrites root in place.
+ */
+static bool real_path_of(char *root, size_t capacity)
+{
+    char real[4096];
+    if (!realpath(root, real) || strlen(real) >= capacity) return false;
+    memcpy(root, real, strlen(real) + 1);
+    return true;
+}
 
 static bool grant = true;
 static bool authorized(void *context) { (void)context; return grant; }
@@ -39,14 +56,15 @@ static void put(const char *path, const char *text)
 /* The tree used throughout: a file, a nested file, a symlink to each kind, nothing else. */
 static void make_tree(char *root)
 {
-    char path[512];
+    char path[PATH_CAPACITY];
     CHECK(mkdtemp(root) != NULL);
-    snprintf(path, 512, "%s/readme.txt", root);      put(path, "0123456789abcdef");
-    snprintf(path, 512, "%s/sub", root);             CHECK_EQ(mkdir(path, 0755), 0);
-    snprintf(path, 512, "%s/sub/inner.txt", root);   put(path, "inner");
-    snprintf(path, 512, "%s/link-to-file", root);    CHECK_EQ(symlink("readme.txt", path), 0);
-    snprintf(path, 512, "%s/link-to-dir", root);     CHECK_EQ(symlink("sub", path), 0);
-    snprintf(path, 512, "%s/link-outside", root);    CHECK_EQ(symlink("/etc", path), 0);
+    CHECK(real_path_of(root, ROOT_CAPACITY));
+    snprintf(path, sizeof path, "%s/readme.txt", root);      put(path, "0123456789abcdef");
+    snprintf(path, sizeof path, "%s/sub", root);             CHECK_EQ(mkdir(path, 0755), 0);
+    snprintf(path, sizeof path, "%s/sub/inner.txt", root);   put(path, "inner");
+    snprintf(path, sizeof path, "%s/link-to-file", root);    CHECK_EQ(symlink("readme.txt", path), 0);
+    snprintf(path, sizeof path, "%s/link-to-dir", root);     CHECK_EQ(symlink("sub", path), 0);
+    snprintf(path, sizeof path, "%s/link-outside", root);    CHECK_EQ(symlink("/etc", path), 0);
 }
 
 static uint32_t named(oct_store *store, uint32_t parent, const char *name)
@@ -67,7 +85,7 @@ static uint32_t named(oct_store *store, uint32_t parent, const char *name)
 
 static void test_creation_is_guarded(void)
 {
-    char root[] = "/tmp/octopus-ro-XXXXXX", alias[600];
+    char root[ROOT_CAPACITY] = "/tmp/octopus-ro-XXXXXX", alias[PATH_CAPACITY];
     make_tree(root);
     oct_backend backend;
     oct_readonly_options options = { .root = root, .authorized = authorized };
@@ -80,14 +98,20 @@ static void test_creation_is_guarded(void)
     CHECK(oct_readonly_backend_create(&through_link, &backend) != OCT_OK); /* symlinked root */
     oct_readonly_options relative = { .root = "tmp", .authorized = authorized };
     CHECK(oct_readonly_backend_create(&relative, &backend) != OCT_OK);     /* not absolute */
-    CHECK_OK(oct_readonly_backend_create(&options, &backend));
-    backend.ops->destroy(backend.ctx);
+    /* A symlink in a middle component is refused too: this is what made /tmp fail on macOS. */
+    char nested[PATH_CAPACITY + 8]; /* alias plus "/sub" always fits */
+    snprintf(nested, sizeof nested, "%s/sub", alias);
+    oct_readonly_options through_parent = { .root = nested, .authorized = authorized };
+    CHECK(oct_readonly_backend_create(&through_parent, &backend) != OCT_OK);
+    oct_status created = oct_readonly_backend_create(&options, &backend);
+    CHECK_OK(created);
+    if (created == OCT_OK) backend.ops->destroy(backend.ctx); /* never destroy what was not made */
     unlink(alias);
 }
 
 static void test_listing_reading_and_symlinks(void)
 {
-    char root[] = "/tmp/octopus-ro-XXXXXX";
+    char root[ROOT_CAPACITY] = "/tmp/octopus-ro-XXXXXX";
     make_tree(root);
     grant = true;
     oct_readonly_options options = { .root = root, .authorized = authorized };
@@ -129,7 +153,7 @@ static void test_listing_reading_and_symlinks(void)
 
 static void test_revocation_is_fail_closed(void)
 {
-    char root[] = "/tmp/octopus-ro-XXXXXX";
+    char root[ROOT_CAPACITY] = "/tmp/octopus-ro-XXXXXX";
     make_tree(root);
     grant = true;
     oct_readonly_options options = { .root = root, .authorized = authorized };
@@ -160,7 +184,7 @@ static void test_revocation_is_fail_closed(void)
 
 static void test_writes_are_refused(void)
 {
-    char root[] = "/tmp/octopus-ro-XXXXXX", path[512];
+    char root[ROOT_CAPACITY] = "/tmp/octopus-ro-XXXXXX", path[PATH_CAPACITY];
     make_tree(root);
     grant = true;
     oct_readonly_options options = { .root = root, .authorized = authorized };
@@ -191,7 +215,7 @@ static void test_writes_are_refused(void)
 
 static void test_replaced_inode_is_not_served(void)
 {
-    char root[] = "/tmp/octopus-ro-XXXXXX", path[512], moved[512];
+    char root[ROOT_CAPACITY] = "/tmp/octopus-ro-XXXXXX", path[PATH_CAPACITY], moved[PATH_CAPACITY];
     make_tree(root);
     grant = true;
     oct_readonly_options options = { .root = root, .authorized = authorized };
@@ -214,8 +238,9 @@ static void test_replaced_inode_is_not_served(void)
 
 static void test_limits(void)
 {
-    char root[] = "/tmp/octopus-ro-XXXXXX", path[512];
+    char root[ROOT_CAPACITY] = "/tmp/octopus-ro-XXXXXX", path[PATH_CAPACITY];
     CHECK(mkdtemp(root) != NULL);
+    CHECK(real_path_of(root, ROOT_CAPACITY));
     for (int i = 0; i < 12; i++) {
         snprintf(path, sizeof path, "%s/f%02d", root, i);
         put(path, "x");

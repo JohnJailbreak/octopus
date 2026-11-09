@@ -163,7 +163,8 @@ int main(void) { @autoreleasepool {
     assert(code==OCT_RC_OK && bulk.length>8);
     uint64_t bulkCount=0;for(unsigned i=0;i<8;i++)bulkCount|=(uint64_t)((const uint8_t *)bulk.bytes)[i]<<(i*8);
     assert(bulkCount==6);
-    assert([camera objectInfoForObjectsInStorage:OCT_NATIVE_STORAGE_ID forObjectFormatCode:0 inAssociation:0 withContentType:1 responseCode:&code].length>0 && code==OCT_RC_OK);
+    /* Message syntax: the method returns id, and dot syntax needs a static type. */
+    assert([[camera objectInfoForObjectsInStorage:OCT_NATIVE_STORAGE_ID forObjectFormatCode:0 inAssociation:0 withContentType:1 responseCode:&code] length]>0 && code==OCT_RC_OK);
     NSUInteger before=camera.ordinaryCalls;
     assert([[camera objectInfoForObjectsInStorage:0x10001 forObjectFormatCode:0 inAssociation:0 withContentType:3 responseCode:&code] isEqual:[@"photo-bulk" dataUsingEncoding:NSUTF8StringEncoding]]);
     assert(camera.ordinaryCalls==before+1);                               /* Photos goes to Apple */
