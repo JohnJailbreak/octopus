@@ -13,8 +13,9 @@ without touching it.
 - **Enable USB Access starts the bridge socket** at
   `/var/mobile/Library/Caches/Octopus/octopus-bridge.sock`, and Disable takes it down. The service
   now ends at *Waiting for a host* rather than *Ready*. When that folder can't be made or written,
-  no transport is attached and Octopus runs as a local service exactly as before: enabling never
-  fails because of the bridge.
+  or the path is too long for a socket, no transport is attached and Octopus runs as a local service
+  exactly as before. When a transport is attached but fails to start, it is detached and the service
+  is enabled once more without it, so the bridge can cost Windows access but never the local service.
 - **The bridge is split in two**, so the component injected into ptpd carries none of the app's
   file-serving code. `oct_bridge_io.c` holds the framing and socket primitives,
   `oct_bridge_client.c` the client, and `oct_bridge.c` the server and its self-test. The client
@@ -44,7 +45,12 @@ without touching it.
 - **CI builds the DEB.** The `tweak` job runs on macOS, installs Theos, compiles and links the
   tweak for arm64e, packages the rootless DEB, prints `dpkg-deb --contents`, and uploads it as an
   artifact. It runs independently of the app job, so a successful IPA is never reported as proof the
-  component compiles.
+  component compiles. The source is `OctopusBridge.x`, not `.m`: Theos runs the Logos preprocessor
+  only on `.x` and `.xm` files, and handed a `.m` straight to clang, which rejected `%hook`.
+- **Every hook matches Apple's recorded type encoding**, listed in the tweak's header and checked
+  against the ptpd function table by class and full selector. `-[PTPResponder handleRequest:]`
+  returns the response object (`@24@0:8@16`); an earlier draft declared it `void`, which would have
+  handed ptpd a stale register as its reply to every PTP request.
 - **Docs**: `runtime-validation.md` carries the corrected design, a recovery procedure for a
   misbehaving ptpd ending in "boot without the jailbreak", and the staged device procedure from the
   app socket through read-only native observation.

@@ -557,10 +557,24 @@ static void test_bad_arguments(void)
     CHECK(oct_service_start(service, &config) != OCT_OK);
     struct stat st;
     CHECK(lstat(TEST_SOCKET, &st) == 0 && S_ISREG(st.st_mode));
-    oct_service_stop(service);
-    oct_service_destroy(service);
+    oct_service_status after_failure;
+    CHECK_OK(oct_service_get_status(service, &after_failure));
+    CHECK_EQ(after_failure.state, OCT_SERVICE_ERROR);
+    /* What the app does next: detach the bridge and enable again, as a local service. The
+     * failed start must leave the service in a state that allows both. */
+    CHECK_OK(oct_service_set_transport(service, NULL));
+    /* The app frees the bridge before enabling again; the service must not touch it after. */
     oct_bridge_destroy(b);
     oct_link_destroy(link);
+    b = NULL;
+    link = NULL;
+    CHECK_OK(oct_service_start(service, &config));
+    oct_service_status recovered;
+    CHECK_OK(oct_service_get_status(service, &recovered));
+    CHECK_EQ(recovered.state, OCT_SERVICE_READY);
+    CHECK(lstat(TEST_SOCKET, &st) == 0 && S_ISREG(st.st_mode)); /* still not replaced */
+    oct_service_stop(service);
+    oct_service_destroy(service);
     unlink(TEST_SOCKET);
 }
 

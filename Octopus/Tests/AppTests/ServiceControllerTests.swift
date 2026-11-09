@@ -40,9 +40,10 @@ final class ServiceControllerTests: XCTestCase {
     /// Waiting for a host, a client can reach the socket, and disabling takes it all down. Repeats
     /// so a second cycle proves nothing is left behind.
     func testEnableAndDisableWithTheBridgeTransport() async {
-        let socket = FileManager.default.temporaryDirectory
-            .appendingPathComponent("octopus-bridge-tests", isDirectory: true)
-            .appendingPathComponent("bridge.sock").path
+        // Short on purpose: a socket path must fit in 103 bytes, and the Simulator's temporary
+        // directory alone is longer than that. /tmp is the host's, which the core's own bridge
+        // self-test already uses on the Simulator.
+        let socket = "/tmp/octopus-bridge-xctest-\(ProcessInfo.processInfo.processIdentifier).sock"
         XCTAssertNil(BridgeTransport.prepareSocketFolder(for: socket))
         let core = CoreService()
         core.setIdentity(name: "Test iPhone", serial: "TEST-0002", system: "17.0")
@@ -73,10 +74,31 @@ final class ServiceControllerTests: XCTestCase {
         let core = CoreService()
         let unusable = "/this-path-cannot-be-created-by-a-sandboxed-test/bridge.sock"
         XCTAssertNotNil(BridgeTransport.prepareSocketFolder(for: unusable))
+        let tooLong = "/tmp/" + String(repeating: "x", count: 120) + ".sock"
+        XCTAssertEqual(BridgeTransport.prepareSocketFolder(for: tooLong),
+                       "the socket path is \(tooLong.utf8.count) bytes; a socket path can be at most 103")
         let events = await core.perform { $0.startWithBridge(at: unusable, CoreConfiguration(scratch: false, selfTest: false)) }
         XCTAssertFalse(core.bridgeActive)
         XCTAssertEqual(core.state(), .ready)
         XCTAssertTrue(events.contains { $0.kind == .operationEnd && !$0.failed }, "\(events.map(\.text))")
+        _ = await core.perform { $0.stop() }
+        XCTAssertEqual(core.state(), .disabled)
+    }
+
+    /// Something that isn't a socket at the path makes the bridge's start fail. Enabling must still
+    /// succeed, without the bridge, and the file must be left alone.
+    func testABridgeThatFailsToStartFallsBackToTheLocalService() async throws {
+        let squatter = "/tmp/octopus-bridge-squat-\(ProcessInfo.processInfo.processIdentifier).sock"
+        try Data("not a socket".utf8).write(to: URL(fileURLWithPath: squatter))
+        defer { try? FileManager.default.removeItem(atPath: squatter) }
+        let core = CoreService()
+        let events = await core.perform { $0.startWithBridge(at: squatter, CoreConfiguration(scratch: false, selfTest: false)) }
+        XCTAssertFalse(core.bridgeActive)
+        XCTAssertEqual(core.state(), .ready, "\(events.map(\.text))")
+        XCTAssertTrue(events.contains { $0.kind == .stepEnd && $0.failed && $0.text.contains("transport failed") },
+                      "the failed first attempt should be on record: \(events.map(\.text))")
+        XCTAssertEqual(events.last { $0.kind == .operationEnd }?.failed, false)
+        XCTAssertEqual(try? String(contentsOfFile: squatter, encoding: .utf8), "not a socket")
         _ = await core.perform { $0.stop() }
         XCTAssertEqual(core.state(), .disabled)
     }

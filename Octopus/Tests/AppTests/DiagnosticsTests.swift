@@ -21,9 +21,16 @@ final class DiagnosticsTests: XCTestCase {
 
     func testTheCoreChecksPassAndSayWhichAreSimulated() {
         let core = CoreDiagnostics()
-        XCTAssertEqual(core.count, 19)
+        XCTAssertEqual(core.count, 20)
         for index in 0..<core.count {
             let result = core.run(index)
+            if result.id == "bridge.app_socket" {
+                // It connects to the app's real socket. No test starts one, so nothing listens:
+                // BLOCKED, local, and nothing was exchanged. It must never PASS on a guess.
+                XCTAssertEqual(result.status, .blocked, result.detail)
+                XCTAssertEqual(result.kind, .local)
+                continue
+            }
             XCTAssertEqual(result.status, .pass, "\(result.id): \(result.detail)")
             XCTAssertEqual(result.kind, result.id.hasPrefix("adapter.") ? .simulated : .local, result.id)
             XCTAssertGreaterThan(result.checks, 0, result.id)

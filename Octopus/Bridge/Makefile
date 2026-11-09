@@ -3,7 +3,10 @@
 #   make THEOS=/var/jb/opt/theos
 #   make package THEOS=/var/jb/opt/theos
 #
-# This build observes ptpd and changes nothing in it; see the header of OctopusBridge.m.
+# This build observes ptpd and changes nothing in it; see the header of OctopusBridge.x.
+#
+# The source is .x, not .m, on purpose: Theos runs the Logos preprocessor only on .x (Objective-C)
+# and .xm (Objective-C++) files. A .m file goes straight to clang, which rejects %hook.
 
 THEOS                    ?= /var/jb/opt/theos
 TARGET                   := iphone:clang:latest:17.0
@@ -18,7 +21,7 @@ TWEAK_NAME := OctopusBridge
 # Only the bridge's client half and the logger. These three depend on libc alone: none of the
 # app's storage engine, responder or diagnostics is linked into ptpd.
 OctopusBridge_FILES := \
-    OctopusBridge.m \
+    OctopusBridge.x \
     ../Core/oct_bridge_io.c \
     ../Core/oct_bridge_client.c \
     ../Core/oct_log.c

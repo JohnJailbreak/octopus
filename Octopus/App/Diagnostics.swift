@@ -536,13 +536,13 @@ enum Diagnostics {
             return result(id, group, title, .local, .blocked,
                           "The bridge socket server is not running. Enable USB Access to start it at "
                               + (environment.bridgeSocketPath.isEmpty
-                                 ? String(cString: OCT_BRIDGE_DEFAULT_SOCKET)
+                                 ? OCT_BRIDGE_DEFAULT_SOCKET
                                  : environment.bridgeSocketPath)
                               + ". The separate bridge.app_socket core check probes it at run time.",
                           checks: 0)
         }
         let path = environment.bridgeSocketPath.isEmpty
-            ? String(cString: OCT_BRIDGE_DEFAULT_SOCKET) : environment.bridgeSocketPath
+            ? OCT_BRIDGE_DEFAULT_SOCKET : environment.bridgeSocketPath
         return result(id, group, title, .local, .pass,
                       "Bridge socket server is running at \(path). "
                           + "The core check bridge.app_socket probes it via PING; "
@@ -768,7 +768,7 @@ enum Diagnostics {
 
     static func connectivity(_ environment: DiagnosticsEnvironment) -> String {
         let socketPath = environment.bridgeSocketPath.isEmpty
-            ? String(cString: OCT_BRIDGE_DEFAULT_SOCKET) : environment.bridgeSocketPath
+            ? OCT_BRIDGE_DEFAULT_SOCKET : environment.bridgeSocketPath
         var lines = ["Service: \(environment.serviceState)", "Transport: \(environment.transportState)",
                      "Transport failure: \(environment.transportFailure.isEmpty ? "none" : environment.transportFailure)",
                      "Requests from a computer this launch: \(environment.transportTransactions)",

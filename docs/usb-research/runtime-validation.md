@@ -246,9 +246,11 @@ somewhere agreed in advance:
 
     /var/mobile/Library/Caches/Octopus/octopus-bridge.sock
 
-If that folder can't be created or written, no transport is attached and the app behaves exactly as
-every build before this one: a local service, with Windows unable to see it. Enabling never fails
-because of the bridge. On the Simulator, where there is no `/var/mobile`, this is the path taken,
+If that folder can't be created or written, or the path is too long for a socket, no transport is
+attached and the app behaves exactly as every build before this one: a local service, with Windows
+unable to see it. If a transport is attached but fails to start — something that isn't a socket
+already sits at the path, say — the app detaches it and enables once more without it; both attempts
+appear in the activity sheet. The bridge can cost Windows access, but never the local service. On the Simulator, where there is no `/var/mobile`, this is the path taken,
 which is why the Simulator tests still see "No USB transport in this build".
 
 **On the device:**
@@ -281,7 +283,12 @@ ptpd, so there is nothing to recover from.
 3. With Octopus open and USB Access enabled, connect the cable and unlock the phone.
 4. `killall -9 ptpd` if ptpd was already running, so it reloads with the tweak.
 5. Export Diagnostics. Expect `bridge.tweak_log` PASS, and in `logs/octopus-bridge-tweak.log`:
-   - one `loaded` line quoting the reference UUID,
+   - one `loaded` line quoting the reference UUID **and the uid and gid ptpd runs as**. Which
+     user that is isn't in the static evidence, and it matters: connecting to the app's socket
+     needs write permission on it, and the app creates it as `mobile`. Root or `mobile` both
+     work. Any other user can neither connect nor write this log; then the file is absent, and
+     the same `loaded` line is in the system log instead, readable with
+     `ssh mobile@<iphone> 'log show --last 10m --predicate "process == \"ptpd\"" | grep OctopusBridge'`,
    - a `startup_ping` line showing it reached the app's socket,
    - `connected` from the app side in the app's own log.
 6. If the UUID does not match, the log says so and **no hooks are installed at all**. That is the
@@ -308,6 +315,9 @@ Only after that evidence exists is there a basis for designing Stage 4, and the 
 to answer the Windows question separately from the interface question.
 
 ### Still open
+
+- Which user ptpd runs as. The component records it at load (Stage 2, step 5); until then it is
+  unknown whether ptpd can reach the socket at all.
 
 - The app must be running with USB Access enabled before ptpd starts, or the component finds no
   socket at launch. It retries on each hook, so connecting the cable after opening the app works;

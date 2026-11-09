@@ -1,5 +1,5 @@
 /*
- * OctopusBridge.m — rootless Logos tweak (arm64e, Dopamine, iOS 17) loaded into ptpd.
+ * OctopusBridge.x — rootless Logos tweak (arm64e, Dopamine, iOS 17) loaded into ptpd.
  *
  * WHAT THIS BUILD DOES
  *   It observes. Every hook calls Apple's implementation first, records what went in and what
@@ -29,8 +29,23 @@
  *
  * SAFETY
  *   - Nothing is hooked unless the running ptpd's UUID matches the analysed reference build.
+ *   - Each hook's declared types match the method's recorded type encoding exactly, so the original
+ *     receives and returns precisely what Apple's code expects:
+ *       PTPVirtualCamera
+ *         addStorage:                                    v24@0:8@16
+ *         storageWithID:                                 @20@0:8I16
+ *         allStorageIDs                                  @16@0:8
+ *         storageInfoDatasetForStorageID:                @20@0:8I16
+ *         objectHandlesInStorage:forObjectFormatCode:inAssociation:responseCode:
+ *                                                        @36@0:8I16S20I24^S28
+ *         objectForObjectHandle:                         @24@0:8@16   (the handle is an object)
+ *         objectInfoDatasetForObjectHandle:              @20@0:8I16
+ *         dataSourceForObjectHandle:responseCode:size:   @36@0:8I16^S20^I28
+ *       PTPResponder
+ *         transportActivated, transportDeactivated       v16@0:8
+ *         handleRequest:                                 @24@0:8@16   (returns the response)
  *   - Every hooked method is one whose class is confirmed in docs/usb-research/ evidence.
- *   - Hooks only read: they call %orig and return its result untouched.
+ *   - Hooks only read: they call the original implementation and return its result untouched.
  *   - Introspection is bounded and runs once per class.
  *   - No method signatures are fabricated and no invalid call is masked; there is no
  *     forwardInvocation:, and no object of ours is ever given to ptpd.
@@ -57,6 +72,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "../Core/oct_bridge.h"
 #include "../Core/oct_log.h"
@@ -157,7 +173,7 @@ static void describe_class_once(Class cls, const char *role)
     if (!cls) return;
     static NSMutableSet *seen;   /* guarded by g_queue */
     static dispatch_once_t once;
-    dispatch_once(&once, ^{ seen = [NSMutableSet set]; });
+    dispatch_once(&once, ^{ seen = [[NSMutableSet alloc] init]; }); /* owned: MRC, kept for the process */
 
     const char *name = class_getName(cls);
     NSString *key = [NSString stringWithFormat:@"%s/%s", role, name];
@@ -321,19 +337,27 @@ static void describe_object_once(id object, const char *role)
     %orig;
 }
 
-/* Every PTP operation Windows sends, in order: the sequence a real transfer uses. */
-- (void)handleRequest:(id)request
+/*
+ * Every PTP operation Windows sends, in order: the sequence a real transfer uses.
+ * The encoding is @24@0:8@16: it takes the request and RETURNS the response object, which ptpd
+ * then sends to the host. The hook must return exactly what the original returned; a void hook here
+ * would hand ptpd whatever was left in the return register as the reply.
+ */
+- (id)handleRequest:(id)request
 {
     oct_logf(OCT_LOG_INFO, BRIDGE_COMPONENT, "request", "ptpd handling %.200s",
              request ? [[request description] UTF8String] : "nil");
-    %orig;
+    id response = %orig;
+    oct_logf(OCT_LOG_DEBUG, BRIDGE_COMPONENT, "response", "ptpd answered with %s",
+             response ? class_getName(object_getClass(response)) : "nil");
+    return response;
 }
 
 %end
 
 /* ---- Constructor -------------------------------------------------------------------- */
 
-%ctor {
+%ctor { @autoreleasepool {
     NSString *uuid = running_ptpd_uuid();
     if (!uuid) {
         NSLog(@"[OctopusBridge] The host binary's UUID can't be read; no hooks installed.");
@@ -347,18 +371,21 @@ static void describe_object_once(id object, const char *role)
     g_queue = dispatch_queue_create("com.parv.octopus.bridge", DISPATCH_QUEUE_SERIAL);
 
     /* This tweak's own log file, separate from the app's, since a different process writes it. */
-    oct_log_config log = { TWEAK_LOG_PATH, TWEAK_LOG_BYTES, TWEAK_LOG_KEEP, OCT_LOG_DEBUG };
-    oct_status opened = oct_log_open(&log);
+    oct_log_config log_config = { TWEAK_LOG_PATH, TWEAK_LOG_BYTES, TWEAK_LOG_KEEP, OCT_LOG_DEBUG };
+    oct_status opened = oct_log_open(&log_config);
 
     %init;
 
+    /* Which user ptpd runs as isn't in the evidence, and it decides whether this process may
+     * connect to the app's socket (which needs write permission on it) and write this log into
+     * mobile's folder. Record it both here and in the system log, which needs no permissions. */
     oct_logf(OCT_LOG_INFO, BRIDGE_COMPONENT, "loaded",
-             "OctopusBridge loaded into ptpd %s, observation only: hooks read and call through, "
-             "nothing is registered or altered", PTPD_REFERENCE_UUID);
-    if (opened != OCT_OK) {
-        NSLog(@"[OctopusBridge] Can't write %s (%s); lines stay in memory only.",
-              TWEAK_LOG_PATH, oct_status_name(opened));
-    }
+             "OctopusBridge loaded into ptpd %s as uid %u gid %u, observation only: hooks read and "
+             "call through, nothing is registered or altered", PTPD_REFERENCE_UUID,
+             (unsigned)getuid(), (unsigned)getgid());
+    NSLog(@"[OctopusBridge] Loaded into ptpd %s as uid %u gid %u; log %s %s.", PTPD_REFERENCE_UUID,
+          (unsigned)getuid(), (unsigned)getgid(), TWEAK_LOG_PATH,
+          opened == OCT_OK ? "open" : "unwritable, lines kept in memory");
     dispatch_async(g_queue, ^{
         if (bridge_connect()) {
             char answered[OCT_EVENT_TEXT_MAX] = "";
@@ -369,4 +396,4 @@ static void describe_object_once(id object, const char *role)
         }
         oct_log_flush();
     });
-}
+} }
