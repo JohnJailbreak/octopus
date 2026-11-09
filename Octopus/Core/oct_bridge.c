@@ -16,6 +16,7 @@
 #define _POSIX_C_SOURCE 200809L
 #endif
 #include "oct_bridge.h"
+#include "oct_bridge_io.h"
 #include "oct_log.h"
 #include "../Protocol/oct_ptp.h"
 
@@ -52,184 +53,6 @@
 #if defined(__APPLE__) && !defined(SO_NOSIGPIPE)
 #error "SO_NOSIGPIPE is needed: without it a peer that leaves would end the process with SIGPIPE"
 #endif
-
-/* ---- Wire protocol ----------------------------------------------------------------------- */
-
-static void encode_header(uint8_t *header, uint8_t type, size_t length)
-{
-    uint32_t l = (uint32_t)length;
-    header[0] = type;
-    header[1] = (uint8_t)(l & 0xFFu);
-    header[2] = (uint8_t)((l >> 8) & 0xFFu);
-    header[3] = (uint8_t)((l >> 16) & 0xFFu);
-    header[4] = (uint8_t)((l >> 24) & 0xFFu);
-}
-
-size_t oct_bridge_encode(uint8_t type, const void *payload, size_t length, uint8_t *buf, size_t capacity)
-{
-    if (!buf || length > OCT_BRIDGE_MAX_PAYLOAD || (length && !payload)) return 0;
-    if (capacity < OCT_BRIDGE_HEADER_SIZE + length) return 0;
-    encode_header(buf, type, length);
-    if (length) memcpy(buf + OCT_BRIDGE_HEADER_SIZE, payload, length);
-    return OCT_BRIDGE_HEADER_SIZE + length;
-}
-
-uint8_t *oct_bridge_alloc(uint8_t type, const void *payload, size_t length, size_t *out_length)
-{
-    if (length > OCT_BRIDGE_MAX_PAYLOAD) return NULL;
-    size_t total = OCT_BRIDGE_HEADER_SIZE + length;
-    uint8_t *buf = malloc(total);
-    if (!buf) return NULL;
-    size_t written = oct_bridge_encode(type, payload, length, buf, total);
-    if (!written) {
-        free(buf);
-        return NULL;
-    }
-    if (out_length) *out_length = written;
-    return buf;
-}
-
-/* ---- I/O primitives ---------------------------------------------------------------------- */
-
-typedef enum io_result {
-    IO_OK = 0,
-    IO_TIMEOUT,  /* nothing arrived before the deadline */
-    IO_CLOSED,   /* the peer closed or reset the connection */
-    IO_ERROR,    /* a failed call or a malformed frame */
-    IO_WOKEN,    /* the server is stopping */
-} io_result;
-
-static int64_t monotonic_ms(void)
-{
-    struct timespec now;
-    clock_gettime(CLOCK_MONOTONIC, &now);
-    return (int64_t)now.tv_sec * 1000 + (int64_t)(now.tv_nsec / 1000000);
-}
-
-static int64_t deadline_after(uint32_t timeout_ms) { return timeout_ms ? monotonic_ms() + timeout_ms : -1; }
-
-/* Close-on-exec (the update helper is spawned), no SIGPIPE, and a send timeout. */
-static void configure_socket(int fd)
-{
-    int flags = fcntl(fd, F_GETFD);
-    if (flags >= 0) (void)fcntl(fd, F_SETFD, flags | FD_CLOEXEC);
-#if defined(SO_NOSIGPIPE)
-    int one = 1;
-    (void)setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &one, (socklen_t)sizeof one);
-#endif
-    struct timeval timeout = { SEND_TIMEOUT_S, 0 };
-    (void)setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, (socklen_t)sizeof timeout);
-}
-
-/* Waits until `fd` is readable (or hung up), `wake_fd` is readable, or the deadline passes. A negative deadline
- * waits indefinitely; a negative wake_fd isn't watched. */
-static io_result wait_readable(int fd, int wake_fd, int64_t deadline)
-{
-    for (;;) {
-        int timeout = -1;
-        if (deadline >= 0) {
-            int64_t left = deadline - monotonic_ms();
-            if (left <= 0) return IO_TIMEOUT;
-            timeout = left > INT_MAX ? INT_MAX : (int)left;
-        }
-        struct pollfd fds[2] = { { fd, POLLIN, 0 }, { wake_fd, POLLIN, 0 } };
-        nfds_t count = (nfds_t)(wake_fd >= 0 ? 2 : 1);
-        int ready = poll(fds, count, timeout);
-        if (ready < 0) {
-            if (errno == EINTR) continue;
-            return IO_ERROR;
-        }
-        if (ready == 0) continue; /* the deadline check above ends the wait */
-        if (count == 2 && fds[1].revents) return IO_WOKEN;
-        if (fds[0].revents & POLLNVAL) return IO_ERROR;
-        if (fds[0].revents) return IO_OK; /* readable, or hung up: the read says which */
-    }
-}
-
-static io_result read_exact(int fd, int wake_fd, uint8_t *out, size_t length, int64_t deadline)
-{
-    size_t got = 0;
-    while (got < length) {
-        io_result ready = wait_readable(fd, wake_fd, deadline);
-        if (ready != IO_OK) return ready;
-        ssize_t n = recv(fd, out + got, length - got, 0);
-        if (n == 0) return IO_CLOSED;
-        if (n < 0) {
-            if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK) continue;
-            return errno == ECONNRESET ? IO_CLOSED : IO_ERROR;
-        }
-        got += (size_t)n;
-    }
-    return IO_OK;
-}
-
-static bool write_exact(int fd, const uint8_t *bytes, size_t length)
-{
-    while (length > 0) {
-        ssize_t n = send(fd, bytes, length, SEND_FLAGS);
-        if (n < 0) {
-            if (errno == EINTR) continue;
-            return false; /* EPIPE, ECONNRESET, or EAGAIN after the send timeout */
-        }
-        bytes += (size_t)n;
-        length -= (size_t)n;
-    }
-    return true;
-}
-
-/* Writes a frame with one call where the socket takes it all (small frames always), finishing any rest. */
-static bool send_frame(int fd, uint8_t type, const void *payload, size_t length)
-{
-    if (length > OCT_BRIDGE_MAX_PAYLOAD || (length && !payload)) return false;
-    uint8_t header[OCT_BRIDGE_HEADER_SIZE];
-    encode_header(header, type, length);
-    struct iovec parts[2] = { { header, sizeof header }, { (void *)payload, length } };
-    struct msghdr message;
-    memset(&message, 0, sizeof message);
-    message.msg_iov = parts;
-    if (length) message.msg_iovlen = 2;
-    else message.msg_iovlen = 1;
-    ssize_t n;
-    do {
-        n = sendmsg(fd, &message, SEND_FLAGS);
-    } while (n < 0 && errno == EINTR);
-    if (n < 0) return false;
-    size_t sent = (size_t)n;
-    if (sent < sizeof header) {
-        return write_exact(fd, header + sent, sizeof header - sent) && (!length || write_exact(fd, payload, length));
-    }
-    sent -= sizeof header;
-    return sent >= length || write_exact(fd, (const uint8_t *)payload + sent, length - sent);
-}
-
-/* Reads one frame. The header may take until `deadline`; once it has arrived the payload must follow within
- * FRAME_TIMEOUT_MS, or the frame is malformed. The payload (NULL when empty) is the caller's to free. */
-static io_result recv_frame(int fd, int wake_fd, int64_t deadline, uint8_t *out_type, uint8_t **out_payload,
-                            size_t *out_length)
-{
-    *out_payload = NULL;
-    *out_length = 0;
-    uint8_t header[OCT_BRIDGE_HEADER_SIZE];
-    io_result result = read_exact(fd, wake_fd, header, sizeof header, deadline);
-    if (result != IO_OK) return result;
-    uint32_t length = (uint32_t)header[1] | ((uint32_t)header[2] << 8) | ((uint32_t)header[3] << 16) |
-                      ((uint32_t)header[4] << 24);
-    if (length > OCT_BRIDGE_MAX_PAYLOAD) return IO_ERROR;
-    uint8_t *payload = NULL;
-    if (length) {
-        payload = malloc(length);
-        if (!payload) return IO_ERROR;
-        result = read_exact(fd, wake_fd, payload, length, deadline_after(FRAME_TIMEOUT_MS));
-        if (result != IO_OK) {
-            free(payload);
-            return result == IO_TIMEOUT ? IO_ERROR : result; /* a frame cut short is malformed */
-        }
-    }
-    *out_type = header[0];
-    *out_payload = payload;
-    *out_length = length;
-    return IO_OK;
-}
 
 /* ---- Server (Octopus app side) ----------------------------------------------------------- */
 
@@ -274,7 +97,7 @@ static oct_status bridge_send(oct_bridge *b, uint8_t type, const void *payload, 
     int fd = b->client_fd;
     pthread_mutex_unlock(&b->lock);
     oct_status status = OCT_E_STATE;
-    if (fd >= 0) status = send_frame(fd, type, payload, length) ? OCT_OK : OCT_E_IO;
+    if (fd >= 0) status = oct_bridge_send_frame(fd, type, payload, length) ? OCT_OK : OCT_E_IO;
     int error = errno;
     if (status == OCT_E_IO) shutdown(fd, SHUT_RDWR); /* still open: closing needs send_lock, which we hold */
     pthread_mutex_unlock(&b->send_lock);
@@ -338,7 +161,7 @@ static void handle_frame(oct_bridge *b, uint8_t type, const uint8_t *payload, si
     }
     case OCT_BRIDGE_MSG_BULK_FROM_HOST:
         if (link && length) {
-            oct_status status = oct_link_input(link, payload, length, monotonic_ms());
+            oct_status status = oct_link_input(link, payload, length, oct_bridge_monotonic_ms());
             if (status != OCT_OK && status != OCT_E_STATE) {
                 oct_logf(OCT_LOG_WARN, BRIDGE_COMPONENT, "input", "The link refused %zu bytes: %s", length,
                          oct_status_name(status));
@@ -374,7 +197,7 @@ static const char *serve_client(oct_bridge *b, int fd, int wake_fd)
         uint8_t type = 0;
         uint8_t *payload = NULL;
         size_t length = 0;
-        switch (recv_frame(fd, wake_fd, -1, &type, &payload, &length)) {
+        switch (oct_bridge_recv_frame(fd, wake_fd, -1, &type, &payload, &length)) {
         case IO_OK: break;
         case IO_WOKEN: return "the bridge stopped";
         case IO_CLOSED: return "the bridge client disconnected";
@@ -410,10 +233,10 @@ static void *bridge_thread(void *ctx)
     int listener = b->listen_fd, wake_fd = b->wake_read;
     pthread_mutex_unlock(&b->lock);
     while (still_running(b)) {
-        io_result ready = wait_readable(listener, wake_fd, -1);
+        io_result ready = oct_bridge_wait_readable(listener, wake_fd, -1);
         if (ready == IO_WOKEN) break;
         if (ready != IO_OK) {
-            (void)wait_readable(wake_fd, -1, deadline_after(100)); /* don't spin on a failing poll */
+            (void)oct_bridge_wait_readable(wake_fd, -1, oct_bridge_deadline_after(100)); /* don't spin on a failing poll */
             continue;
         }
         int fd = accept(listener, NULL, NULL);
@@ -421,11 +244,11 @@ static void *bridge_thread(void *ctx)
             if (errno != EINTR && errno != ECONNABORTED && errno != EAGAIN && errno != EWOULDBLOCK) {
                 oct_logf(OCT_LOG_WARN, BRIDGE_COMPONENT, "accept_failed", "Accepting a bridge client failed: %s",
                          strerror(errno));
-                (void)wait_readable(wake_fd, -1, deadline_after(100)); /* e.g. out of descriptors */
+                (void)oct_bridge_wait_readable(wake_fd, -1, oct_bridge_deadline_after(100)); /* e.g. out of descriptors */
             }
             continue;
         }
-        configure_socket(fd);
+        oct_bridge_configure_socket(fd);
         pthread_mutex_lock(&b->lock);
         bool keep = b->running;
         if (keep) b->client_fd = fd;
@@ -460,7 +283,7 @@ static int open_listener(const char *path, int *out_error)
         *out_error = errno;
         return -1;
     }
-    configure_socket(fd);
+    oct_bridge_configure_socket(fd);
     if (bind(fd, (const struct sockaddr *)&addr, (socklen_t)sizeof addr) != 0 || listen(fd, LISTEN_BACKLOG) != 0) {
         *out_error = errno;
         close(fd);
@@ -639,168 +462,6 @@ bool oct_bridge_client_connected(const oct_bridge *bridge)
 
 const char *oct_bridge_socket_path(const oct_bridge *b) { return b ? b->socket_path : ""; }
 
-/* ---- Client ------------------------------------------------------------------------------ */
-
-struct oct_bridge_client {
-    int  fd;
-    char socket_path[SOCK_PATH_MAX];
-};
-
-oct_status oct_bridge_client_connect(const char *path, uint32_t timeout_ms, oct_bridge_client **out)
-{
-    if (!out) return OCT_E_INVALID_ARGUMENT;
-    *out = NULL;
-    if (!path) path = OCT_BRIDGE_DEFAULT_SOCKET;
-    size_t length = strlen(path);
-    if (length == 0 || length >= SOCK_PATH_MAX) return OCT_E_INVALID_ARGUMENT;
-    if (!timeout_ms) timeout_ms = 5000;
-    struct sockaddr_un addr;
-    memset(&addr, 0, sizeof addr);
-    addr.sun_family = AF_UNIX;
-    memcpy(addr.sun_path, path, length + 1);
-    int64_t deadline = deadline_after(timeout_ms);
-    int fd = -1;
-    for (;;) {
-        /* A fresh socket for every attempt: a socket whose connect failed isn't reusable everywhere. */
-        fd = socket(AF_UNIX, SOCK_STREAM, 0);
-        if (fd < 0) return OCT_E_IO;
-        configure_socket(fd);
-        if (connect(fd, (const struct sockaddr *)&addr, (socklen_t)sizeof addr) == 0) break;
-        int error = errno;
-        close(fd);
-        fd = -1;
-        if (error == EINTR) continue;
-        if (error != ENOENT && error != ECONNREFUSED && error != EAGAIN) return OCT_E_IO;
-        if (monotonic_ms() >= deadline) return OCT_E_STATE; /* no server is listening (yet) */
-        struct timespec pause = { 0, 50 * 1000000L };
-        nanosleep(&pause, NULL);
-    }
-    oct_bridge_client *c = calloc(1, sizeof *c);
-    if (!c) {
-        close(fd);
-        return OCT_E_NO_MEMORY;
-    }
-    c->fd = fd;
-    memcpy(c->socket_path, path, length + 1);
-    *out = c;
-    return OCT_OK;
-}
-
-void oct_bridge_client_destroy(oct_bridge_client *c)
-{
-    if (!c) return;
-    if (c->fd >= 0) close(c->fd);
-    free(c);
-}
-
-oct_status oct_bridge_client_send_frame(oct_bridge_client *c, uint8_t type, const void *payload, size_t length)
-{
-    if (!c || c->fd < 0 || (length && !payload) || length > OCT_BRIDGE_MAX_PAYLOAD) return OCT_E_INVALID_ARGUMENT;
-    return send_frame(c->fd, type, payload, length) ? OCT_OK : OCT_E_IO;
-}
-
-oct_status oct_bridge_client_host_event(oct_bridge_client *c, bool attached, const char *reason)
-{
-    const char *payload = (!attached && reason) ? reason : NULL;
-    return oct_bridge_client_send_frame(c, attached ? OCT_BRIDGE_MSG_HOST_ATTACHED : OCT_BRIDGE_MSG_HOST_DETACHED,
-                                        payload, payload ? strlen(payload) : 0);
-}
-
-oct_status oct_bridge_client_send_bulk(oct_bridge_client *c, const uint8_t *bytes, size_t length)
-{
-    return oct_bridge_client_send_frame(c, OCT_BRIDGE_MSG_BULK_FROM_HOST, bytes, length);
-}
-
-oct_status oct_bridge_client_lifecycle(oct_bridge_client *c, uint8_t type)
-{
-    if (type != OCT_BRIDGE_MSG_BUS_RESET && type != OCT_BRIDGE_MSG_SUSPEND && type != OCT_BRIDGE_MSG_RESUME) {
-        return OCT_E_INVALID_ARGUMENT;
-    }
-    return oct_bridge_client_send_frame(c, type, NULL, 0);
-}
-
-static oct_status client_receive(oct_bridge_client *c, uint32_t timeout_ms, uint8_t *type, uint8_t **out_data,
-                                 size_t *out_length)
-{
-    switch (recv_frame(c->fd, -1, deadline_after(timeout_ms), type, out_data, out_length)) {
-    case IO_OK: return OCT_OK;
-    case IO_TIMEOUT: return OCT_E_STATE;
-    case IO_CLOSED:
-    case IO_ERROR:
-    case IO_WOKEN: break;
-    }
-    return OCT_E_IO;
-}
-
-oct_status oct_bridge_client_receive(oct_bridge_client *c, uint8_t *type, uint8_t **out_data, size_t *out_length,
-                                     uint32_t timeout_ms)
-{
-    if (!c || c->fd < 0 || !type || !out_data || !out_length) return OCT_E_INVALID_ARGUMENT;
-    return client_receive(c, timeout_ms, type, out_data, out_length);
-}
-
-oct_status oct_bridge_client_class_request(oct_bridge_client *c, uint8_t request, const uint8_t *data,
-                                           size_t data_length, uint8_t *out_reply, size_t capacity,
-                                           size_t *out_reply_length, bool *out_stall)
-{
-    if (out_reply_length) *out_reply_length = 0;
-    if (out_stall) *out_stall = false;
-    if (!c || c->fd < 0 || (data_length && !data) || data_length >= OCT_BRIDGE_MAX_PAYLOAD) {
-        return OCT_E_INVALID_ARGUMENT;
-    }
-    uint8_t *payload = malloc(1 + data_length);
-    if (!payload) return OCT_E_NO_MEMORY;
-    payload[0] = request;
-    if (data_length) memcpy(payload + 1, data, data_length);
-    oct_status status = oct_bridge_client_send_frame(c, OCT_BRIDGE_MSG_CLASS_REQUEST, payload, 1 + data_length);
-    free(payload);
-    if (status != OCT_OK) return status;
-    uint8_t type = 0;
-    uint8_t *reply = NULL;
-    size_t reply_length = 0;
-    status = client_receive(c, REPLY_TIMEOUT_MS, &type, &reply, &reply_length);
-    if (status != OCT_OK) return status;
-    if (type != OCT_BRIDGE_MSG_CLASS_RESPONSE || reply_length < 1) {
-        free(reply);
-        return OCT_E_IO;
-    }
-    if (reply[0] != OCT_BRIDGE_CLASS_COMPLETED) {
-        if (out_stall) *out_stall = true;
-    } else if (reply_length > 1) {
-        if (!out_reply || capacity < reply_length - 1) {
-            free(reply);
-            return OCT_E_TOO_LARGE;
-        }
-        memcpy(out_reply, reply + 1, reply_length - 1);
-        if (out_reply_length) *out_reply_length = reply_length - 1;
-    }
-    free(reply);
-    return OCT_OK;
-}
-
-oct_status oct_bridge_client_ping(oct_bridge_client *c, char *info, size_t capacity, uint32_t timeout_ms)
-{
-    if (info && capacity) info[0] = '\0';
-    oct_status status = oct_bridge_client_send_frame(c, OCT_BRIDGE_MSG_PING, NULL, 0);
-    if (status != OCT_OK) return status;
-    uint8_t type = 0;
-    uint8_t *reply = NULL;
-    size_t length = 0;
-    status = client_receive(c, timeout_ms ? timeout_ms : REPLY_TIMEOUT_MS, &type, &reply, &length);
-    if (status != OCT_OK) return status;
-    if (type != OCT_BRIDGE_MSG_PONG) {
-        free(reply);
-        return OCT_E_IO;
-    }
-    if (info && capacity && length) {
-        size_t copy = length < capacity - 1 ? length : capacity - 1;
-        memcpy(info, reply, copy);
-        info[copy] = '\0';
-    }
-    free(reply);
-    return OCT_OK;
-}
-
 /* ---- Self-test --------------------------------------------------------------------------- */
 
 typedef struct bridge_test {
@@ -939,8 +600,8 @@ static bool test_script(bridge_test *t, oct_bridge *bridge, const char *path)
     t->report->checks++;
     oct_bridge_client_destroy(t->client); /* leaves without a detach */
     t->client = NULL;
-    int64_t deadline = deadline_after(REPLY_TIMEOUT_MS);
-    while (oct_bridge_client_connected(bridge) && monotonic_ms() < deadline) {
+    int64_t deadline = oct_bridge_deadline_after(REPLY_TIMEOUT_MS);
+    while (oct_bridge_client_connected(bridge) && oct_bridge_monotonic_ms() < deadline) {
         struct timespec pause = { 0, 5 * 1000000L };
         nanosleep(&pause, NULL);
     }

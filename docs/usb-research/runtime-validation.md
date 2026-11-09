@@ -152,63 +152,167 @@ would list those calls; it is one of the open items below.
 
 ---
 
-## v0.5 integration status and staged testing plan
+## v0.5 integration status, recovery, and the staged device procedure
 
-### Stage 1 — App bridge socket: IMPLEMENTED
+### Correction to the earlier plan
 
-`ServiceController.swift` creates an `oct_bridge *` transport on every `enable()` call and
-tears it down on `disable()`. The service starts with the bridge transport attached, so
-`/var/mobile/Library/Caches/Octopus/octopus-bridge.sock` is created the moment USB Access
-is enabled. It is removed on disable or app termination.
+An earlier draft of this document said the native component would learn the storage interface by
+registering a stub `OctopusPTPStorage` and logging, through `forwardInvocation:`, the selectors
+ptpd sent to it. That plan could not work. The stub was registered only when the storage hooks
+were switched on, so with them off — the shipped default — the object was never created and no
+selector was ever observed. The plan promised evidence that the safety gate made impossible.
 
-**Backgrounding:** A `UIBackgroundTaskIdentifier` is requested when the app moves to the
-background while USB Access is enabled, buying ~30 seconds for in-flight Windows operations.
-iOS may still suspend the process after this. Users should keep Octopus in the foreground
-while transferring files for reliable operation.
+It was also unsafe. Absorbing an unknown selector means inventing a return value for a signature
+you do not know: a method that returns a struct, a double, or a 128-bit value would have had a
+pointer-sized zero written into its return slot. Both the stub and the forwarding are gone.
 
-**To verify Stage 1 on the device:**
-1. Enable USB Access in Octopus.
-2. Settings → Diagnostics → Run Full Diagnostics.
-3. The `bridge.app_socket` core check should report PASS with a PING response.
-4. The `bridge.app_active` app check should report PASS.
+### What the component does instead
 
-### Stage 2 — Native component availability: IMPLEMENTED (identity only)
+It reads ptpd's own objects. ptpd passes its real storage to `-[PTPVirtualCamera addStorage:]` and
+returns it from `-storageWithID:`; hooking those yields a pointer to the genuine storage object,
+and the Objective-C runtime then reports its class, its superclass chain, its full instance-method
+list with type encodings, and its ivar layout. The same is done for whatever `-objectForObjectHandle:`
+returns (`PTPFile` in the decompilation) and for the data source behind `-dataSourceForObjectHandle:`.
 
-`OctopusBridge.m` is built as a Logos/Theos tweak. Its `%ctor` reads the running ptpd
-binary's LC_UUID and aborts without installing any hooks if the UUID doesn't match the
-analysed reference build (FFD54FC7-0508-3AB8-8D17-2F698B611E10). This protects Photos on
-unrecognised builds.
+Every hook calls `%orig` first and returns Apple's result unchanged. Nothing is registered,
+substituted, or altered, and no object of ours is ever handed to ptpd.
 
-With a matching UUID, it connects to the app socket, sends a PING, and logs the result.
-`HOOKS_ENABLED` is 0 by default: no PTP behaviour is changed.
+This yields the authoritative interface, read out of Apple's own object rather than guessed. It
+does **not** yield the call sequence a Windows transfer uses — for that the `request`,
+`object_handles`, `object_info` and `data_source` log lines record each call as it happens, with a
+PC attached.
 
-**CI status:** The tweak job in `.github/workflows/build.yml` syntax-checks the C core
-and parses `OctopusBridge.m`. A full arm64e Theos build requires macOS + Xcode + iOS SDK.
+### What none of this establishes
 
-### Stage 3 — Runtime observation: PENDING (physical device required)
+Knowing the storage interface does not mean a second storage will work. `addStorage:` continues
+past its own "Two storages cannot co-exist, should quit" warning to the dictionary insert, which
+shows only that the insert happens. Whether ptpd then serves two storages correctly, and whether
+Windows File Explorer shows a second volume rather than ignoring it, showing it empty, or
+rejecting the device, is unknown and cannot be settled by static analysis or by this observation
+build. It needs a Windows host.
 
-The PTP hooks are guarded behind `HOOKS_ENABLED=0`. To complete Stage 3:
+### Collecting the component's log
 
-1. Install the tweak with `HOOKS_ENABLED=0` on the reference device.
-2. Connect the iPhone to Windows 11 via USB.
-3. Trust the PC in the iPhone prompt, open File Explorer → This PC.
-4. Run Settings → Diagnostics → Export Diagnostics and send the ZIP.
-5. The ZIP's `connectivity.txt` and bridge-related log lines will show:
-   a. Whether `transportActivated` fired (Windows saw the PTP interface).
-   b. Whether the bridge socket is reachable.
-   c. What unrecognised selectors ptpd called on `OctopusPTPStorage` (from the
-      `forwardInvocation:` log lines — this is the key Stage 3 output).
-6. Update this document with those selector observations.
-7. Implement the missing selectors in `OctopusPTPStorage`.
-8. Rebuild the tweak with `HOOKS_ENABLED=1` for Stage 4.
+The tweak runs inside ptpd, a different process from the app, so it writes its own file:
 
-### Open items before Stage 4
+    /var/mobile/Library/Caches/Octopus/octopus-bridge-tweak.log
 
-- The bridge server (app socket) must be running before ptpd calls `initWithName:andPath:`.
-  With `HOOKS_ENABLED=1`, the tweak will only inject storage if the app is already open.
-  A reliable solution: install a small launchd user agent that keeps the app running when
-  USB is connected. (Low priority; the user can open the app manually first.)
-- The session-level bridge protocol needs adjustment: for each object operation the tweak
-  currently opens a new PTP session over the socket. The bridge server accepts one session
-  at a time; two operations in quick succession may race. Use a persistent session or
-  correlated request/response tags. This is a known issue to fix before Stage 4.
+rotated at 256 KB with two older generations kept. Two ways to read it:
+
+1. **Export Diagnostics** copies it, and its rotated generations, into the ZIP under `logs/`.
+   The `bridge.tweak_log` check reports how many files exist and how many class, method and
+   host-attachment observations the newest one holds.
+2. **Over SSH**, which also works when the app can't read the file:
+
+   ```sh
+   ssh mobile@<iphone-address> 'cat /var/mobile/Library/Caches/Octopus/octopus-bridge-tweak.log'
+   ssh mobile@<iphone-address> 'grep -E " (class|method|ivar) " /var/mobile/Library/Caches/Octopus/octopus-bridge-tweak.log'
+   ```
+
+If ptpd cannot write that path, the lines stay in the in-memory ring and the file is absent;
+`bridge.tweak_log` reports BLOCKED and says so, rather than implying the tweak never loaded.
+
+### Recovery if the component destabilises ptpd
+
+The tweak's filter is `ptpd` alone, so nothing else is injected: SpringBoard, the phone, and the
+rest of the system are unaffected by anything it does. The worst case is that USB photo import
+stops working until ptpd is clean again. In increasing order of severity:
+
+1. **Restart ptpd.** Unplug the cable, then:
+   ```sh
+   killall -9 ptpd
+   ```
+   launchd starts it again on the next USB connection, which is also the fastest way to reload the
+   tweak after reinstalling it.
+2. **Uninstall the package** in Sileo, then `killall -9 ptpd`.
+3. **Remove the files by hand**, when Sileo can't:
+   ```sh
+   rm -f /var/jb/usr/lib/TweakInject/OctopusBridge.dylib \
+         /var/jb/usr/lib/TweakInject/OctopusBridge.plist
+   killall -9 ptpd
+   ```
+4. **Boot without the jailbreak.** Rootless tweaks load only while jailbroken, so a plain reboot
+   without re-running Dopamine runs stock ptpd with nothing injected. This is the guaranteed way
+   out: it needs no working SSH, no Sileo, and no filesystem access.
+
+A ptpd crash loop cannot brick the phone or block a reboot. If you want to be sure photo import is
+healthy again, reconnect to Windows and copy one ordinary photo before doing anything else.
+
+### Stage 1 — the app's socket. Implemented; needs device confirmation.
+
+`ServiceController` attaches a bridge transport on every Enable USB Access and tears it down on
+Disable. The socket path is fixed, because the integration is a separate process and can only look
+somewhere agreed in advance:
+
+    /var/mobile/Library/Caches/Octopus/octopus-bridge.sock
+
+If that folder can't be created or written, no transport is attached and the app behaves exactly as
+every build before this one: a local service, with Windows unable to see it. Enabling never fails
+because of the bridge. On the Simulator, where there is no `/var/mobile`, this is the path taken,
+which is why the Simulator tests still see "No USB transport in this build".
+
+**On the device:**
+
+1. Open Octopus and tap **Enable USB Access**. No USB cable yet.
+2. The activity sheet should end at **Waiting for a host**, not **Ready**, and the USB Connection
+   window should mark *Waiting for a connection*. On earlier builds it stopped at *Responder ready*.
+3. **Settings → Diagnostics → Run Full Diagnostics.** Expect:
+   - `bridge.app_active` PASS, naming the socket path.
+   - `bridge.app_socket` PASS, having connected to the socket and received a PONG.
+   - `bridge.client_connected` BLOCKED: nothing has connected yet.
+   - `bridge.tweak_log` BLOCKED: the component isn't installed yet.
+   - `adapter.bridge` PASS: the simulated end-to-end transport check.
+4. Tap **Disable USB Access**, then run diagnostics again. `bridge.app_active` and
+   `bridge.app_socket` should both go BLOCKED, and the socket file should be gone.
+5. Enable and disable three or four more times and watch the debug log for `app.bridge` lines.
+   Each cycle should log one `transport_set` and one `stopped`, with no error between them.
+
+Stop here and send the two ZIPs if anything above does not match. Nothing in this stage touches
+ptpd, so there is nothing to recover from.
+
+### Stage 2 — the component loads and is identified. Needs the DEB.
+
+1. Build the package on a machine with Theos:
+   ```sh
+   cd Octopus/Bridge && make package THEOS=/var/jb/opt/theos
+   ```
+   or take `OctopusBridge-deb` from the `tweak` job's artifacts on the CI run for this commit.
+2. Install the `.deb` with Sileo. Do **not** reboot yet.
+3. With Octopus open and USB Access enabled, connect the cable and unlock the phone.
+4. `killall -9 ptpd` if ptpd was already running, so it reloads with the tweak.
+5. Export Diagnostics. Expect `bridge.tweak_log` PASS, and in `logs/octopus-bridge-tweak.log`:
+   - one `loaded` line quoting the reference UUID,
+   - a `startup_ping` line showing it reached the app's socket,
+   - `connected` from the app side in the app's own log.
+6. If the UUID does not match, the log says so and **no hooks are installed at all**. That is the
+   expected, safe outcome on any build other than the analysed one; send the line.
+
+### Stage 3 — read-only observation of the native interface. Needs Windows.
+
+1. With the component installed, Octopus open and USB Access enabled, connect the iPhone to
+   Windows 11 and trust the PC.
+2. Open File Explorer → This PC → the iPhone, and browse into the camera folders.
+3. Copy one ordinary photo to the PC. This exercises the full native path: enumeration, object
+   info, and a data source.
+4. Export Diagnostics and send the ZIP. The useful contents are, in `logs/octopus-bridge-tweak.log`:
+   - `class` and `method` lines: the real storage class, its method list with type encodings, and
+     the same for the object and data-source classes. This is the interface, definitively.
+   - `request` lines: the operations Windows actually sent, in order.
+   - `object_handles`, `object_info`, `data_source` lines: the arguments and results of each, so
+     the shape of a real transfer is on record.
+   - `transport_activated` / `transport_deactivated` around the session.
+5. Confirm the photo copied correctly and that Photos import still works. If anything is wrong,
+   use the recovery steps above.
+
+Only after that evidence exists is there a basis for designing Stage 4, and the Stage 4 design has
+to answer the Windows question separately from the interface question.
+
+### Still open
+
+- The app must be running with USB Access enabled before ptpd starts, or the component finds no
+  socket at launch. It retries on each hook, so connecting the cable after opening the app works;
+  the reverse may not.
+- Whether Windows will accept a second PTP storage at all. Unknown, and not answerable from here.
+- Whether a single bridge connection can carry concurrent PTP operations. The server serves one
+  client at a time and the client is not thread-safe; the observation build has no PTP traffic of
+  its own, so this only matters from Stage 4 onward.

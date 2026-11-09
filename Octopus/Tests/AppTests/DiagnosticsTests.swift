@@ -35,7 +35,7 @@ final class DiagnosticsTests: XCTestCase {
         let runner = DiagnosticsRunner()
         await runner.run(environment: .sample, includeNetwork: false)
         XCTAssertFalse(runner.running)
-        XCTAssertGreaterThan(runner.planned, 22)
+        XCTAssertGreaterThan(runner.planned, 23)
         XCTAssertEqual(runner.results.count, runner.planned)
         XCTAssertEqual(Set(runner.results.map(\.id)).count, runner.results.count)
         let failed = runner.results.filter { $0.status == .fail }
@@ -52,6 +52,8 @@ final class DiagnosticsTests: XCTestCase {
         // Bridge checks are BLOCKED in Simulator (no app socket running).
         XCTAssertNotNil(runner.results.first { $0.id == "bridge.app_active" })
         XCTAssertNotNil(runner.results.first { $0.id == "bridge.client_connected" })
+        // The native component isn't installed in the Simulator, so its log is absent.
+        XCTAssertEqual(runner.results.first { $0.id == "bridge.tweak_log" }?.status, .blocked)
     }
 
     /// A scratch folder for one test, removed afterwards.
@@ -133,7 +135,7 @@ final class DiagnosticsTests: XCTestCase {
                                                                 folder.appendingPathComponent("fallback").path])
         let archive = try XCTUnwrap(runner.archive, "the archive makes Export Diagnostics available")
         XCTAssertNil(runner.exportProblem)
-        XCTAssertEqual(verify(archive), 9 + DebugLog.files().count) // nine files and the logs
+        XCTAssertEqual(verify(archive), 9 + DebugLog.files().count + Diagnostics.tweakLogFiles().count)
     }
 
     func testTheDebugLogExportFallsBackToo() throws {

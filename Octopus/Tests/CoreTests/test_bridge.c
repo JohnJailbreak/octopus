@@ -17,6 +17,8 @@
  *     client that stops reading is disconnected once a write times out.
  * 13. The self-test that Run Full Diagnostics runs, and its failure when no folder takes a socket.
  * 14. Bad arguments, a path nothing listens on, and a non-socket file at the socket path.
+ * 15. The client's own PTP container encoder, which the ptpd integration uses in place of the
+ *     storage engine's serializer.
  *
  * Test checks run on the main thread only; helper threads report through their arguments.
  */
@@ -562,6 +564,65 @@ static void test_bad_arguments(void)
     unlink(TEST_SOCKET);
 }
 
+/* ---- 15. The client's own PTP encoder ---------------------------------------------------- */
+
+/*
+ * The ptpd integration links only the client half, so the client carries its own container
+ * encoder rather than the storage engine's. This drives a real session through it and checks the
+ * bytes against the responder, which is the same thing oct_container_command would have produced.
+ */
+static void test_client_command_encoder(void)
+{
+    test_rig r;
+    rig_open(&r);
+    oct_bridge_client *c = NULL;
+    CHECK_OK(oct_bridge_client_connect(TEST_SOCKET, 2000, &c));
+    CHECK_OK(oct_bridge_client_host_event(c, true, NULL));
+
+    uint32_t session = 1;
+    uint16_t code = 0, type = 0;
+    CHECK_OK(oct_bridge_client_send_command(c, OCT_OP_OPEN_SESSION, 0, &session, 1));
+    CHECK_OK(oct_bridge_client_receive_container(c, &code, &type, NULL, NULL, 2000));
+    CHECK_EQ(code, OCT_RC_OK);
+    CHECK_EQ(type, OCT_CONTAINER_RESPONSE);
+
+    /* A command with no parameters, then one with several, and read the handles back. */
+    uint8_t *payload = NULL;
+    size_t length = 0;
+    CHECK_OK(oct_bridge_client_send_command(c, OCT_OP_GET_STORAGE_IDS, 1, NULL, 0));
+    CHECK_OK(oct_bridge_client_receive_container(c, &code, &type, &payload, &length, 2000));
+    CHECK_EQ(code, OCT_OP_GET_STORAGE_IDS);
+    CHECK_EQ(type, OCT_CONTAINER_DATA);
+    CHECK(length >= 4 && payload != NULL);
+    if (payload) {
+        uint32_t storages = (uint32_t)payload[0] | ((uint32_t)payload[1] << 8) |
+                            ((uint32_t)payload[2] << 16) | ((uint32_t)payload[3] << 24);
+        CHECK_EQ(storages, 1u);
+    }
+    free(payload);
+    CHECK_OK(oct_bridge_client_receive_container(c, &code, &type, NULL, NULL, 2000));
+    CHECK_EQ(code, OCT_RC_OK);
+
+    uint32_t params[3] = { 0xFFFFFFFFu, 0, 0 };
+    CHECK_OK(oct_bridge_client_send_command(c, 0x1007 /* GetObjectHandles */, 2, params, 3));
+    CHECK_OK(oct_bridge_client_receive_container(c, &code, &type, &payload, &length, 2000));
+    CHECK_EQ(type, OCT_CONTAINER_DATA);
+    CHECK(length >= 4);
+    free(payload);
+    CHECK_OK(oct_bridge_client_receive_container(c, &code, &type, NULL, NULL, 2000));
+    CHECK_EQ(code, OCT_RC_OK);
+
+    /* Bad arguments are refused, not sent. */
+    CHECK_EQ(oct_bridge_client_send_command(c, OCT_OP_OPEN_SESSION, 0, NULL, 1), OCT_E_INVALID_ARGUMENT);
+    CHECK_EQ(oct_bridge_client_send_command(c, OCT_OP_OPEN_SESSION, 0, params, 6), OCT_E_INVALID_ARGUMENT);
+    CHECK_EQ(oct_bridge_client_send_command(NULL, OCT_OP_OPEN_SESSION, 0, NULL, 0), OCT_E_INVALID_ARGUMENT);
+    CHECK_EQ(oct_bridge_client_receive_container(NULL, &code, &type, NULL, NULL, 10), OCT_E_INVALID_ARGUMENT);
+
+    CHECK_OK(oct_bridge_client_host_event(c, false, NULL));
+    oct_bridge_client_destroy(c);
+    rig_close(&r);
+}
+
 void run_bridge_tests(void)
 {
     test_encode();
@@ -577,6 +638,7 @@ void run_bridge_tests(void)
     test_vanishing_clients();
     test_frames_never_interleave();
     test_stalled_reader();
+    test_client_command_encoder();
     test_self_test();
     test_bad_arguments();
 }

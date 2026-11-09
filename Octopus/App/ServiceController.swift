@@ -287,22 +287,7 @@ final class CoreService: @unchecked Sendable {
     }
 
     func start(_ configuration: CoreConfiguration) -> [CoreEvent] {
-        // Create a bridge transport for every enable cycle and wire it to the service.
-        // The service must be stopped (disabled) for set_transport to succeed.
-        let bridge = BridgeTransport(socketPath: OCT_BRIDGE_DEFAULT_SOCKET)
-        if let bridge {
-            if oct_service_set_transport(handle, &bridge.transport) == OCT_OK {
-                activeBridge = bridge
-                DebugLog.log(.info, "app.bridge", "transport_set",
-                             "Bridge transport wired to the service at \(bridge.socketPath)")
-            } else {
-                DebugLog.log(.warn, "app.bridge", "transport_set_failed",
-                             "oct_service_set_transport failed; starting without bridge transport")
-            }
-        } else {
-            DebugLog.log(.warn, "app.bridge", "transport_unavailable",
-                         "BridgeTransport could not be created; starting without bridge transport")
-        }
+        attachBridge()
         var config = oct_service_config()
         config.seed_time = 0
         config.scratch = configuration.scratch
@@ -324,6 +309,41 @@ final class CoreService: @unchecked Sendable {
 
     func selfTest() -> [CoreEvent] {
         _ = oct_service_self_test(handle)
+        return drainEvents()
+    }
+
+    /// Attaches a bridge transport for this enable cycle, or leaves the service transportless when
+    /// the socket folder is unusable. Never fails the enable: a missing bridge only means Windows
+    /// can't reach Octopus, which is how every build before this one behaved.
+    private func attachBridge(socketPath: String = String(cString: OCT_BRIDGE_DEFAULT_SOCKET)) {
+        guard activeBridge == nil else { return }
+        if let reason = BridgeTransport.prepareSocketFolder(for: socketPath) {
+            DebugLog.log(.info, "app.bridge", "socket_folder",
+                         "No bridge this session: \(reason). Octopus runs as a local service only.")
+            return
+        }
+        guard let bridge = BridgeTransport(socketPath: socketPath) else {
+            DebugLog.log(.warn, "app.bridge", "create_failed",
+                         "The bridge objects couldn't be created; running without a transport")
+            return
+        }
+        guard oct_service_set_transport(handle, &bridge.transport) == OCT_OK else {
+            DebugLog.log(.warn, "app.bridge", "transport_refused",
+                         "The service refused the bridge transport; running without one")
+            return
+        }
+        activeBridge = bridge
+        DebugLog.log(.info, "app.bridge", "transport_set", "Bridge transport attached at \(bridge.socketPath)")
+    }
+
+    /// Starts with a bridge on a caller-chosen socket, for tests that need a writable path.
+    func startWithBridge(at socketPath: String, _ configuration: CoreConfiguration) -> [CoreEvent] {
+        attachBridge(socketPath: socketPath)
+        var config = oct_service_config()
+        config.seed_time = 0
+        config.scratch = configuration.scratch
+        config.self_test = configuration.selfTest
+        _ = oct_service_start(handle, &config)
         return drainEvents()
     }
 
@@ -427,10 +447,33 @@ final class CoreService: @unchecked Sendable {
 
 /// Owns the C objects that make up the bridge socket transport for one enable/disable cycle.
 /// The bridge is created before `CoreService.start(...)` and destroyed after `CoreService.stop()`.
+///
+/// The socket lives at one fixed path, because the ptpd integration is a separate process and can
+/// only look in a place agreed in advance. When that folder can't be made or written — on the
+/// Simulator there is no /var/mobile at all — no bridge is attached and the app runs exactly as it
+/// did before, local service only, rather than failing to enable.
 final class BridgeTransport: @unchecked Sendable {
     private let bridge: OpaquePointer  // oct_bridge *
     private let link: OpaquePointer    // oct_link *
     var transport: oct_transport       // copy: ops/context remain valid while bridge/link live
+
+    /// The folder holding the socket, created if missing and proven writable with a probe file.
+    /// Returns nil with the reason when the folder can't be used.
+    static func prepareSocketFolder(for socketPath: String) -> String? {
+        let folder = (socketPath as NSString).deletingLastPathComponent
+        let manager = FileManager.default
+        do {
+            try manager.createDirectory(atPath: folder, withIntermediateDirectories: true)
+        } catch {
+            return "\(folder) can't be created: \(error.localizedDescription)"
+        }
+        let probe = (folder as NSString).appendingPathComponent(".octopus-bridge-probe")
+        guard manager.createFile(atPath: probe, contents: Data()) else {
+            return "\(folder) exists but refused a file"
+        }
+        try? manager.removeItem(atPath: probe)
+        return nil
+    }
 
     /// Returns nil if the bridge or link objects can't be created.
     init?(socketPath: String) {

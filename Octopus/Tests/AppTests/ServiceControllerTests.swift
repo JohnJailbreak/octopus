@@ -36,6 +36,51 @@ final class ServiceControllerTests: XCTestCase {
         XCTAssertNil(core.read(readme.id, length: 4))
     }
 
+    /// Enable USB Access with a bridge attached, on a socket this test owns: the service reaches
+    /// Waiting for a host, a client can reach the socket, and disabling takes it all down. Repeats
+    /// so a second cycle proves nothing is left behind.
+    func testEnableAndDisableWithTheBridgeTransport() async {
+        let socket = FileManager.default.temporaryDirectory
+            .appendingPathComponent("octopus-bridge-tests", isDirectory: true)
+            .appendingPathComponent("bridge.sock").path
+        XCTAssertNil(BridgeTransport.prepareSocketFolder(for: socket))
+        let core = CoreService()
+        core.setIdentity(name: "Test iPhone", serial: "TEST-0002", system: "17.0")
+
+        for cycle in 1...2 {
+            let events = await core.perform { $0.startWithBridge(at: socket, CoreConfiguration(scratch: false, selfTest: false)) }
+            XCTAssertTrue(core.bridgeActive, "cycle \(cycle): no bridge was attached")
+            XCTAssertEqual(core.bridgeSocketPath, socket, "cycle \(cycle)")
+            XCTAssertEqual(core.state(), .waitingForConnection, "cycle \(cycle)")
+            XCTAssertTrue(events.contains { $0.kind == .stepEnd && !$0.failed && $0.text.contains("transport listening") },
+                          "cycle \(cycle): \(events.map(\.text))")
+            XCTAssertTrue(FileManager.default.fileExists(atPath: socket), "cycle \(cycle): no socket file")
+            XCTAssertEqual(core.status().transportState, .waiting, "cycle \(cycle)")
+            XCTAssertFalse(core.bridgeClientConnected, "cycle \(cycle): nothing should be connected yet")
+
+            _ = await core.perform { $0.stop() }
+            XCTAssertFalse(core.bridgeActive, "cycle \(cycle): the bridge outlived the service")
+            XCTAssertEqual(core.bridgeSocketPath, "", "cycle \(cycle)")
+            XCTAssertEqual(core.state(), .disabled, "cycle \(cycle)")
+            XCTAssertFalse(FileManager.default.fileExists(atPath: socket),
+                           "cycle \(cycle): the socket outlived the service")
+        }
+    }
+
+    /// A socket folder that can't be made leaves the service transportless instead of failing to
+    /// enable, which is how every build before the bridge behaved.
+    func testAnUnusableSocketFolderStillEnables() async {
+        let core = CoreService()
+        let unusable = "/this-path-cannot-be-created-by-a-sandboxed-test/bridge.sock"
+        XCTAssertNotNil(BridgeTransport.prepareSocketFolder(for: unusable))
+        let events = await core.perform { $0.startWithBridge(at: unusable, CoreConfiguration(scratch: false, selfTest: false)) }
+        XCTAssertFalse(core.bridgeActive)
+        XCTAssertEqual(core.state(), .ready)
+        XCTAssertTrue(events.contains { $0.kind == .operationEnd && !$0.failed }, "\(events.map(\.text))")
+        _ = await core.perform { $0.stop() }
+        XCTAssertEqual(core.state(), .disabled)
+    }
+
     func testRepeatedStartsAndStops() async {
         let core = CoreService()
         for _ in 0..<25 {

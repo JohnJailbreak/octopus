@@ -7,41 +7,51 @@ the app's changelog.
 
 ## v0.5
 
-The bridge transport now runs in the real app, the diagnostics report its state, and the
-experimental native component is cleaner and ships with a CI job that proves it parses.
+The bridge transport runs in the app, and the ptpd component observes Apple's own PTP interface
+without touching it.
 
-- **Enable USB Access starts the bridge socket** at `/var/mobile/Library/Caches/Octopus/octopus-bridge.sock`.
-  `ServiceController` creates a `BridgeTransport` wrapper (a Swift class owning `oct_bridge *` and
-  `oct_link *`) and attaches it to the C service before starting. Disabling USB Access stops the
-  transport, closes the socket, and destroys the C objects. Repeated enable/disable cycles don't
-  leak resources. A `UIBackgroundTaskIdentifier` buys ~30 s of extra time when the app goes to
-  the background while USB Access is enabled.
-- **New diagnostics**, measured against the running app and shown in Run Full Diagnostics:
-  - `bridge.app_socket` (native observation) — tries to connect to the socket and send a PING.
-    Reports PASS when the app has enabled USB Access; BLOCKED when nothing is listening.
-  - `bridge.app_active` (local) — whether the bridge socket server is active in this app process.
-  - `bridge.client_connected` (local) — whether a native integration client (the tweak or the
-    diagnostic probe) is currently connected.
-  A PING to the app socket is never reported as evidence that the tweak is loaded or that
-  real USB traffic is flowing.
-- **`OctopusBridge.m` rewritten** (single persistent connection, serial dispatch queue):
-  - The storage hooks are gated by a run-time flag (`OCTOPUS_BRIDGE_HOOKS`, off by default), not by
-    `#if`: Logos rewrites `%hook` lexically before the C preprocessor, so two `%hook` groups for one
-    class in `#if`/`#else` branches make it emit both and the build fails. There is now one group
-    per class, and each hook calls `%orig` straight through while the gate is closed. Open it only
-    after Stage 3 observation records the PTPStorage selector surface.
-  - A single `oct_bridge_client *` is held open for the tweak's lifetime; all socket operations
-    are serialised on a private queue to prevent frame interleaving.
-  - `OctopusPTPStorage.forwardInvocation:` absorbs any selector ptpd calls that we haven't
-    implemented yet, logging it instead of crashing ptpd and Photos import.
-- **Theos CI job** (`tweak` in `.github/workflows/build.yml`): installs Theos and builds the tweak
-  for arm64e on a macOS runner, then packages the rootless DEB and uploads it as an artifact, with
-  `dpkg-deb --contents` printed so the package layout is reviewable without installing it. It runs
-  independently of the app job, so a successful IPA is never reported as proof the tweak compiles.
-- **Docs**: `docs/usb-research/runtime-validation.md` documents all five integration stages, their
-  current status, and the exact device-testing sequence required for Stage 3.
-- **Tests**: 3,646 C checks, 0 failures. ASan/UBSan/LeakSanitizer and TSan clean. Fuzzer: 300,000
-  iterations, no faults. Static analysis: no findings.
+- **Enable USB Access starts the bridge socket** at
+  `/var/mobile/Library/Caches/Octopus/octopus-bridge.sock`, and Disable takes it down. The service
+  now ends at *Waiting for a host* rather than *Ready*. When that folder can't be made or written,
+  no transport is attached and Octopus runs as a local service exactly as before: enabling never
+  fails because of the bridge.
+- **The bridge is split in two**, so the component injected into ptpd carries none of the app's
+  file-serving code. `oct_bridge_io.c` holds the framing and socket primitives,
+  `oct_bridge_client.c` the client, and `oct_bridge.c` the server and its self-test. The client
+  links against libc and the logger alone — three translation units, no storage engine, responder,
+  diagnostics or ZIP writer — and carries its own PTP container encoder, since the storage engine's
+  serializer depends on the storage engine.
+- **The ptpd component observes and changes nothing.** Every hook calls Apple's implementation and
+  returns its result untouched. It recovers the storage interface by reading ptpd's own objects:
+  `addStorage:` and `storageWithID:` hand over the real storage, and the Objective-C runtime then
+  reports its class, method list with type encodings, and ivar layout. The same for the object and
+  data-source classes. The `request`, `object_handles`, `object_info` and `data_source` lines record
+  each call Windows causes, with its arguments and result.
+- **The stub storage and `forwardInvocation:` are gone.** The earlier plan registered a stub storage
+  to learn which selectors ptpd sent it, but the stub only existed when the storage hooks were on,
+  so with them off — the default — it was never created and nothing could be observed. It was also
+  unsafe: absorbing an unknown selector means inventing a return value for a signature you don't
+  know. Nothing of ours is given to ptpd now, and no signature is fabricated.
+- **The component's log can be collected.** It writes
+  `/var/mobile/Library/Caches/Octopus/octopus-bridge-tweak.log`, which Export Diagnostics copies
+  into the ZIP with its rotated generations; `docs/usb-research/runtime-validation.md` gives the SSH
+  command for reading it directly. The new `bridge.tweak_log` check reports how many files exist and
+  what the newest one observed, and says when ptpd couldn't write the file at all.
+- **New diagnostics**: `bridge.app_socket` (native observation, connects to the real socket and
+  pings it), `bridge.app_active`, `bridge.client_connected` and `bridge.tweak_log`. A ping to the
+  app's own socket is never reported as evidence that the component is loaded or that Windows sent
+  anything.
+- **CI builds the DEB.** The `tweak` job runs on macOS, installs Theos, compiles and links the
+  tweak for arm64e, packages the rootless DEB, prints `dpkg-deb --contents`, and uploads it as an
+  artifact. It runs independently of the app job, so a successful IPA is never reported as proof the
+  component compiles.
+- **Docs**: `runtime-validation.md` carries the corrected design, a recovery procedure for a
+  misbehaving ptpd ending in "boot without the jailbreak", and the staged device procedure from the
+  app socket through read-only native observation.
+- **Tests**: 3,676 C checks including the client's own encoder driven against the real responder,
+  clean under AddressSanitizer, UndefinedBehaviorSanitizer, LeakSanitizer and ThreadSanitizer;
+  300,000 fuzz iterations; no analyzer findings. New XCTests cover the bridge attaching and
+  detaching across repeated enable/disable cycles and the no-bridge fallback.
 
 ## v0.4
 

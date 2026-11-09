@@ -271,6 +271,7 @@ enum Diagnostics {
             step("external.windows", "External connection", "Windows File Explorer", .external) { windows() },
             step("bridge.app_active", "Bridge", "App bridge socket server", .local) { bridgeAppActive(environment) },
             step("bridge.client_connected", "Bridge", "Integration client connected", .local) { bridgeClientState(environment) },
+            step("bridge.tweak_log", "Bridge", "Native component log", .local) { tweakLog() },
         ]
         return steps
     }
@@ -491,6 +492,43 @@ enum Diagnostics {
 
     // MARK: - Bridge state checks
 
+    /// Where the ptpd tweak writes its own log. A different process owns it, so it is a separate
+    /// file from the app's; this check reports whether it exists and what it last recorded.
+    static let tweakLogPath = "/var/mobile/Library/Caches/Octopus/octopus-bridge-tweak.log"
+
+    /// Every rotated generation of the tweak log, newest first, that exists and can be read.
+    static func tweakLogFiles() -> [URL] {
+        let manager = FileManager.default
+        return ([tweakLogPath] + (1...2).map { "\(tweakLogPath).\($0)" })
+            .filter { manager.isReadableFile(atPath: $0) }
+            .map { URL(fileURLWithPath: $0) }
+    }
+
+    /// Whether the native component has written anything. Its absence is the normal state before
+    /// the tweak is installed, so this is BLOCKED rather than FAIL.
+    static func tweakLog() -> DiagnosticResult {
+        let id = "bridge.tweak_log", group = "Bridge", title = "Native component log"
+        let files = tweakLogFiles()
+        guard let newest = files.first else {
+            return result(id, group, title, .local, .blocked,
+                          "No native component log at \(tweakLogPath). That is expected until "
+                              + "OctopusBridge is installed and ptpd has run once with a USB cable attached. "
+                              + "If the tweak is installed and this stays empty, ptpd could not write there; "
+                              + "read its lines over SSH instead.", checks: 0)
+        }
+        let text = (try? String(contentsOf: newest, encoding: .utf8)) ?? ""
+        let lines = text.split(separator: "\n")
+        let classes = lines.filter { $0.contains(" class ") }.count
+        let methods = lines.filter { $0.contains(" method ") }.count
+        let transports = lines.filter { $0.contains("transport_activated") }.count
+        return result(id, group, title, .local, .pass,
+                      "\(files.count) log file(s), newest \(lines.count) lines: "
+                          + "\(classes) class observations, \(methods) method observations, "
+                          + "\(transports) host attachments. These are ptpd's own classes read through the "
+                          + "Objective-C runtime; they do not show that Windows accepted anything.",
+                      checks: UInt32(files.count))
+    }
+
     /// Whether the app's bridge socket is active, based on the environment snapshot taken when the run started.
     static func bridgeAppActive(_ environment: DiagnosticsEnvironment) -> DiagnosticResult {
         let id = "bridge.app_active", group = "Bridge", title = "App bridge socket server"
@@ -616,7 +654,7 @@ enum Diagnostics {
         try add("device-observations.json", try encoder.encode(report.results.filter { $0.id.hasPrefix("device.") }))
         var timeline = ["Saved log observations, not proof of native USB traffic."]
 
-        for file in DebugLog.files() {
+        for file in DebugLog.files() + tweakLogFiles() {
             let text = (try? String(contentsOf: file, encoding: .utf8)) ?? ""
             try add("logs/\(file.lastPathComponent)", Data(redact(text).utf8))
             timeline += redact(text).components(separatedBy: "\n").filter {
@@ -735,7 +773,8 @@ enum Diagnostics {
                      "Transport failure: \(environment.transportFailure.isEmpty ? "none" : environment.transportFailure)",
                      "Requests from a computer this launch: \(environment.transportTransactions)",
                      "Bridge socket: \(environment.bridgeActive ? "running at \(socketPath)" : "not running")",
-                     "Bridge client: \(environment.bridgeClientConnected ? "connected" : "none")"]
+                     "Bridge client: \(environment.bridgeClientConnected ? "connected" : "none")",
+                     "Native component log: " + (tweakLogFiles().first.map { "\($0.path)" } ?? "absent")]
         var pid: Int32 = 0
         let found = oct_diag_find_process("ptpd", &pid) == OCT_OK
         lines.append("ptpd: \(found ? (pid > 0 ? "running, pid \(pid)" : "not running") : "process table unreadable")")

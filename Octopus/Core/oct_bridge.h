@@ -100,6 +100,18 @@ oct_status  oct_bridge_client_host_event(oct_bridge_client *client, bool attache
 /* Sends a BULK_FROM_HOST message (bytes from Windows on the bulk OUT endpoint). */
 oct_status  oct_bridge_client_send_bulk(oct_bridge_client *client, const uint8_t *bytes,
                                          size_t length);
+/* Builds a PTP command container (12-byte header plus up to 5 32-bit parameters) and sends it as
+ * BULK_FROM_HOST. The client half carries its own encoder so a caller linking only the client
+ * doesn't need the PTP serializer, which lives with the storage engine. */
+oct_status  oct_bridge_client_send_command(oct_bridge_client *client, uint16_t operation,
+                                            uint32_t transaction_id, const uint32_t *params,
+                                            uint32_t count);
+/* Reads the next container and reports its 16-bit code and its payload after the 12-byte header.
+ * `out_payload` (NULL when empty, caller frees) and `out_length` may be NULL to discard it.
+ * `out_container_type` receives 2 for a data phase or 3 for a response. */
+oct_status  oct_bridge_client_receive_container(oct_bridge_client *client, uint16_t *out_code,
+                                                 uint16_t *out_container_type, uint8_t **out_payload,
+                                                 size_t *out_length, uint32_t timeout_ms);
 /* Sends a CLASS_REQUEST and waits for its CLASS_RESPONSE. `out_reply` and `capacity` are for
  * requests with a device→host data stage (Get Device Status); OCT_E_TOO_LARGE when the reply
  * doesn't fit. `out_stall` is set when the server says stall. */
