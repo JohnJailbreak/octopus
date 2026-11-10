@@ -108,5 +108,98 @@ class NativeLinks(unittest.TestCase):
                 self.assertIn("Octopus/Native/*.c", text)
 
 
+# ---- The Objective-C side: OCT* functions shared between .m files ------------------------------
+#
+# The third failure of this kind was not a C symbol at all. OctopusObserver.m called
+# OCTProviderSetScope, which was declared only in OctopusProvider.h, a header the observer does not
+# import, so the observer did not compile; and the observer's test build stubs the provider rather
+# than linking it, so declaring it alone would only have moved the failure to the linker. Both
+# halves are checked here.
+
+NATIVE = ROOT / "Octopus/Native"
+
+
+def objc_compiled_by(script: str) -> list:
+    """The .m files a script compiles, read from the script itself."""
+    text = (ROOT / script).read_text()
+    found = []
+    for path in re.findall(r"(Octopus/Native/[\w/]+\.m)", text):
+        if path not in found:
+            found.append(path)
+    return found
+
+
+def strip_comments(text: str) -> str:
+    text = re.sub(r"/\*.*?\*/", " ", text, flags=re.S)
+    return re.sub(r"//[^\n]*", " ", text)
+
+
+def oct_calls(path: pathlib.Path) -> set:
+    """OCT* functions a file calls (not methods, which start with a lowercase letter or a bracket)."""
+    return set(re.findall(r"(?<![\w.])(OCT[A-Za-z0-9_]+)\s*\(", strip_comments(path.read_text())))
+
+
+def oct_definitions(path: pathlib.Path) -> set:
+    """OCT* functions a file defines: a return type, the name, a parameter list, then a body."""
+    text = strip_comments(path.read_text())
+    return set(re.findall(r"^[ \t]*(?:static\s+)?[A-Za-z_][\w \t\*]*?\b(OCT[A-Za-z0-9_]+)\s*\([^;{]*\)\s*\{",
+                          text, flags=re.M))
+
+
+def oct_declarations(path: pathlib.Path) -> set:
+    """OCT* prototypes a header declares."""
+    text = strip_comments(path.read_text())
+    return set(re.findall(r"\b(OCT[A-Za-z0-9_]+)\s*\([^;{]*\)\s*;", text))
+
+
+def headers_imported_by(path: pathlib.Path, seen=None) -> set:
+    """Headers under Octopus/Native a file imports, followed transitively."""
+    seen = set() if seen is None else seen
+    for name in re.findall(r'#(?:import|include)\s+"([^"]+\.h)"', path.read_text()):
+        header = (path.parent / name).resolve()
+        if header.exists() and header not in seen and NATIVE in header.parents or header.parent == NATIVE:
+            if header in seen:
+                continue
+            seen.add(header)
+            headers_imported_by(header, seen)
+    return seen
+
+
+class ObjCLinks(unittest.TestCase):
+    def test_every_oct_function_is_declared_where_it_is_called(self):
+        # C99 and later reject an implicit declaration, so a call needs a prototype in scope: from
+        # an imported header, or from a definition earlier in the same file.
+        for path in sorted(NATIVE.glob("*.m")):
+            with self.subTest(file=path.name):
+                declared = set().union(*(oct_declarations(h) for h in headers_imported_by(path))) \
+                    if headers_imported_by(path) else set()
+                declared |= oct_definitions(path)
+                missing = sorted(oct_calls(path) - declared)
+                self.assertEqual(missing, [],
+                    f"{path.name} calls {', '.join(missing)} with no prototype in scope. Declare it "
+                    f"in a header {path.name} imports, as OctopusRuntime.h does for the provider.")
+
+    def test_every_script_defines_each_oct_function_it_calls(self):
+        # Within one build, every OCT* function called from a compiled .m must be defined by one of
+        # them: the real implementation, or a test's stub standing in for a file it does not link.
+        for script in LINKERS:
+            with self.subTest(script=script):
+                compiled = [ROOT / p for p in objc_compiled_by(script)]
+                self.assertTrue(compiled, f"{script} compiles no Objective-C; the parse is broken")
+                called = set().union(*(oct_calls(p) for p in compiled))
+                defined = set().union(*(oct_definitions(p) for p in compiled))
+                missing = sorted(called - defined)
+                self.assertEqual(missing, [],
+                    f"{script} calls {', '.join(missing)} but compiles no definition of it. Link the "
+                    f"file that defines it, or give the test a stub as ObserverTests.m does for "
+                    f"OCTProviderInstall.")
+
+    def test_the_scan_finds_the_provider_entry_points(self):
+        # Canary: the observer calls these; if the scan stops seeing them it has stopped working.
+        calls = oct_calls(NATIVE / "OctopusObserver.m")
+        for expected in ("OCTProviderInstall", "OCTProviderValidate"):
+            self.assertIn(expected, calls)
+
+
 if __name__ == "__main__":
     unittest.main()
