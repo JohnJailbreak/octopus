@@ -149,12 +149,14 @@ oct_status oct_native_lease_read(oct_native_lease_word *out);
 #define OCT_NATIVE_RUNTIME_NAME    "com.parv.octopus.native.runtime"
 #define OCT_NATIVE_RUNTIME_VERSION 1u
 
-enum {
+/* Named, like the other enums Swift reads: Swift imports an anonymous C enum's constants as plain
+ * integers with no rawValue, so the app could not use these the way it uses every other one. */
+typedef enum oct_native_runtime_flag {
     OCT_NATIVE_RUNTIME_HOOKED    = 1u << 0, /* observer hooks are installed */
     OCT_NATIVE_RUNTIME_ELIGIBLE  = 1u << 1, /* the provider's own checks passed */
     OCT_NATIVE_RUNTIME_SAW_IDS   = 1u << 2, /* a real GetStorageIDs arrived from a host */
     OCT_NATIVE_RUNTIME_SAW_INFO  = 1u << 3, /* a real GetStorageInfo arrived from a host */
-};
+} oct_native_runtime_flag;
 
 typedef struct oct_native_runtime {
     uint8_t  mode;            /* 0 none, 1 observing, 2 serving the synthetic tree */

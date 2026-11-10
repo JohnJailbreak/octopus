@@ -7,6 +7,7 @@
 //
 
 import SwiftUI
+import OctopusCore
 
 struct DiagnosticsWindow: View {
     @EnvironmentObject private var runner: DiagnosticsRunner
