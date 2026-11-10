@@ -50,3 +50,14 @@ int oct_native_device_info_add_format(const uint8_t *input,size_t length,
     for(unsigned i=0;i<4;i++)output[format_count_offset+i]=(uint8_t)(count>>(i*8));
     *output_length=length+2;return 1;
 }
+
+int oct_native_object_info_set_format(unsigned char *bytes, size_t length, uint16_t from, uint16_t to)
+{
+    /* StorageID occupies the first four bytes; ObjectFormat is the next two, little-endian. */
+    if (!bytes || length < 6) return -1;
+    uint16_t current = (uint16_t)(bytes[4] | ((uint16_t)bytes[5] << 8));
+    if (current != from) return 0;
+    bytes[4] = (unsigned char)(to & 0xFFu);
+    bytes[5] = (unsigned char)((to >> 8) & 0xFFu);
+    return 1;
+}

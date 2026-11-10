@@ -12,4 +12,25 @@
 int oct_native_device_info_add_format(const uint8_t *input, size_t length,
                                      uint16_t format, uint8_t *output,
                                      size_t capacity, size_t *output_length);
+
+/* ---- Reporting a format a host will accept -------------------------------------------------
+ *
+ * In a PTP ObjectInfo dataset the ObjectFormat is a 16-bit field at offset 4, straight after the
+ * 32-bit StorageID. This rewrites it, and only it, when it holds `from`.
+ *
+ * Why: on 10 November Windows asked for ObjectInfo on all five objects in the root and in
+ * Documents, then displayed three. The two it dropped are the ones whose format is 0x3004, MTP's
+ * Text; the one it kept alongside the folders is 0x3000, Undefined. Everything else in those
+ * datasets is identical in shape, the format was advertised to the host in GetDeviceInfo (the hook
+ * ran and the append succeeded, both confirmed on the device), and the object it did accept
+ * downloaded with a matching SHA-256. So the host accepts Undefined here and not Text.
+ *
+ * 0x3000 means "a file whose format the device does not classify", which is true of these objects
+ * and is what the host demonstrably displays. The store keeps calling them text, because they are;
+ * only what is reported over the wire changes.
+ *
+ * Returns 1 when the field was rewritten, 0 when it held something else, -1 on a short or absent
+ * dataset. */
+int oct_native_object_info_set_format(unsigned char *bytes, size_t length, uint16_t from, uint16_t to);
+
 #endif

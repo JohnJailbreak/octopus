@@ -215,6 +215,13 @@ static id objectInfo(id self, SEL cmd, uint32_t handle) {
     oct_object_info info;
     pthread_mutex_lock(&coreLock); oct_status status = oct_store_get(store, handle, &info); pthread_mutex_unlock(&coreLock);
     if (status != OCT_OK || info.size > UINT32_MAX) return nil;
+    /* Report a format the host accepts. See oct_native_object_info_set_format: a host asked about
+     * every object here and displayed only those whose format is not 0x3004. */
+    NSMutableData *reported = [body mutableCopy];
+    int mapped = oct_native_object_info_set_format(reported.mutableBytes, reported.length,
+                                                   OCT_FORMAT_TEXT, OCT_FORMAT_UNDEFINED);
+    if (mapped >= 0) body = reported;
+    if (mapped == 1) OCTNativeProviderEvent("provider-format-mapped", handle, OCT_FORMAT_UNDEFINED);
     OCTNativeDataset *dataset = [OCTNativeDataset new]; dataset.content = body;
     dataset.filename = [NSString stringWithUTF8String:info.name];
     dataset.objectCompressedSize = (uint32_t)info.size; dataset.objectCompressedSize64 = info.size;
