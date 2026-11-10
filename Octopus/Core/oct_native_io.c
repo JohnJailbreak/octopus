@@ -6,6 +6,7 @@
 #include "oct_native_io.h"
 #include <errno.h>
 #include <fcntl.h>
+#include <dirent.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
@@ -339,11 +340,25 @@ bool oct_native_lease_unpack(uint64_t word, oct_native_lease_word *out)
     if (!word || (word & 0xFu) != OCT_NATIVE_LEASE_VERSION) return false;
     if ((uint8_t)(word >> 56) != lease_check(word & 0x00FFFFFFFFFFFFFFull)) return false;
     uint8_t mode = (uint8_t)((word >> 4) & 0xFu);
-    if (mode > OCT_NATIVE_LEASE_EXPOSE_FILESYSTEM) return false;
+    if (mode > OCT_NATIVE_LEASE_MODE_LAST) return false;
     out->mode = mode;
     out->deadline_ms = (word >> 8) & 0xFFFFFFFFFFull;
     out->generation = (uint16_t)((word >> 48) & 0xFFu);
     return true;
+}
+
+const char *oct_native_lease_root(oct_native_lease_mode mode)
+{
+    if (mode < OCT_NATIVE_LEASE_EXPOSE_ROOT_BASE || mode > OCT_NATIVE_LEASE_MODE_LAST) return NULL;
+    /* One table, shared with the probe above, so a scope a lease can name is always a root whose
+     * reachability the companion also reports. */
+    unsigned root = (unsigned)(mode - OCT_NATIVE_LEASE_EXPOSE_ROOT_BASE) + 1u;
+    return root < OCT_NATIVE_ROOT_COUNT ? oct_native_root_path((oct_native_root)root) : NULL;
+}
+
+bool oct_native_lease_is_filesystem(oct_native_lease_mode mode)
+{
+    return oct_native_lease_root(mode) != NULL;
 }
 
 oct_native_lease_mode oct_native_lease_effective(const oct_native_lease_word *lease, uint64_t now_ms)
@@ -352,8 +367,9 @@ oct_native_lease_mode oct_native_lease_effective(const oct_native_lease_word *le
     if (!lease->deadline_ms || now_ms >= lease->deadline_ms) return OCT_NATIVE_LEASE_NONE;
     /* Further ahead than the app is allowed to grant: a clock anomaly or a forged word. */
     if (lease->deadline_ms - now_ms > OCT_NATIVE_LEASE_MS) return OCT_NATIVE_LEASE_NONE;
-    /* Real files never come from this channel, decided here so no caller can forget. A request
-     * for them is not downgraded to something lesser: it grants nothing at all. */
+    /* An unscoped request for real files names no root, so there is nothing to serve: it grants
+     * nothing at all rather than being downgraded to something lesser. Decided here so that no
+     * caller can forget to. */
     if (lease->mode == OCT_NATIVE_LEASE_EXPOSE_FILESYSTEM) return OCT_NATIVE_LEASE_NONE;
     return (oct_native_lease_mode)lease->mode;
 }
@@ -613,6 +629,23 @@ oct_status oct_native_hooks_publish(const oct_native_hook_report *report)
     return notify_write(OCT_NATIVE_HOOKS_NAME, &token, oct_native_hooks_pack(report));
 }
 
+oct_status oct_native_roots_publish(const oct_native_root_report *report)
+{
+    static int token = -1;
+    if (!report) return OCT_E_INVALID_ARGUMENT;
+    return notify_write(OCT_NATIVE_ROOTS_NAME, &token, oct_native_roots_pack(report));
+}
+
+oct_status oct_native_roots_read(oct_native_root_report *out)
+{
+    if (!out) return OCT_E_INVALID_ARGUMENT;
+    memset(out, 0, sizeof *out);
+    uint64_t word = 0;
+    oct_status status = notify_read(OCT_NATIVE_ROOTS_NAME, &word);
+    if (status != OCT_OK) return status;
+    return oct_native_roots_unpack(word, out) ? OCT_OK : OCT_E_STATE;
+}
+
 oct_status oct_native_hooks_read(oct_native_hook_report *out)
 {
     if (!out) return OCT_E_INVALID_ARGUMENT;
@@ -669,6 +702,16 @@ oct_status oct_native_hooks_publish(const oct_native_hook_report *report)
     (void)report;
     return OCT_E_UNSUPPORTED;
 }
+oct_status oct_native_roots_publish(const oct_native_root_report *report)
+{
+    (void)report;
+    return OCT_E_UNSUPPORTED;
+}
+oct_status oct_native_roots_read(oct_native_root_report *out)
+{
+    if (out) memset(out, 0, sizeof *out);
+    return OCT_E_UNSUPPORTED;
+}
 oct_status oct_native_hooks_read(oct_native_hook_report *out)
 {
     if (out) memset(out, 0, sizeof *out);
@@ -690,3 +733,98 @@ oct_status oct_native_detail_read(oct_native_detail *out)
     return OCT_E_UNSUPPORTED;
 }
 #endif
+
+/* ---- Real filesystem roots ----------------------------------------------------------------- */
+
+const char *oct_native_root_path(oct_native_root root)
+{
+    switch (root) {
+    case OCT_NATIVE_ROOT_SYNTHETIC: return NULL;
+    case OCT_NATIVE_ROOT_MEDIA: return "/var/mobile/Media";
+    case OCT_NATIVE_ROOT_DCIM: return "/var/mobile/Media/DCIM";
+    case OCT_NATIVE_ROOT_MOBILE: return "/var/mobile";
+    case OCT_NATIVE_ROOT_TMP: return "/var/tmp";
+    case OCT_NATIVE_ROOT_SYSTEM: return "/";
+    case OCT_NATIVE_ROOT_COUNT: break;
+    }
+    return NULL;
+}
+
+oct_status oct_native_probe_root(const char *path, int *error)
+{
+    if (error) *error = 0;
+    if (!path || !*path || path[0] != '/') {
+        if (error) *error = EINVAL;
+        return OCT_E_INVALID_ARGUMENT;
+    }
+    /* O_NOFOLLOW refuses a symlink at the final component, which is what the backend does too; it
+     * says nothing about earlier components, and neither does this. */
+    int fd = open(path, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
+    if (fd < 0) {
+        if (error) *error = errno;
+        return OCT_E_IO;
+    }
+    /* Opening a directory and reading from it are different permissions under a sandbox, so the
+     * second is checked separately rather than assumed from the first. */
+    DIR *dir = fdopendir(fd);
+    if (!dir) {
+        int saved = errno;
+        close(fd);
+        if (error) *error = saved;
+        return OCT_E_IO;
+    }
+    errno = 0;
+    struct dirent *entry;
+    do {
+        entry = readdir(dir);
+    } while (!entry && errno == EINTR);
+    int saved = entry ? 0 : errno;
+    closedir(dir); /* also closes fd */
+    if (!entry && saved) {
+        if (error) *error = saved;
+        return OCT_E_IO;
+    }
+    /* An empty directory read cleanly is still a readable directory. */
+    return OCT_OK;
+}
+
+void oct_native_probe_all_roots(oct_native_root_report *report)
+{
+    if (!report) return;
+    memset(report, 0, sizeof *report);
+    for (unsigned i = 1; i < OCT_NATIVE_ROOT_COUNT; i++) {
+        const char *path = oct_native_root_path((oct_native_root)i);
+        if (!path) continue;
+        int error = 0;
+        oct_status status = oct_native_probe_root(path, &error);
+        uint8_t bit = (uint8_t)(1u << i);
+        if (status == OCT_OK) {
+            report->openable |= bit;
+            report->listable |= bit;
+        } else if (error == EPERM || error == EACCES) {
+            report->refused |= bit;
+        }
+    }
+}
+
+uint64_t oct_native_roots_pack(const oct_native_root_report *report)
+{
+    if (!report) return 0;
+    uint64_t word = (uint64_t)(OCT_NATIVE_ROOTS_VERSION & 0xFu)
+                  | (uint64_t)report->openable << 8
+                  | (uint64_t)report->listable << 16
+                  | (uint64_t)report->refused << 24;
+    return word | (uint64_t)lease_check(word) << 56;
+}
+
+bool oct_native_roots_unpack(uint64_t word, oct_native_root_report *out)
+{
+    if (!out) return false;
+    memset(out, 0, sizeof *out);
+    if (!word || (word & 0xFu) != OCT_NATIVE_ROOTS_VERSION) return false;
+    if ((uint8_t)(word >> 56) != lease_check(word & 0x00FFFFFFFFFFFFFFull)) return false;
+    out->openable = (uint8_t)(word >> 8);
+    out->listable = (uint8_t)(word >> 16);
+    out->refused = (uint8_t)(word >> 24);
+    return true;
+}

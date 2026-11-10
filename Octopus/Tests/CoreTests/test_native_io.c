@@ -698,6 +698,154 @@ static void test_hook_report(void)
     CHECK(strcmp(oct_native_hook_name(1u << 15), "unknown") == 0);
 }
 
+/* Probing a directory: the question is what ptpd's sandbox permits, which decides whether a real
+ * filesystem can ever be served through it. Nothing here exposes a name. */
+static void test_root_probe(void)
+{
+    char root[] = "/tmp/octopus-root-XXXXXX", path[600];
+    CHECK(mkdtemp(root) != NULL);
+    int error = -1;
+
+    /* An empty directory read cleanly is readable. */
+    CHECK_OK(oct_native_probe_root(root, &error));
+    CHECK_EQ(error, 0);
+
+    /* With an entry in it, likewise, and still no name is reported. */
+    snprintf(path, sizeof path, "%s/anything", root);
+    FILE *file = fopen(path, "w");
+    CHECK(file != NULL);
+    if (file) CHECK_EQ(fclose(file), 0);
+    CHECK_OK(oct_native_probe_root(root, &error));
+
+    /* Absent, a file rather than a directory, and a relative or empty path. */
+    snprintf(path, sizeof path, "%s/missing", root);
+    CHECK_EQ(oct_native_probe_root(path, &error), OCT_E_IO);
+    CHECK_EQ(error, ENOENT);
+    snprintf(path, sizeof path, "%s/anything", root);
+    CHECK_EQ(oct_native_probe_root(path, &error), OCT_E_IO);
+    CHECK_EQ(error, ENOTDIR);
+    CHECK_EQ(oct_native_probe_root("tmp", &error), OCT_E_INVALID_ARGUMENT);
+    CHECK_EQ(error, EINVAL);
+    CHECK_EQ(oct_native_probe_root("", &error), OCT_E_INVALID_ARGUMENT);
+    CHECK_EQ(oct_native_probe_root(NULL, &error), OCT_E_INVALID_ARGUMENT);
+    CHECK_EQ(oct_native_probe_root(root, NULL), OCT_OK); /* the errno output is optional */
+
+    /* A symlink to a directory is refused, as the backend refuses one. */
+    char link[700];
+    snprintf(link, sizeof link, "%s-link", root);
+    CHECK_EQ(symlink(root, link), 0);
+    CHECK_EQ(oct_native_probe_root(link, &error), OCT_E_IO);
+    /* Refused either way: Linux reports ENOTDIR for O_NOFOLLOW|O_DIRECTORY on a symlink, macOS
+     * and iOS report ELOOP. What matters is that it is not followed. */
+    CHECK(error == ELOOP || error == ENOTDIR);
+    unlink(link);
+
+    /* Unreadable: the case that matters, since a sandbox denial arrives as EACCES or EPERM. */
+    snprintf(path, sizeof path, "%s/closed", root);
+    CHECK_EQ(mkdir(path, 0700), 0);
+    if (geteuid() != 0) { /* root ignores the mode, so this case is only meaningful unprivileged */
+        CHECK_EQ(chmod(path, 0000), 0);
+        CHECK_EQ(oct_native_probe_root(path, &error), OCT_E_IO);
+        CHECK(error == EACCES || error == EPERM);
+        CHECK_EQ(chmod(path, 0700), 0);
+    }
+}
+
+static void test_root_table_and_report(void)
+{
+    /* The table is closed and known: an index selects from it and nothing else, because the
+     * channel that carries the index is forgeable. */
+    CHECK(oct_native_root_path(OCT_NATIVE_ROOT_SYNTHETIC) == NULL);
+    CHECK(oct_native_root_path(OCT_NATIVE_ROOT_COUNT) == NULL);
+    CHECK(oct_native_root_path((oct_native_root)99) == NULL);
+    for (unsigned i = 1; i < OCT_NATIVE_ROOT_COUNT; i++) {
+        const char *path = oct_native_root_path((oct_native_root)i);
+        CHECK(path != NULL);
+        if (path) {
+            CHECK_EQ(path[0], '/');                       /* absolute */
+            CHECK(strstr(path, "..") == NULL);            /* no traversal */
+            CHECK(strstr(path, "//") == NULL);
+        }
+    }
+    CHECK(strcmp(oct_native_root_path(OCT_NATIVE_ROOT_SYSTEM), "/") == 0);
+
+    /* Masks chosen so the two properties below are actually distinguishable: DCIM opened, Media
+     * opened but not listable. The previous literals had DCIM's bit clear and Media's set, which
+     * contradicted the assertions made of them. */
+    oct_native_root_report report = {
+        .openable = (uint8_t)((1u << OCT_NATIVE_ROOT_DCIM) | (1u << OCT_NATIVE_ROOT_MEDIA) |
+                              (1u << OCT_NATIVE_ROOT_MOBILE)),
+        .listable = (uint8_t)((1u << OCT_NATIVE_ROOT_DCIM) | (1u << OCT_NATIVE_ROOT_MOBILE)),
+        .refused  = (uint8_t)((1u << OCT_NATIVE_ROOT_TMP) | (1u << OCT_NATIVE_ROOT_SYSTEM)),
+    };
+    oct_native_root_report out;
+    CHECK(oct_native_roots_unpack(oct_native_roots_pack(&report), &out));
+    CHECK_EQ(out.openable, report.openable);
+    CHECK_EQ(out.listable, report.listable);
+    CHECK_EQ(out.refused, report.refused);
+    /* Opened but not listable is representable: a sandbox can allow one and not the other. */
+    CHECK(out.openable & (1u << OCT_NATIVE_ROOT_DCIM));
+    CHECK(!(out.listable & (1u << OCT_NATIVE_ROOT_MEDIA)));
+    CHECK(!oct_native_roots_unpack(0, &out));
+    CHECK(!oct_native_roots_unpack(oct_native_roots_pack(&report) ^ (1ull << 9), &out));
+    CHECK(!oct_native_roots_unpack((oct_native_roots_pack(&report) & ~0xFull) | 2u, &out));
+    CHECK(!oct_native_roots_unpack(oct_native_roots_pack(&report), NULL));
+    CHECK_EQ(oct_native_roots_pack(NULL), 0u);
+
+    /* Probing the real table here reports on this machine, where none of those paths exist; the
+     * point is that it completes and reports nothing as readable rather than crashing. */
+    oct_native_root_report live;
+    oct_native_probe_all_roots(&live);
+    CHECK(!(live.openable & 1u));  /* the synthetic root is never probed */
+    oct_native_probe_all_roots(NULL);
+}
+
+/* The scopes a lease may name, which are the roots of oct_native_root and nothing else: the word
+ * carries a number into that one table, so a grant cannot widen what is served, and every scope a
+ * lease can ask for is a root whose reachability the companion separately reports. */
+static void test_lease_scopes(void)
+{
+    CHECK(oct_native_lease_root(OCT_NATIVE_LEASE_NONE) == NULL);
+    CHECK(oct_native_lease_root(OCT_NATIVE_LEASE_OBSERVE) == NULL);
+    CHECK(oct_native_lease_root(OCT_NATIVE_LEASE_EXPOSE_SYNTHETIC) == NULL);
+    /* Unscoped real-file exposure names no root, so there is nothing for it to serve. */
+    CHECK(oct_native_lease_root(OCT_NATIVE_LEASE_EXPOSE_FILESYSTEM) == NULL);
+    CHECK(!oct_native_lease_is_filesystem(OCT_NATIVE_LEASE_EXPOSE_FILESYSTEM));
+
+    /* Mode 4 is root 1, and so on, with the synthetic root never reachable as a scope. */
+    for (unsigned root = 1; root < OCT_NATIVE_ROOT_COUNT; root++) {
+        oct_native_lease_mode mode =
+            (oct_native_lease_mode)(OCT_NATIVE_LEASE_EXPOSE_ROOT_BASE + (int)root - 1);
+        const char *from_lease = oct_native_lease_root(mode);
+        const char *from_table = oct_native_root_path((oct_native_root)root);
+        CHECK(from_lease != NULL && from_table != NULL);
+        if (from_lease && from_table) CHECK(strcmp(from_lease, from_table) == 0);
+        CHECK(oct_native_lease_is_filesystem(mode));
+        if (from_lease) {
+            CHECK(from_lease[0] == '/');            /* absolute, always */
+            CHECK(strstr(from_lease, "..") == NULL); /* no traversal in the table itself */
+        }
+    }
+    /* Anything past the table has no root, so an unknown number serves nothing. */
+    CHECK(oct_native_lease_root((oct_native_lease_mode)(OCT_NATIVE_LEASE_MODE_LAST + 1)) == NULL);
+
+    /* A scoped grant is honoured, and still expires like any other. */
+    const uint64_t now = 500000;
+    oct_native_lease_mode media = (oct_native_lease_mode)(OCT_NATIVE_LEASE_EXPOSE_ROOT_BASE);
+    oct_native_lease_word scoped = { .mode = (uint8_t)media, .deadline_ms = now + 5000 };
+    oct_native_lease_word out;
+    CHECK(oct_native_lease_unpack(oct_native_lease_pack(&scoped), &out));
+    CHECK_EQ(oct_native_lease_effective(&out, now), media);
+    CHECK_EQ(oct_native_lease_effective(&out, now + 5000), OCT_NATIVE_LEASE_NONE);
+    /* A number past the table does not even decode, so it cannot reach the provider. */
+    uint64_t beyond = (oct_native_lease_pack(&scoped) & ~0xF0ull) |
+                      ((uint64_t)(OCT_NATIVE_LEASE_MODE_LAST + 1) << 4);
+    uint8_t fixed = 0;
+    for (unsigned i = 0; i < 7; i++) fixed ^= (uint8_t)(beyond >> (8 * i));
+    beyond = (beyond & 0x00FFFFFFFFFFFFFFull) | (uint64_t)fixed << 56;
+    CHECK(!oct_native_lease_unpack(beyond, &out));
+}
+
 void run_native_io_tests(void)
 {
     test_detailed_failures();
@@ -706,8 +854,11 @@ void run_native_io_tests(void)
     test_startup_signal();
     test_signal_verdicts();
     test_lease_word();
+    test_lease_scopes();
     test_runtime_word();
     test_hook_report();
+    test_root_probe();
+    test_root_table_and_report();
     char directory[512], path[1024];
     const char *temporary = getenv("OCT_NATIVE_TEST_TMP");
     int count = snprintf(directory, sizeof directory, "%s/octopus-native-XXXXXX", temporary ? temporary : "/tmp");

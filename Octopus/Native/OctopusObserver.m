@@ -398,8 +398,21 @@ static void pollOnce(BOOL match)
                 startup.lease_error=0;
                 /* Mode 1 observes; mode 2 additionally serves the synthetic tree, which is what
                  * OCTNativeProviderEnabled requires. Real files are never reachable from here. */
-                wanted=effective==OCT_NATIVE_LEASE_EXPOSE_SYNTHETIC?2u:
-                       (effective==OCT_NATIVE_LEASE_OBSERVE?1u:0u);
+                /* Mode 1 observes; mode 2 additionally serves a storage. Which store that is comes
+                 * from the scope the grant names: the synthetic tree, or a read-only view of one
+                 * of the fixed roots in oct_native_lease_root. */
+                wanted=effective==OCT_NATIVE_LEASE_OBSERVE?1u:
+                       (effective==OCT_NATIVE_LEASE_NONE?0u:2u);
+                if(wanted==2){
+                    NSString *scopeProblem=nil;
+                    if(!OCTProviderSetScope(effective,&scopeProblem)&&scopeProblem){
+                        static NSString *lastScopeProblem;
+                        if(![scopeProblem isEqualToString:lastScopeProblem]){
+                            lastScopeProblem=scopeProblem;
+                            os_log_error(startup_log(),"scope not served: %{public}s",scopeProblem.UTF8String);
+                        }
+                    }
+                }
                 if(wanted){
                     until=granted.deadline_ms;
                     snprintf(token,sizeof token,"notify-%u",(unsigned)granted.generation);

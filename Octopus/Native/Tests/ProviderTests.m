@@ -136,14 +136,27 @@ int main(void) { @autoreleasepool {
     oct_reader sr;oct_reader_init(&sr,storage.bytes,storage.length);(void)oct_read_u16(&sr);(void)oct_read_u16(&sr);assert(oct_read_u16(&sr)==1);
     uint16_t code=0;uint32_t size=0;
     NSArray *all=[camera objectHandlesInStorage:OCT_NATIVE_STORAGE_ID forObjectFormatCode:0 inAssociation:0 responseCode:&code];
-    assert(code==OCT_RC_OK&&all.count==6);
+    /* Derived from the constants: the provider enables the probe objects, so a literal here
+     * breaks the moment that changes, which is exactly what happened. */
+    const NSUInteger expectedObjects=OCT_SYNTHETIC_SEED_OBJECTS+OCT_SYNTHETIC_PROBE_OBJECTS;
+    assert(code==OCT_RC_OK&&all.count==expectedObjects);
     NSArray *combined=[camera objectHandlesInStorage:UINT32_MAX forObjectFormatCode:0 inAssociation:0 responseCode:&code];
-    assert(code==OCT_RC_OK&&combined.count==7&&[combined containsObject:@42]);
+    assert(code==OCT_RC_OK&&combined.count==expectedObjects+1&&[combined containsObject:@42]);
     NSArray *root=[camera objectHandlesInStorage:OCT_NATIVE_STORAGE_ID forObjectFormatCode:0 inAssociation:UINT32_MAX responseCode:&code];
     assert(code==OCT_RC_OK&&root.count==3);
     uint32_t docs=findNamed(camera,root,@"Documents");assert(docs);
     NSArray *children=[camera objectHandlesInStorage:UINT32_MAX forObjectFormatCode:0 inAssociation:docs responseCode:&code];
-    assert(code==OCT_RC_OK&&children.count==2&&![children containsObject:@42]);
+    /* example.txt and sample.bin, plus the two probes the provider enables. */
+    assert(code==OCT_RC_OK&&children.count==2+OCT_SYNTHETIC_PROBE_OBJECTS&&![children containsObject:@42]);
+    /* The probes exist and are exactly what they claim: probe.dat carries example.txt's length,
+     * probe.txt carries sample.bin's. That pairing is the whole point of them. */
+    uint32_t probeDat=findNamed(camera,children,@"probe.dat");assert(probeDat);
+    uint32_t probeTxt=findNamed(camera,children,@"probe.txt");assert(probeTxt);
+    uint16_t probeCode=0;uint32_t probeSize=0;
+    (void)[camera dataSourceForObjectHandle:probeDat responseCode:&probeCode size:&probeSize];
+    assert(probeCode==OCT_RC_OK&&probeSize==76);
+    (void)[camera dataSourceForObjectHandle:probeTxt responseCode:&probeCode size:&probeSize];
+    assert(probeCode==OCT_RC_OK&&probeSize==OCT_SAMPLE_BIN_SIZE);
     uint32_t example=findNamed(camera,children,@"example.txt");assert(example);
     id source=[camera dataSourceForObjectHandle:example responseCode:&code size:&size];
     assert(code==OCT_RC_OK&&size==76&&[source length]==76);
@@ -162,7 +175,7 @@ int main(void) { @autoreleasepool {
     NSData *bulk=[camera objectInfoForObjectsInStorage:OCT_NATIVE_STORAGE_ID forObjectFormatCode:0 inAssociation:0 withContentType:3 responseCode:&code];
     assert(code==OCT_RC_OK && bulk.length>8);
     uint64_t bulkCount=0;for(unsigned i=0;i<8;i++)bulkCount|=(uint64_t)((const uint8_t *)bulk.bytes)[i]<<(i*8);
-    assert(bulkCount==6);
+    assert(bulkCount==expectedObjects);
     /* Message syntax: the method returns id, and dot syntax needs a static type. */
     assert([[camera objectInfoForObjectsInStorage:OCT_NATIVE_STORAGE_ID forObjectFormatCode:0 inAssociation:0 withContentType:1 responseCode:&code] length]>0 && code==OCT_RC_OK);
     NSUInteger before=camera.ordinaryCalls;

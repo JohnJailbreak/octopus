@@ -1,6 +1,7 @@
 #import "OctopusProvider.h"
 #import "../Protocol/oct_responder.h"
 #include "oct_native_dataset.h"
+#include "../Core/oct_readonly.h"
 #include <pthread.h>
 #include <stdatomic.h>
 #include <string.h>
@@ -403,28 +404,100 @@ BOOL OCTProviderValidate(NSString **reason) {
     return YES;
 }
 
+/*
+ * The store the provider serves. Synthetic by default; a read-only view of one of the fixed roots
+ * in oct_native_lease_root when a scope is granted. Switching closes the old store and opens a new
+ * one, which is also how the read-only backend refreshes its directory snapshots.
+ *
+ * Called with coreLock held, and only from the authorization pass, which is the single thread that
+ * owns `mode`. The hooks read `store` under the same lock.
+ */
+static oct_native_lease_mode storeScope;
+
+static bool providerAuthorizedForStore(void *context)
+{
+    (void)context;
+    /* Checked throughout every read-only operation, so a lapsed lease stops a walk in progress
+     * rather than only preventing the next one. */
+    return OCTNativeProviderEnabled();
+}
+
+static BOOL openStoreLocked(oct_native_lease_mode scope, NSString **reason)
+{
+    oct_responder_destroy(encoder);encoder=NULL;
+    oct_store_close(store);store=NULL;
+    storeScope=OCT_NATIVE_LEASE_NONE;
+    oct_store_options storeOptions={.storage_id=OCT_NATIVE_STORAGE_ID,.first_handle=OCT_NATIVE_FIRST_HANDLE,
+        .description="Octopus (read-only)",.volume_label="Octopus",
+        /* Bounded so a deep root cannot grow the handle table without limit inside ptpd, which also
+         * serves Photos. Reaching it answers a whole-hierarchy request with 0xA808, which makes a
+         * host enumerate one directory at a time. */
+        .max_objects=OCT_STORE_DEFAULT_MAX_OBJECTS};
+    const char *root=oct_native_lease_root(scope);
+    if(root){
+        oct_readonly_options ro={.root=root,.authorized=providerAuthorizedForStore,
+            /* Per-directory and depth limits keep one listing bounded; the store's budget bounds
+             * the total. Nothing here crosses a filesystem boundary. */
+            .max_nodes=OCT_STORE_DEFAULT_MAX_OBJECTS>65535u?65535u:OCT_STORE_DEFAULT_MAX_OBJECTS,
+            .max_entries=4096,.max_depth=64,.max_read_bytes=1u<<20,.cross_filesystems=false};
+        if(oct_readonly_store_open(&ro,&storeOptions,&store)!=OCT_OK){
+            store=NULL;
+            if(reason)*reason=[NSString stringWithFormat:@"Cannot open %s read-only",root];
+            return NO;
+        }
+    } else {
+        oct_backend backend={0};
+        /* Probes on: this build is asking a host which of name and size decides whether it
+         * displays an object. See oct_synthetic_options.probes. */
+        oct_synthetic_options options={.probes=true};
+        if(oct_synthetic_backend_create(&options,&backend)!=OCT_OK ||
+           oct_store_open(&storeOptions,backend,&store)!=OCT_OK || oct_store_index_all(store)!=OCT_OK){
+            oct_store_close(store);store=NULL;
+            if(reason)*reason=@"Cannot initialize immutable synthetic provider";return NO;
+        }
+        oct_handle_list list={0};
+        if(oct_store_list(store,OCT_ROOT,true,&list)!=OCT_OK ||
+           list.count!=OCT_SYNTHETIC_SEED_OBJECTS+OCT_SYNTHETIC_PROBE_OBJECTS){
+            oct_handle_list_free(&list);oct_store_close(store);store=NULL;
+            if(reason)*reason=@"Synthetic tree identity mismatch";return NO;
+        }
+        oct_handle_list_free(&list);
+    }
+    if(oct_responder_create(store,NULL,&encoder)!=OCT_OK){
+        oct_store_close(store);store=NULL;
+        if(reason)*reason=@"Cannot create the provider's responder";return NO;
+    }
+    storeScope=scope;
+    OCTNativeProviderEvent("provider-store-opened",(uint32_t)scope,OCT_RC_OK);
+    return YES;
+}
+
+/* Switches the served store when the granted scope changes. Safe to call every poll. */
+BOOL OCTProviderSetScope(oct_native_lease_mode scope, NSString **reason)
+{
+    if(!atomic_load_explicit(&installed,memory_order_acquire)) return NO;
+    pthread_mutex_lock(&coreLock);
+    BOOL ok=YES;
+    if(scope!=storeScope){
+        ok=openStoreLocked(scope,reason);
+        /* A root that cannot be opened falls back to the synthetic tree rather than serving
+         * nothing, so a host keeps seeing a working storage. */
+        if(!ok&&oct_native_lease_root(scope)) openStoreLocked(OCT_NATIVE_LEASE_EXPOSE_SYNTHETIC,NULL);
+    }
+    pthread_mutex_unlock(&coreLock);
+    return ok;
+}
+
 BOOL OCTProviderInstall(NSString **reason) {
     if (atomic_load_explicit(&installed,memory_order_acquire)) return YES;
     if (!OCTProviderValidate(reason)) return NO;
     originalLookup=method_getImplementation(class_getInstanceMethod(objc_getClass("PTPVirtualCamera"),sel_registerName("objectForObjectHandle:")));
     /* Probes on: this build is asking a host which of name and size decides whether it displays
      * an object. See oct_synthetic_options.probes. */
-    oct_backend backend={0}; oct_synthetic_options options={.probes=true};
-    oct_store_options storeOptions={.storage_id=OCT_NATIVE_STORAGE_ID,.first_handle=OCT_NATIVE_FIRST_HANDLE,
-        .description="Octopus (read-only)",.volume_label="Octopus"};
-    if(oct_synthetic_backend_create(&options,&backend)!=OCT_OK ||
-       oct_store_open(&storeOptions,backend,&store)!=OCT_OK || oct_store_index_all(store)!=OCT_OK ||
-       oct_responder_create(store,NULL,&encoder)!=OCT_OK) {
-        oct_responder_destroy(encoder);encoder=NULL;oct_store_close(store);store=NULL;
-        if(reason)*reason=@"Cannot initialize immutable synthetic provider";return NO;
-    }
-    oct_handle_list list={0};
-    if(oct_store_list(store,OCT_ROOT,true,&list)!=OCT_OK ||
-       list.count!=OCT_SYNTHETIC_SEED_OBJECTS+OCT_SYNTHETIC_PROBE_OBJECTS) {
-        oct_handle_list_free(&list);oct_responder_destroy(encoder);encoder=NULL;oct_store_close(store);store=NULL;
-        if(reason)*reason=@"Synthetic tree identity mismatch";return NO;
-    }
-    oct_handle_list_free(&list);
+    pthread_mutex_lock(&coreLock);
+    BOOL opened=openStoreLocked(OCT_NATIVE_LEASE_EXPOSE_SYNTHETIC,reason);
+    pthread_mutex_unlock(&coreLock);
+    if(!opened) return NO;
     for(size_t i=0;i<sizeof(hooks)/sizeof(hooks[0]);i++) {
         if(!OCTRuntimeHook("PTPVirtualCamera",hooks[i].selector,hooks[i].encoding,hooks[i].replacement,hooks[i].original,reason)) {
             /* Leave pass-through hooks resident. Never uninstall over a later

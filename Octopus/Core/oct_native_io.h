@@ -119,8 +119,29 @@ typedef enum oct_native_lease_mode {
     OCT_NATIVE_LEASE_NONE = 0,
     OCT_NATIVE_LEASE_OBSERVE,           /* passive observation only */
     OCT_NATIVE_LEASE_EXPOSE_SYNTHETIC,  /* the built-in six-object tree */
-    OCT_NATIVE_LEASE_EXPOSE_FILESYSTEM, /* real files: refused from this channel */
+    OCT_NATIVE_LEASE_EXPOSE_FILESYSTEM, /* unscoped: never honoured, no root to serve */
+    /* Real files, read-only, under one of the roots in oct_native_root. The word has no room for a
+     * path, so a grant selects from that table by number and no path travels over the channel.
+     * Mode 4 is oct_native_root 1, and so on, so the two stay in step by construction rather than
+     * by a second list that could drift from the first. */
+    OCT_NATIVE_LEASE_EXPOSE_ROOT_BASE = 4,
+    OCT_NATIVE_LEASE_MODE_LAST = OCT_NATIVE_LEASE_EXPOSE_ROOT_BASE + 4, /* roots 1..5 */
 } oct_native_lease_mode;
+
+/* The root a mode serves, or NULL for the modes that serve no filesystem. The returned string is
+ * a compiled-in literal: a caller cannot widen a scope, only choose among these.
+ *
+ * Why these are honoured over a channel whose sender cannot be established, when
+ * EXPOSE_FILESYSTEM is not: the roots come from a table fixed in this source rather than supplied
+ * by the caller; nothing is writable,
+ * because the backend implements no write operation; ptpd's own sandbox decides independently
+ * what is readable inside the chosen root, so a grant is not access; and the lease still expires
+ * in fifteen seconds. What a forged word could do is show a host files under one of these roots
+ * that ptpd can already read, on a phone where someone is already running code. That is a real
+ * escalation and it is bounded; a path supplied over the same channel would not be. */
+const char *oct_native_lease_root(oct_native_lease_mode mode);
+/* Whether a mode serves real files, for callers that gate on that rather than on a specific root. */
+bool        oct_native_lease_is_filesystem(oct_native_lease_mode mode);
 
 typedef struct oct_native_lease_word {
     uint8_t  mode;        /* oct_native_lease_mode */
@@ -171,6 +192,55 @@ uint64_t   oct_native_runtime_pack(const oct_native_runtime *runtime);
 bool       oct_native_runtime_unpack(uint64_t word, oct_native_runtime *out);
 oct_status oct_native_runtime_publish(const oct_native_runtime *runtime);
 oct_status oct_native_runtime_read(oct_native_runtime *out);
+
+/* ---- Real filesystem roots -------------------------------------------------------------
+ *
+ * The read-only backend can serve a real directory, and has been tested in isolation since it
+ * arrived, but it has never been connected to the live provider. The obstacle is not the backend:
+ * ptpd runs under Apple's "ptpd" seatbelt profile, and on 9 November it was refused `open()` on a
+ * directory owned by the same uid it runs as. Whatever that profile permits is the ceiling on what
+ * can ever be served this way, and it is not knowable from outside the process.
+ *
+ * So the companion probes a fixed table of candidate roots and reports which it can open and list.
+ * A table rather than a path for two reasons: a path does not fit in a notification word, and the
+ * authorization channel is forgeable, so the set of things a forged grant could ask for must be
+ * closed and known in advance. An index selects from this table and nothing else.
+ *
+ * Probing opens a directory read-only and reads one entry. It exposes nothing: the result is a
+ * pair of bitmasks, never a name.
+ */
+typedef enum oct_native_root {
+    OCT_NATIVE_ROOT_SYNTHETIC = 0, /* the in-memory tree; touches no filesystem */
+    OCT_NATIVE_ROOT_MEDIA,         /* /var/mobile/Media, the tree Apple already serves from */
+    OCT_NATIVE_ROOT_DCIM,          /* /var/mobile/Media/DCIM */
+    OCT_NATIVE_ROOT_MOBILE,        /* /var/mobile */
+    OCT_NATIVE_ROOT_TMP,           /* /var/tmp */
+    OCT_NATIVE_ROOT_SYSTEM,        /* / */
+    OCT_NATIVE_ROOT_COUNT
+} oct_native_root;
+
+/* NULL for OCT_NATIVE_ROOT_SYNTHETIC and for anything out of range. */
+const char *oct_native_root_path(oct_native_root root);
+
+/* OCT_OK when the directory opened and one entry could be read; *error carries errno otherwise.
+ * A symlink in any component is refused, as the backend itself refuses one. */
+oct_status oct_native_probe_root(const char *path, int *error);
+
+#define OCT_NATIVE_ROOTS_NAME    "com.parv.octopus.native.roots"
+#define OCT_NATIVE_ROOTS_VERSION 1u
+
+typedef struct oct_native_root_report {
+    uint8_t openable; /* bit per oct_native_root: the directory opened */
+    uint8_t listable; /* bit per oct_native_root: an entry could be read from it */
+    uint8_t refused;  /* bit per oct_native_root: EPERM or EACCES, so the sandbox refused it */
+} oct_native_root_report;
+
+uint64_t   oct_native_roots_pack(const oct_native_root_report *report);
+bool       oct_native_roots_unpack(uint64_t word, oct_native_root_report *out);
+oct_status oct_native_roots_publish(const oct_native_root_report *report);
+oct_status oct_native_roots_read(oct_native_root_report *out);
+/* Fills `report` by probing every root in the table. Serial caller. */
+void       oct_native_probe_all_roots(oct_native_root_report *report);
 
 /* ---- Which provider hooks a host actually called -------------------------------------------
  *
