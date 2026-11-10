@@ -397,6 +397,18 @@ oct_status oct_synthetic_backend_create(const oct_synthetic_options *options, oc
     if (status == OCT_OK) status = oct_memory_backend_add(out, 0, "Documents", true, NULL, 0, false, time, &documents);
     if (status == OCT_OK) status = oct_memory_backend_add(out, documents, "example.txt", false, example_text, sizeof example_text - 1, false, time, NULL);
     if (status == OCT_OK) status = oct_memory_backend_add(out, documents, "sample.bin", false, sample, sizeof sample, false, time, NULL);
+    /*
+     * Two probes that differ from each other in exactly one way, to settle why a host showed
+     * sample.bin and hid every .txt object on 10 November. The datasets for those objects were
+     * dumped and compared field by field: with the provider reporting text as 0x3000 they differ
+     * from sample.bin's only in name and size, and the host still hid them, so the format is ruled
+     * out. probe.dat carries the same bytes as example.txt under a different extension; probe.txt
+     * carries sample.bin's length under a text one. Whichever appears names the cause.
+     */
+    if (status == OCT_OK && options && options->probes) {
+        status = oct_memory_backend_add(out, documents, "probe.dat", false, example_text, sizeof example_text - 1, false, time, NULL);
+        if (status == OCT_OK) status = oct_memory_backend_add(out, documents, "probe.txt", false, sample, sizeof sample, false, time, NULL);
+    }
     if (status == OCT_OK) status = oct_memory_backend_add(out, 0, "Information", true, NULL, 0, false, time, &information);
     if (status == OCT_OK) status = oct_memory_backend_add(out, information, "version.txt", false, version, version_length, false, time, NULL);
     if (status == OCT_OK && options && options->scratch) {

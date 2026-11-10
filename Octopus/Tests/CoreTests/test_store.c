@@ -6,7 +6,7 @@
 
 oct_store *open_synthetic(bool scratch)
 {
-    oct_synthetic_options options = { SEED_TIME, scratch };
+    oct_synthetic_options options = { .time = SEED_TIME, .scratch = scratch };
     oct_backend backend;
     oct_store *store = NULL;
     if (oct_synthetic_backend_create(&options, &backend) != OCT_OK) return NULL;
@@ -446,6 +446,54 @@ static void test_chunked_streaming_reads(void)
     oct_store_close(store);
 }
 
+/* The probe objects: absent unless asked for, so the seed tree keeps its six, and present in
+ * Documents when asked, differing from example.txt and sample.bin in exactly one way each. */
+static void test_probe_objects(void)
+{
+    oct_backend backend;
+    oct_store *store = NULL;
+    oct_synthetic_options plain = { .time = 1 };
+    CHECK_OK(oct_synthetic_backend_create(&plain, &backend));
+    CHECK_OK(oct_store_open(NULL, backend, &store));
+    CHECK_OK(oct_store_index_all(store));
+    CHECK_EQ(oct_store_object_count(store), OCT_SYNTHETIC_SEED_OBJECTS);
+    uint32_t documents = find(store, OCT_ROOT, "Documents");
+    CHECK(documents != 0);
+    CHECK_EQ(find(store, documents, "probe.dat"), 0u);
+    CHECK_EQ(find(store, documents, "probe.txt"), 0u);
+    oct_store_close(store);
+
+    oct_synthetic_options probed = { .time = 1, .probes = true };
+    store = NULL;
+    CHECK_OK(oct_synthetic_backend_create(&probed, &backend));
+    CHECK_OK(oct_store_open(NULL, backend, &store));
+    CHECK_OK(oct_store_index_all(store));
+    CHECK_EQ(oct_store_object_count(store), OCT_SYNTHETIC_SEED_OBJECTS + OCT_SYNTHETIC_PROBE_OBJECTS);
+    documents = find(store, OCT_ROOT, "Documents");
+    uint32_t dat = find(store, documents, "probe.dat");
+    uint32_t txt = find(store, documents, "probe.txt");
+    uint32_t example = find(store, documents, "example.txt");
+    uint32_t sample = find(store, documents, "sample.bin");
+    CHECK(dat && txt && example && sample);
+    oct_object_info d, t2, e, sm;
+    if (dat && txt && example && sample) {
+        CHECK_OK(oct_store_get(store, dat, &d));
+        CHECK_OK(oct_store_get(store, txt, &t2));
+        CHECK_OK(oct_store_get(store, example, &e));
+        CHECK_OK(oct_store_get(store, sample, &sm));
+        /* probe.dat: example.txt's size, sample.bin's kind of extension. */
+        CHECK_EQ(d.size, e.size);
+        CHECK_EQ(d.format, sm.format);
+        /* probe.txt: sample.bin's size, example.txt's extension. */
+        CHECK_EQ(t2.size, sm.size);
+        CHECK_EQ(t2.format, e.format);
+        /* So the pair differs from each other in both, and from the originals in one each. */
+        CHECK(d.size != t2.size);
+        CHECK(d.format != t2.format);
+    }
+    oct_store_close(store);
+}
+
 static void test_enumeration_budget(void)
 {
     char root[] = "/tmp/octopus-budget-XXXXXX", path[512];
@@ -607,5 +655,6 @@ void run_store_tests(void)
     test_names();
     test_directory_backend();
     test_enumeration_budget();
+    test_probe_objects();
     test_chunked_streaming_reads();
 }

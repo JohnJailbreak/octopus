@@ -407,7 +407,9 @@ BOOL OCTProviderInstall(NSString **reason) {
     if (atomic_load_explicit(&installed,memory_order_acquire)) return YES;
     if (!OCTProviderValidate(reason)) return NO;
     originalLookup=method_getImplementation(class_getInstanceMethod(objc_getClass("PTPVirtualCamera"),sel_registerName("objectForObjectHandle:")));
-    oct_backend backend={0}; oct_synthetic_options options={0};
+    /* Probes on: this build is asking a host which of name and size decides whether it displays
+     * an object. See oct_synthetic_options.probes. */
+    oct_backend backend={0}; oct_synthetic_options options={.probes=true};
     oct_store_options storeOptions={.storage_id=OCT_NATIVE_STORAGE_ID,.first_handle=OCT_NATIVE_FIRST_HANDLE,
         .description="Octopus (read-only)",.volume_label="Octopus"};
     if(oct_synthetic_backend_create(&options,&backend)!=OCT_OK ||
@@ -417,7 +419,8 @@ BOOL OCTProviderInstall(NSString **reason) {
         if(reason)*reason=@"Cannot initialize immutable synthetic provider";return NO;
     }
     oct_handle_list list={0};
-    if(oct_store_list(store,OCT_ROOT,true,&list)!=OCT_OK || list.count!=6) {
+    if(oct_store_list(store,OCT_ROOT,true,&list)!=OCT_OK ||
+       list.count!=OCT_SYNTHETIC_SEED_OBJECTS+OCT_SYNTHETIC_PROBE_OBJECTS) {
         oct_handle_list_free(&list);oct_responder_destroy(encoder);encoder=NULL;oct_store_close(store);store=NULL;
         if(reason)*reason=@"Synthetic tree identity mismatch";return NO;
     }
