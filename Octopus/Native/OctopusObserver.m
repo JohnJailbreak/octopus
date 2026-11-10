@@ -325,22 +325,20 @@ static void publish(void){
     startup.status_stage=(uint8_t)failure.stage;startup.status_error=clamp_errno(failure.error);
     if(failure.stage==OCT_NATIVE_IO_OK)raise_phase(OCT_NATIVE_PHASE_PUBLISHED);
 }
-__attribute__((constructor)) static void startObserver(void){
+/*
+ * One authorization pass: read the lease, install the observer hooks and the provider, publish.
+ * Run once synchronously from the constructor and then every second from the timer.
+ *
+ * Synchronously first because the timer's handler runs on its own queue, after the constructor
+ * returns, concurrently with ptpd's own startup. A host asks GetDeviceInfo as the first command of
+ * a session, and that answer carries the list of object formats the host will accept; Windows hid
+ * every text object on 10 November because the hook was not yet in place to add format 0x3004 to
+ * it. Doing a pass before dyld returns control puts the hooks in before ptpd can open its USB
+ * session at all, which is the only ordering that beats the first command rather than racing it.
+ */
+static void pollOnce(BOOL match)
+{
     @autoreleasepool {
-        if(strcmp(getprogname(),"ptpd"))return;
-        startupLog=os_log_create("com.parv.octopus.native","startup");
-        /* The first thing done in ptpd, before anything that can fail: proof the dylib was loaded. */
-        os_log(startup_log(),"constructor entered in ptpd pid %d uid %d",(int)getpid(),(int)geteuid());
-        raise_phase(OCT_NATIVE_PHASE_CONSTRUCTOR);post_startup();
-        oct_native_init(&journal,((uint64_t)arc4random()<<32)|arc4random()|1);
-        NSString *reason=nil;BOOL match=compatible(&reason);compatibility=reason?:@"Identity check failed";
-        raise_phase(OCT_NATIVE_PHASE_IDENTITY);
-        os_log(startup_log(),"identity %{public}s: %{public}s",match?"compatible":"rejected",compatibility.UTF8String);
-        post_startup();
-        dispatch_queue_t queue=dispatch_queue_create("com.parv.octopus.native",DISPATCH_QUEUE_SERIAL);
-        timer=dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER,0,0,queue);
-        dispatch_source_set_timer(timer,dispatch_time(DISPATCH_TIME_NOW,0),NSEC_PER_SEC,NSEC_PER_SEC/10);
-        dispatch_source_set_event_handler(timer,^{@autoreleasepool{
             char token[33]={0};uint64_t until=0;unsigned wanted=0;
             if(match){
                 /*
@@ -392,7 +390,11 @@ __attribute__((constructor)) static void startObserver(void){
             if(wanted&&!attemptedHooks){attemptedHooks=true;NSString *reason=nil;BOOL ok=install(&reason);hookState=ok?@"Installed":reason;atomic_store(&ready,ok);
                 startup.hooks=ok?OCT_NATIVE_HOOKS_INSTALLED:OCT_NATIVE_HOOKS_REFUSED;if(ok)raise_phase(OCT_NATIVE_PHASE_HOOKED);
                 os_log(startup_log(),"observer hooks %{public}s",ok?"installed":"refused");}
-            if(atomic_load(&ready)&&!attemptedProvider){
+            /* Not gated on the observer hooks or on a lease: the provider's hooks forward to Apple
+         * until OCTNativeProviderEnabled() says otherwise, and that still requires installed
+         * observer hooks, a current lease and the user's mode-2 grant. Installing them the moment
+         * identity is verified is the earliest possible point, which is what GetDeviceInfo needs. */
+        if(match&&!attemptedProvider){
                 NSString *problem=nil;
                 BOOL valid=OCTProviderValidate(&problem);
                 atomic_store(&providerEligible,valid);
@@ -439,7 +441,27 @@ __attribute__((constructor)) static void startObserver(void){
                 oct_native_runtime_publish(&runtime);
             }
             post_startup();
-        }});
+    }
+}
+
+__attribute__((constructor)) static void startObserver(void){
+    @autoreleasepool {
+        if(strcmp(getprogname(),"ptpd"))return;
+        startupLog=os_log_create("com.parv.octopus.native","startup");
+        /* The first thing done in ptpd, before anything that can fail: proof the dylib was loaded. */
+        os_log(startup_log(),"constructor entered in ptpd pid %d uid %d",(int)getpid(),(int)geteuid());
+        raise_phase(OCT_NATIVE_PHASE_CONSTRUCTOR);post_startup();
+        oct_native_init(&journal,((uint64_t)arc4random()<<32)|arc4random()|1);
+        NSString *reason=nil;BOOL match=compatible(&reason);compatibility=reason?:@"Identity check failed";
+        raise_phase(OCT_NATIVE_PHASE_IDENTITY);
+        os_log(startup_log(),"identity %{public}s: %{public}s",match?"compatible":"rejected",compatibility.UTF8String);
+        post_startup();
+        dispatch_queue_t queue=dispatch_queue_create("com.parv.octopus.native",DISPATCH_QUEUE_SERIAL);
+        timer=dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER,0,0,queue);
+        dispatch_source_set_timer(timer,dispatch_time(DISPATCH_TIME_NOW,0),NSEC_PER_SEC,NSEC_PER_SEC/10);
+        dispatch_source_set_event_handler(timer,^{pollOnce(match);});
+        /* One pass now, on this thread, before ptpd can open a USB session. */
+        pollOnce(match);
         /* Before dispatch_resume: once resumed, the handler runs on its own queue and owns `startup`. */
         raise_phase(OCT_NATIVE_PHASE_TIMER);post_startup();
         dispatch_resume(timer);
