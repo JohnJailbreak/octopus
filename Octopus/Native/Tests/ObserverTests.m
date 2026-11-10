@@ -112,5 +112,11 @@ int main(void){@autoreleasepool{
     command.operationCode=0x1005;command.transactionID=9;[usb handleBulkData:16 result:0];
     response.transactionID=9;[usb sendResponse:response];
     assert(OCTObserverTestStorageFlags()==3&&snapshot().paired_responses==2);
+    /* Recorded in mode 2 as well. Gating this on mode 1 made the flags unreachable the moment a
+     * user authorized exposure, which is exactly what the 10 November device run hit. */
+    OCTObserverTestAuthorize(2,OCTObserverTestNow()+15000);
+    command.operationCode=0x1004;command.transactionID=10;[usb handleBulkData:16 result:0];
+    response.transactionID=10;[usb sendResponse:response];
+    assert(OCTObserverTestStorageFlags()==3);
     puts("PASS observer wrappers: exact signatures, original forwarding, scoped provenance, async accounting, errors, disconnect, revoke (LOCAL boundary test)");
 }return 0;}

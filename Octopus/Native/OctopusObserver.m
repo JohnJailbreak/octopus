@@ -89,7 +89,12 @@ static bool attemptedHooks,attemptedProvider;
 static dispatch_source_t timer;
 static uint64_t now(void){int64_t n=oct_link_now_ms();return n>0?(uint64_t)n:0;}
 static bool authorized(void){uint64_t current=now();return current>0&&atomic_load(&ready)&&atomic_load(&mode)>0&&current<atomic_load(&deadline);}
-bool OCTNativeProviderEnabled(void){return authorized()&&atomic_load(&mode)==2&&atomic_load(&providerReady)&&atomic_load(&observedStorage)==3;}
+/* Exposure needs a current lease, the user's explicit mode-2 grant, and installed provider hooks.
+ * It used to also require having seen a GetStorageIDs and a GetStorageInfo answered, as evidence a
+ * real host was talking. That interlock could not be satisfied: those are recorded from the
+ * response path, which until this commit ran only in mode 1, and a host asks for storages before
+ * hooks exist anyway. The flags are still recorded and reported; they no longer gate. */
+bool OCTNativeProviderEnabled(void){return authorized()&&atomic_load(&mode)==2&&atomic_load(&providerReady);}
 uint64_t OCTNativeAuthorizationEpoch(void){return atomic_load(&leaseEpoch);}
 void OCTNativeProviderEvent(const char *event,uint32_t handle,int32_t result){
     pthread_mutex_lock(&lock);
@@ -157,7 +162,10 @@ static bool response(id self,SEL cmd,id packet){
         uint32_t tid=((uint32_t(*)(id,SEL))responseTID)(packet,sel_registerName("transactionID"));
         uint16_t rc=((uint16_t(*)(id,SEL))responseCode)(packet,sel_registerName("responseCode"));
         pthread_mutex_lock(&lock);
-        if(oct_native_response(&journal,tokenFor(self),tid,rc,accepted)&&rc==0x2001&&atomic_load(&mode)==1){
+        /* Recorded in any authorized mode. Gating this on mode 1 meant that turning the
+         * synthetic toggle on, which moves to mode 2, stopped these from ever being seen: the
+         * 10 November run observed 121 commands and still reported no storage requests. */
+        if(oct_native_response(&journal,tokenFor(self),tid,rc,accepted)&&rc==0x2001){
             oct_native_snapshot s;oct_native_get_snapshot(&journal,&s);
             uint16_t op=s.event_count?s.events[s.event_count-1].operation:0;
             if(op==0x1004)atomic_fetch_or(&observedStorage,1);
@@ -276,7 +284,7 @@ static void publish(void){
         @"kernel_build":kernelBuild,@"compatibility":compatibility,@"hooks":hookState,@"provider":providerState,
         @"authorized":@(authorized()),@"mode":@(atomic_load(&mode)),@"lease":leaseToken,
         @"expires_at_ms":@(atomic_load(&deadline)),@"authorization_epoch":@(atomic_load(&leaseEpoch)),
-        @"provider_eligible":@(atomic_load(&observedStorage)==3),@"observed_storage_flags":@(atomic_load(&observedStorage)),
+        @"provider_eligible":@(atomic_load(&providerEligible)),@"observed_storage_flags":@(atomic_load(&observedStorage)),
         @"connected":@(snapshot.connected),@"commands":@(snapshot.commands),@"paired_responses":@(snapshot.paired_responses),
         @"lease_commands":@(snapshot.commands-leaseCommands),@"lease_paired_responses":@(snapshot.paired_responses-leaseResponses),
         @"failed_responses":@(snapshot.failed_responses),@"unmatched_responses":@(snapshot.unmatched_responses),
@@ -389,7 +397,19 @@ __attribute__((constructor)) static void startObserver(void){
                 BOOL valid=OCTProviderValidate(&problem);
                 atomic_store(&providerEligible,valid);
                 providerState=valid?@"ABI matched; awaiting observer-only storage requests":(problem?:@"Provider ABI mismatch");
-                if(wanted==2&&valid&&atomic_load(&observedStorage)==3){
+                /*
+                 * Installed as soon as the ABI validates, not when exposure is first wanted. Every
+                 * provider hook asks OCTNativeProviderEnabled() on each call and forwards to
+                 * Apple's own implementation when it says no, so installing early changes nothing
+                 * until the user authorizes exposure.
+                 *
+                 * Waiting cost the 10 November run its result. A host asks for storages once, at
+                 * the start of a session, and ptpd is started by launchd when the cable goes in,
+                 * so by the time a lease has been read and hooks installed the enumeration has
+                 * already happened. Installing on the first poll means the hook is in place before
+                 * the next GetStorageIDs, which is what makes a reconnect show the volume.
+                 */
+                if(valid){
                     attemptedProvider=true;BOOL ok=OCTProviderInstall(&problem);
                     providerState=ok?@"Installed (synthetic, experimental)":(problem?:@"Provider installation failed");
                     atomic_store(&providerReady,ok);
