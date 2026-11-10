@@ -151,6 +151,26 @@ struct NativeCapture: Codable, Sendable {
     func result(transactions: Bool) -> DiagnosticResult {
         let id = transactions ? "native.usb_transactions" : "native.observer"
         let title = transactions ? "USB callbacks and paired native responses" : "Native observer compatibility and authorization"
+        // The status file these used to read is written into a folder ptpd's sandbox refuses, so
+        // both checks reported BLOCKED even with hooks installed inside ptpd. Fall back to the
+        // runtime snapshot the companion posts by notification, which carries the same counters.
+        var runtime = oct_native_runtime()
+        let haveRuntime = oct_native_runtime_read(&runtime) == OCT_OK
+        if report == nil, haveRuntime {
+            let hooked = runtime.flags & UInt8(OCT_NATIVE_RUNTIME_HOOKED.rawValue) != 0
+            let serving = runtime.flags & UInt8(OCT_NATIVE_RUNTIME_SERVING.rawValue) != 0
+            let eligible = runtime.flags & UInt8(OCT_NATIVE_RUNTIME_ELIGIBLE.rawValue) != 0
+            let sawIDs = runtime.flags & UInt8(OCT_NATIVE_RUNTIME_SAW_IDS.rawValue) != 0
+            let sawInfo = runtime.flags & UInt8(OCT_NATIVE_RUNTIME_SAW_INFO.rawValue) != 0
+            let live = transactions
+                ? "\(runtime.commands) commands inside native USB receive callbacks; \(runtime.responses) paired response writes; \(runtime.provider_events) provider events. Reported by notification, not the status file. Host receipt, Explorer visibility and the downloaded SHA-256 still need Windows verification."
+                : "Observer hooks \(hooked ? "installed" : "not installed"); provider \(serving ? "serving" : (eligible ? "eligible, awaiting storage requests" : "not eligible")). Storage requests seen: GetStorageIDs \(sawIDs ? "yes" : "no"), GetStorageInfo \(sawInfo ? "yes" : "no"). Mode \(runtime.mode). Reported by notification, not the status file."
+            let ok = transactions ? (runtime.commands > 0 && runtime.responses > 0) : hooked
+            return DiagnosticResult(id: id, group: "Native integration", title: title,
+                                    status: ok ? .pass : .blocked,
+                                    kind: transactions && ok ? .realUSB : .nativeObservation,
+                                    checks: 1, durationMs: 0, detail: live)
+        }
         let problem = validationProblem
         let proven = problem == nil && (report?.leaseCommands ?? 0) > 0 && (report?.leasePairedResponses ?? 0) > 0
         let detail: String

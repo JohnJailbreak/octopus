@@ -364,10 +364,10 @@ uint64_t oct_native_runtime_pack(const oct_native_runtime *runtime)
     if (!runtime) return 0;
     uint64_t word = (uint64_t)(OCT_NATIVE_RUNTIME_VERSION & 0xFu)
                   | (uint64_t)(runtime->mode & 0xFu) << 4
-                  | (uint64_t)(runtime->flags & 0xFu) << 8
-                  | (uint64_t)runtime->commands << 12
-                  | (uint64_t)runtime->responses << 28
-                  | (uint64_t)runtime->provider_events << 44;
+                  | (uint64_t)(runtime->flags & 0x1Fu) << 8
+                  | (uint64_t)runtime->commands << 13
+                  | (uint64_t)runtime->responses << 29
+                  | (uint64_t)runtime->provider_events << 45;
     return word | (uint64_t)lease_check(word) << 56;
 }
 
@@ -378,10 +378,10 @@ bool oct_native_runtime_unpack(uint64_t word, oct_native_runtime *out)
     if (!word || (word & 0xFu) != OCT_NATIVE_RUNTIME_VERSION) return false;
     if ((uint8_t)(word >> 56) != lease_check(word & 0x00FFFFFFFFFFFFFFull)) return false;
     out->mode = (uint8_t)((word >> 4) & 0xFu);
-    out->flags = (uint8_t)((word >> 8) & 0xFu);
-    out->commands = (uint16_t)((word >> 12) & 0xFFFFu);
-    out->responses = (uint16_t)((word >> 28) & 0xFFFFu);
-    out->provider_events = (uint8_t)((word >> 44) & 0xFFu);
+    out->flags = (uint8_t)((word >> 8) & 0x1Fu);
+    out->commands = (uint16_t)((word >> 13) & 0xFFFFu);
+    out->responses = (uint16_t)((word >> 29) & 0xFFFFu);
+    out->provider_events = (uint8_t)((word >> 45) & 0xFFu);
     if (out->mode > 2) return false;
     return true;
 }
@@ -423,13 +423,26 @@ oct_native_verdict oct_native_signal_describe(const oct_native_signal *s, bool p
                  s->identity < sizeof why / sizeof why[0] ? why[s->identity] : "unknown");
         return OCT_NATIVE_VERDICT_IDENTITY;
     }
-    if (sandbox_like(s->lease_stage, s->lease_error) || sandbox_like(s->status_stage, s->status_error)) {
-        bool lease = sandbox_like(s->lease_stage, s->lease_error);
+    /* Hooks installed and a current lease means the companion is working, whatever the status file
+     * did: that file is written into a folder ptpd's sandbox refuses, and everything it used to
+     * carry now travels by notification. Reporting its refusal as the headline made a companion
+     * that had reached every gate read as a failure, which is what the 10 November run showed.
+     * The refusal is still reported, as a note rather than a verdict. */
+    if (s->phase >= OCT_NATIVE_PHASE_HOOKED && s->hooks == OCT_NATIVE_HOOKS_INSTALLED) {
+        snprintf(text, capacity, "The companion is running in ptpd with observer hooks installed.%s",
+                 s->status_stage != OCT_NATIVE_IO_OK && s->status_stage != OCT_NATIVE_IO_NOT_ATTEMPTED
+                     ? " Its status file is refused by ptpd's sandbox, which no longer matters: the"
+                       " same information arrives by notification."
+                     : "");
+        return OCT_NATIVE_VERDICT_RUNNING;
+    }
+    /* Only the lease being refused can still block the companion; the status file cannot. */
+    if (sandbox_like(s->lease_stage, s->lease_error)) {
         snprintf(text, capacity, "The companion is loaded and compatible, but ptpd's sandbox refused the shared "
-                 "folder: %s failed at %s with errno %u. The same uid does not grant the same sandbox rights.",
-                 lease ? "reading the lease" : "writing status",
-                 oct_native_io_stage_name((oct_native_io_stage)(lease ? s->lease_stage : s->status_stage)),
-                 (unsigned)(lease ? s->lease_error : s->status_error));
+                 "folder when reading the lease: %s, errno %u. The same uid does not grant the same sandbox "
+                 "rights. Authorization should be arriving by notification instead; if this persists, that "
+                 "channel is not reaching ptpd.",
+                 oct_native_io_stage_name((oct_native_io_stage)s->lease_stage), (unsigned)s->lease_error);
         return OCT_NATIVE_VERDICT_SANDBOX;
     }
     if (s->phase < OCT_NATIVE_PHASE_LEASE) {

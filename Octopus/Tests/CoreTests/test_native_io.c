@@ -474,8 +474,29 @@ static void test_signal_verdicts(void)
     s = (oct_native_signal){ .phase = OCT_NATIVE_PHASE_LEASE, .identity = OCT_NATIVE_IDENTITY_COMPATIBLE,
                              .status_stage = OCT_NATIVE_IO_RENAME, .status_error = EXDEV, .pid = 1152 };
     CHECK_EQ(oct_native_signal_describe(&s, true, 1152, text, sizeof text), OCT_NATIVE_VERDICT_STATUS_FAILED);
+    /* A status file refused by the sandbox is now reported as the status file failing, not as the
+     * sandbox blocking the companion: only the lease can do that, now that everything else travels
+     * by notification. */
     s.status_stage = OCT_NATIVE_IO_OPEN_FILE; s.status_error = EPERM;
-    CHECK_EQ(oct_native_signal_describe(&s, true, 1152, text, sizeof text), OCT_NATIVE_VERDICT_SANDBOX);
+    CHECK_EQ(oct_native_signal_describe(&s, true, 1152, text, sizeof text), OCT_NATIVE_VERDICT_STATUS_FAILED);
+
+    /* The exact word the 10 November device run posted: hooks installed, lease read, and only the
+     * status file refused. That is a working companion and must not read as a failure. */
+    oct_native_signal device = { 0 };
+    CHECK(oct_native_signal_unpack(0xe015b70100301162ull, &device));
+    CHECK_EQ(device.phase, (uint8_t)OCT_NATIVE_PHASE_HOOKED);
+    CHECK_EQ(device.hooks, (uint8_t)OCT_NATIVE_HOOKS_INSTALLED);
+    CHECK_EQ(device.identity, (uint8_t)OCT_NATIVE_IDENTITY_COMPATIBLE);
+    CHECK_EQ(device.status_error, (uint8_t)EPERM);
+    CHECK_EQ(oct_native_signal_describe(&device, true, (int32_t)device.pid, text, sizeof text),
+             OCT_NATIVE_VERDICT_RUNNING);
+    CHECK(strstr(text, "no longer matters") != NULL); /* the refusal is noted, not a verdict */
+    /* But a refused lease, before hooks exist, is still reported as the sandbox. */
+    oct_native_signal blocked = { .phase = OCT_NATIVE_PHASE_TIMER,
+                                  .identity = OCT_NATIVE_IDENTITY_COMPATIBLE,
+                                  .lease_stage = OCT_NATIVE_IO_OPEN_DIRECTORY, .lease_error = EPERM,
+                                  .pid = 1152 };
+    CHECK_EQ(oct_native_signal_describe(&blocked, true, 1152, text, sizeof text), OCT_NATIVE_VERDICT_SANDBOX);
 
     s = (oct_native_signal){ .phase = OCT_NATIVE_PHASE_PUBLISHED, .identity = OCT_NATIVE_IDENTITY_COMPATIBLE,
                              .hooks = OCT_NATIVE_HOOKS_REFUSED, .pid = 1152 };
@@ -582,7 +603,7 @@ static void test_runtime_word(void)
     CHECK(out.flags & OCT_NATIVE_RUNTIME_ELIGIBLE);
 
     /* Every field at its maximum survives, so a busy session is not mistaken for an empty one. */
-    oct_native_runtime full = { .mode = 2, .flags = 0xF, .commands = 0xFFFF,
+    oct_native_runtime full = { .mode = 2, .flags = 0x1F, .commands = 0xFFFF,
                                 .responses = 0xFFFF, .provider_events = 0xFF };
     CHECK(oct_native_runtime_unpack(oct_native_runtime_pack(&full), &out));
     CHECK(memcmp(&full, &out, sizeof full) == 0);

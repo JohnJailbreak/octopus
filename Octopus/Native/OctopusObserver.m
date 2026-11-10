@@ -64,6 +64,11 @@ static _Atomic(uint64_t) deadline;
 static _Atomic(unsigned) mode;
 static _Atomic(bool) ready;
 static _Atomic(bool) providerReady;
+/* Whether the provider *could* be installed: its ABI checks passed. Distinct from providerReady,
+ * which means it *is* installed. The app's synthetic-storage toggle waits on eligibility, and
+ * installation needs the toggle, so reporting "installed" as eligibility deadlocked the two: the
+ * toggle could never become tappable, which is exactly what the 10 November run showed. */
+static _Atomic(bool) providerEligible;
 static _Atomic(unsigned) observedStorage;
 static _Atomic(uint64_t) leaseEpoch;
 static __thread uint64_t usbScope;
@@ -379,9 +384,10 @@ __attribute__((constructor)) static void startObserver(void){
             if(wanted&&!attemptedHooks){attemptedHooks=true;NSString *reason=nil;BOOL ok=install(&reason);hookState=ok?@"Installed":reason;atomic_store(&ready,ok);
                 startup.hooks=ok?OCT_NATIVE_HOOKS_INSTALLED:OCT_NATIVE_HOOKS_REFUSED;if(ok)raise_phase(OCT_NATIVE_PHASE_HOOKED);
                 os_log(startup_log(),"observer hooks %{public}s",ok?"installed":"refused");}
-            if(wanted&&atomic_load(&ready)&&!attemptedProvider){
+            if(atomic_load(&ready)&&!attemptedProvider){
                 NSString *problem=nil;
                 BOOL valid=OCTProviderValidate(&problem);
+                atomic_store(&providerEligible,valid);
                 providerState=valid?@"ABI matched; awaiting observer-only storage requests":(problem?:@"Provider ABI mismatch");
                 if(wanted==2&&valid&&atomic_load(&observedStorage)==3){
                     attemptedProvider=true;BOOL ok=OCTProviderInstall(&problem);
@@ -399,7 +405,10 @@ __attribute__((constructor)) static void startObserver(void){
                 oct_native_runtime runtime={0};
                 runtime.mode=(uint8_t)atomic_load(&mode);
                 if(atomic_load(&ready))runtime.flags|=OCT_NATIVE_RUNTIME_HOOKED;
-                if(atomic_load(&providerReady))runtime.flags|=OCT_NATIVE_RUNTIME_ELIGIBLE;
+                /* Eligible means the provider's own checks passed, not that it is already
+                 * serving; the app needs that to offer the toggle at all. */
+                if(atomic_load(&providerEligible))runtime.flags|=OCT_NATIVE_RUNTIME_ELIGIBLE;
+                if(atomic_load(&providerReady))runtime.flags|=OCT_NATIVE_RUNTIME_SERVING;
                 unsigned seen=atomic_load(&observedStorage);
                 if(seen&1)runtime.flags|=OCT_NATIVE_RUNTIME_SAW_IDS;
                 if(seen&2)runtime.flags|=OCT_NATIVE_RUNTIME_SAW_INFO;

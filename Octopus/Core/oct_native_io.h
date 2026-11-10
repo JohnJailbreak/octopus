@@ -145,7 +145,7 @@ oct_status oct_native_lease_read(oct_native_lease_word *out);
  * Bounded by construction: counts saturate rather than wrap, and nothing identifying a file or a
  * payload is carried, only how many commands and responses were seen.
  *
- * version:4 mode:4 flags:4 commands:16 responses:16 provider_events:8 check:8, 60 of 64 bits. */
+ * version:4 mode:4 flags:5 commands:16 responses:16 provider_events:8 check:8, 61 of 64 bits. */
 #define OCT_NATIVE_RUNTIME_NAME    "com.parv.octopus.native.runtime"
 #define OCT_NATIVE_RUNTIME_VERSION 1u
 
@@ -156,11 +156,12 @@ typedef enum oct_native_runtime_flag {
     OCT_NATIVE_RUNTIME_ELIGIBLE  = 1u << 1, /* the provider's own checks passed */
     OCT_NATIVE_RUNTIME_SAW_IDS   = 1u << 2, /* a real GetStorageIDs arrived from a host */
     OCT_NATIVE_RUNTIME_SAW_INFO  = 1u << 3, /* a real GetStorageInfo arrived from a host */
+    OCT_NATIVE_RUNTIME_SERVING   = 1u << 4, /* the provider is installed and serving */
 } oct_native_runtime_flag;
 
 typedef struct oct_native_runtime {
     uint8_t  mode;            /* 0 none, 1 observing, 2 serving the synthetic tree */
-    uint8_t  flags;           /* the OCT_NATIVE_RUNTIME_* bits above */
+    uint8_t  flags;           /* the OCT_NATIVE_RUNTIME_* bits above, five of them */
     uint16_t commands;        /* host commands seen, saturating at 65535 */
     uint16_t responses;       /* Apple responses paired with them, saturating */
     uint8_t  provider_events; /* provider calls served, saturating at 255 */
