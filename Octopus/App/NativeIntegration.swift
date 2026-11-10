@@ -162,8 +162,27 @@ struct NativeCapture: Codable, Sendable {
             let eligible = runtime.flags & UInt8(OCT_NATIVE_RUNTIME_ELIGIBLE.rawValue) != 0
             let sawIDs = runtime.flags & UInt8(OCT_NATIVE_RUNTIME_SAW_IDS.rawValue) != 0
             let sawInfo = runtime.flags & UInt8(OCT_NATIVE_RUNTIME_SAW_INFO.rawValue) != 0
+            // Which provider hooks a host actually called. With only a count, a listing that drops
+            // some objects cannot be diagnosed: it could be a hook that never ran or one that ran
+            // and answered wrongly.
+            var hooks = oct_native_hook_report()
+            var hookText = ""
+            if oct_native_hooks_read(&hooks) == OCT_OK {
+                let bits: [(UInt16, String)] = [
+                    (1 << 0, "deviceInfo"), (1 << 1, "storageIDs"), (1 << 2, "storageInfo"),
+                    (1 << 3, "objectInfo"), (1 << 4, "handles"), (1 << 5, "bulkInfo"),
+                    (1 << 6, "dataSource"), (1 << 7, "propValue"), (1 << 8, "propList"),
+                    (1 << 9, "propsSupported"),
+                ]
+                let fired = bits.filter { hooks.fired & $0.0 != 0 }.map(\.1)
+                let missing = bits.filter { hooks.fired & $0.0 == 0 }.map(\.1)
+                hookText = " Provider hooks called: \(fired.isEmpty ? "none" : fired.joined(separator: ", "))."
+                    + " Never called: \(missing.isEmpty ? "none" : missing.joined(separator: ", "))."
+                    + " Text format added to a host's format list: \(hooks.formats_added ? "yes" : "no")."
+                    + " Counts: deviceInfo \(hooks.device_info), handles \(hooks.handles), objectInfo \(hooks.object_info), reads \(hooks.get_object)."
+            }
             let live = transactions
-                ? "\(runtime.commands) commands inside native USB receive callbacks; \(runtime.responses) paired response writes; \(runtime.provider_events) provider events. Reported by notification, not the status file. Host receipt, Explorer visibility and the downloaded SHA-256 still need Windows verification."
+                ? "\(runtime.commands) commands inside native USB receive callbacks; \(runtime.responses) paired response writes; \(runtime.provider_events) provider events. Reported by notification, not the status file.\(hookText) Host receipt, Explorer visibility and the downloaded SHA-256 still need Windows verification."
                 : "Observer hooks \(hooked ? "installed" : "not installed"); provider \(serving ? "serving" : (eligible ? "eligible, awaiting storage requests" : "not eligible")). Storage requests seen: GetStorageIDs \(sawIDs ? "yes" : "no"), GetStorageInfo \(sawInfo ? "yes" : "no"). Mode \(runtime.mode). Reported by notification, not the status file."
             let ok = transactions ? (runtime.commands > 0 && runtime.responses > 0) : hooked
             return DiagnosticResult(id: id, group: "Native integration", title: title,

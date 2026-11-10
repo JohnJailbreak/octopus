@@ -386,6 +386,51 @@ bool oct_native_runtime_unpack(uint64_t word, oct_native_runtime *out)
     return true;
 }
 
+const char *oct_native_hook_name(unsigned bit)
+{
+    switch (bit) {
+    case OCT_NATIVE_HOOK_DEVICE_INFO: return "deviceInfoDataset";
+    case OCT_NATIVE_HOOK_STORAGE_IDS: return "allStorageIDs";
+    case OCT_NATIVE_HOOK_STORAGE_INFO: return "storageInfoDataset";
+    case OCT_NATIVE_HOOK_OBJECT_INFO: return "objectInfoDataset";
+    case OCT_NATIVE_HOOK_HANDLES: return "objectHandlesInStorage";
+    case OCT_NATIVE_HOOK_BULK_INFO: return "objectInfoForObjectsInStorage";
+    case OCT_NATIVE_HOOK_DATA_SOURCE: return "dataSourceForObjectHandle";
+    case OCT_NATIVE_HOOK_PROP_VALUE: return "objectPropValue";
+    case OCT_NATIVE_HOOK_PROP_LIST: return "objectPropList";
+    case OCT_NATIVE_HOOK_PROPS_SUPPORTED: return "objectPropertiesSupported";
+    }
+    return "unknown";
+}
+
+uint64_t oct_native_hooks_pack(const oct_native_hook_report *report)
+{
+    if (!report) return 0;
+    uint64_t word = (uint64_t)(OCT_NATIVE_HOOKS_VERSION & 0xFu)
+                  | (uint64_t)(report->fired & 0x3FFu) << 4
+                  | (uint64_t)(report->formats_added ? 1u : 0u) << 14
+                  | (uint64_t)report->device_info << 16
+                  | (uint64_t)report->handles << 24
+                  | (uint64_t)report->object_info << 32
+                  | (uint64_t)report->get_object << 40;
+    return word | (uint64_t)lease_check(word) << 56;
+}
+
+bool oct_native_hooks_unpack(uint64_t word, oct_native_hook_report *out)
+{
+    if (!out) return false;
+    memset(out, 0, sizeof *out);
+    if (!word || (word & 0xFu) != OCT_NATIVE_HOOKS_VERSION) return false;
+    if ((uint8_t)(word >> 56) != lease_check(word & 0x00FFFFFFFFFFFFFFull)) return false;
+    out->fired = (uint16_t)((word >> 4) & 0x3FFu);
+    out->formats_added = ((word >> 14) & 1u) != 0;
+    out->device_info = (uint8_t)(word >> 16);
+    out->handles = (uint8_t)(word >> 24);
+    out->object_info = (uint8_t)(word >> 32);
+    out->get_object = (uint8_t)(word >> 40);
+    return true;
+}
+
 static bool sandbox_like(uint8_t stage, uint8_t error)
 {
     /* open() or mkdir() refused outright. EPERM is what a seatbelt denial surfaces as; a policy
@@ -561,6 +606,23 @@ oct_status oct_native_runtime_publish(const oct_native_runtime *runtime)
     return notify_write(OCT_NATIVE_RUNTIME_NAME, &token, oct_native_runtime_pack(runtime));
 }
 
+oct_status oct_native_hooks_publish(const oct_native_hook_report *report)
+{
+    static int token = -1;
+    if (!report) return OCT_E_INVALID_ARGUMENT;
+    return notify_write(OCT_NATIVE_HOOKS_NAME, &token, oct_native_hooks_pack(report));
+}
+
+oct_status oct_native_hooks_read(oct_native_hook_report *out)
+{
+    if (!out) return OCT_E_INVALID_ARGUMENT;
+    memset(out, 0, sizeof *out);
+    uint64_t word = 0;
+    oct_status status = notify_read(OCT_NATIVE_HOOKS_NAME, &word);
+    if (status != OCT_OK) return status;
+    return oct_native_hooks_unpack(word, out) ? OCT_OK : OCT_E_STATE;
+}
+
 oct_status oct_native_runtime_read(oct_native_runtime *out)
 {
     if (!out) return OCT_E_INVALID_ARGUMENT;
@@ -600,6 +662,16 @@ oct_status oct_native_lease_publish(const oct_native_lease_word *lease)
 oct_status oct_native_runtime_publish(const oct_native_runtime *runtime)
 {
     (void)runtime;
+    return OCT_E_UNSUPPORTED;
+}
+oct_status oct_native_hooks_publish(const oct_native_hook_report *report)
+{
+    (void)report;
+    return OCT_E_UNSUPPORTED;
+}
+oct_status oct_native_hooks_read(oct_native_hook_report *out)
+{
+    if (out) memset(out, 0, sizeof *out);
     return OCT_E_UNSUPPORTED;
 }
 oct_status oct_native_runtime_read(oct_native_runtime *out)

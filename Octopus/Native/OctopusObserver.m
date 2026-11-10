@@ -96,8 +96,41 @@ static bool authorized(void){uint64_t current=now();return current>0&&atomic_loa
  * hooks exist anyway. The flags are still recorded and reported; they no longer gate. */
 bool OCTNativeProviderEnabled(void){return authorized()&&atomic_load(&mode)==2&&atomic_load(&providerReady);}
 uint64_t OCTNativeAuthorizationEpoch(void){return atomic_load(&leaseEpoch);}
+/*
+ * Every provider hook already reports a named event here, so the per-hook summary is derived from
+ * those names rather than by touching fourteen call sites. The names are compile-time literals in
+ * OctopusProvider.m; an unrecognised one simply sets no bit.
+ */
+static oct_native_hook_report hookReport;
+static void recordHook(const char *event){
+    struct { const char *event; unsigned bit; } map[] = {
+        {"provider-device-info",OCT_NATIVE_HOOK_DEVICE_INFO},
+        {"provider-storage-enumeration",OCT_NATIVE_HOOK_STORAGE_IDS},
+        {"provider-storage-info",OCT_NATIVE_HOOK_STORAGE_INFO},
+        {"provider-object-info",OCT_NATIVE_HOOK_OBJECT_INFO},
+        {"provider-object-enumeration",OCT_NATIVE_HOOK_HANDLES},
+        {"provider-bulk-object-info",OCT_NATIVE_HOOK_BULK_INFO},
+        {"provider-download-source",OCT_NATIVE_HOOK_DATA_SOURCE},
+    };
+    for(size_t i=0;i<sizeof map/sizeof map[0];i++){
+        if(!strcmp(event,map[i].event)){hookReport.fired|=(uint16_t)map[i].bit;break;}
+    }
+    /* The four that decide whether a listing appears, counted rather than just flagged. */
+    if(!strcmp(event,"provider-device-info")){
+        hookReport.formats_added=true;
+        if(hookReport.device_info<255)hookReport.device_info++;
+    } else if(!strcmp(event,"provider-object-enumeration")){
+        if(hookReport.handles<255)hookReport.handles++;
+    } else if(!strcmp(event,"provider-object-info")||!strcmp(event,"provider-bulk-object-info")){
+        if(hookReport.object_info<255)hookReport.object_info++;
+    } else if(!strcmp(event,"provider-read")){
+        if(hookReport.get_object<255)hookReport.get_object++;
+    }
+}
+
 void OCTNativeProviderEvent(const char *event,uint32_t handle,int32_t result){
     pthread_mutex_lock(&lock);
+    recordHook(event);
     providerEvents++;lastProviderEvent=[NSString stringWithFormat:@"%s handle=%u result=%d",event,handle,result];
     if(!providerJournal)providerJournal=[NSMutableArray array];
     if(providerJournal.count==64)[providerJournal removeObjectAtIndex:0];
@@ -439,6 +472,10 @@ static void pollOnce(BOOL match)
                 runtime.responses=(uint16_t)(live.paired_responses>0xFFFFu?0xFFFFu:live.paired_responses);
                 runtime.provider_events=(uint8_t)(providerEvents>0xFFu?0xFFu:providerEvents);
                 oct_native_runtime_publish(&runtime);
+                pthread_mutex_lock(&lock);
+                oct_native_hook_report hooks=hookReport;
+                pthread_mutex_unlock(&lock);
+                oct_native_hooks_publish(&hooks);
             }
             post_startup();
     }

@@ -250,6 +250,38 @@ static void test_permissions(const char *directory)
     CHECK_OK(oct_native_io_write(directory,"status","recovered",9));
 }
 
+/*
+ * Compared field by field, never with memcmp. These structs have padding between their byte fields
+ * and their wider ones, unpack writes only the fields, and padding is not guaranteed to be copied
+ * by struct assignment, so a byte comparison can fail on padding that no code ever reads. The
+ * signal comparison passed for weeks on whatever happened to be on the stack, then failed on byte 7.
+ */
+static bool signals_equal(const oct_native_signal *a, const oct_native_signal *b)
+{
+    return a->phase == b->phase && a->identity == b->identity && a->hooks == b->hooks &&
+           a->lease_stage == b->lease_stage && a->status_stage == b->status_stage &&
+           a->lease_error == b->lease_error && a->status_error == b->status_error && a->pid == b->pid;
+}
+
+static bool details_equal(const oct_native_detail *a, const oct_native_detail *b)
+{
+    return memcmp(a->uuid_prefix, b->uuid_prefix, sizeof a->uuid_prefix) == 0 &&
+           a->image_index == b->image_index && a->image_count == b->image_count;
+}
+
+static bool runtimes_equal(const oct_native_runtime *a, const oct_native_runtime *b)
+{
+    return a->mode == b->mode && a->flags == b->flags && a->commands == b->commands &&
+           a->responses == b->responses && a->provider_events == b->provider_events;
+}
+
+static bool hook_reports_equal(const oct_native_hook_report *a, const oct_native_hook_report *b)
+{
+    return a->fired == b->fired && a->formats_added == b->formats_added &&
+           a->device_info == b->device_info && a->handles == b->handles &&
+           a->object_info == b->object_info && a->get_object == b->get_object;
+}
+
 /* ---- Stage-precise failures: the diagnosis the device run could not make ----------------- */
 
 #include <signal.h>
@@ -373,7 +405,7 @@ static void test_startup_signal(void)
     uint64_t word = oct_native_signal_pack(&s);
     oct_native_signal back;
     CHECK(oct_native_signal_unpack(word, &back));
-    CHECK(memcmp(&s, &back, sizeof s) == 0);                       /* every field survives */
+    CHECK(signals_equal(&s, &back));                       /* every field survives */
     CHECK(oct_native_signal_from_pid(&back, 1152));
     CHECK(!oct_native_signal_from_pid(&back, 43138));              /* a restarted ptpd is noticed */
     CHECK(!oct_native_signal_from_pid(&back, 0));
@@ -419,7 +451,7 @@ static void test_startup_signal(void)
                                  .image_index = 7, .image_count = 42 };
     oct_native_detail detail_back;
     CHECK(oct_native_detail_unpack(oct_native_detail_pack(&detail), &detail_back));
-    CHECK(memcmp(&detail, &detail_back, sizeof detail) == 0);
+    CHECK(details_equal(&detail, &detail_back));
     CHECK(!oct_native_detail_unpack(0, &detail_back));        /* nothing posted */
     CHECK(!oct_native_detail_unpack(1, NULL));
     oct_native_detail none = { .image_index = 255, .image_count = 3 };
@@ -599,14 +631,14 @@ static void test_runtime_word(void)
                                          OCT_NATIVE_RUNTIME_SAW_IDS | OCT_NATIVE_RUNTIME_SAW_INFO,
                                 .commands = 1234, .responses = 1200, .provider_events = 42 };
     CHECK(oct_native_runtime_unpack(oct_native_runtime_pack(&live), &out));
-    CHECK(memcmp(&live, &out, sizeof live) == 0);
+    CHECK(runtimes_equal(&live, &out));
     CHECK(out.flags & OCT_NATIVE_RUNTIME_ELIGIBLE);
 
     /* Every field at its maximum survives, so a busy session is not mistaken for an empty one. */
     oct_native_runtime full = { .mode = 2, .flags = 0x1F, .commands = 0xFFFF,
                                 .responses = 0xFFFF, .provider_events = 0xFF };
     CHECK(oct_native_runtime_unpack(oct_native_runtime_pack(&full), &out));
-    CHECK(memcmp(&full, &out, sizeof full) == 0);
+    CHECK(runtimes_equal(&full, &out));
 
     /* Nothing observed yet is distinguishable from nothing posted. */
     oct_native_runtime quiet = { .mode = 1, .flags = OCT_NATIVE_RUNTIME_HOOKED };
@@ -627,6 +659,45 @@ static void test_runtime_word(void)
     CHECK(!oct_native_runtime_unpack(bad, &out)); /* check byte valid, mode is not */
 }
 
+/* Which provider hooks a host called. Explorer dropped every text object on 10 November and the
+ * only evidence was a bare count of provider calls, which cannot tell a hook that never ran from
+ * one that ran and answered wrongly. */
+static void test_hook_report(void)
+{
+    oct_native_hook_report out;
+    oct_native_hook_report report = { .fired = OCT_NATIVE_HOOK_DEVICE_INFO | OCT_NATIVE_HOOK_STORAGE_IDS |
+                                               OCT_NATIVE_HOOK_HANDLES | OCT_NATIVE_HOOK_OBJECT_INFO,
+                                      .formats_added = true, .device_info = 1, .handles = 7,
+                                      .object_info = 12, .get_object = 3 };
+    CHECK(oct_native_hooks_unpack(oct_native_hooks_pack(&report), &out));
+    CHECK(hook_reports_equal(&report, &out));
+    CHECK(out.fired & OCT_NATIVE_HOOK_DEVICE_INFO);
+    CHECK(!(out.fired & OCT_NATIVE_HOOK_BULK_INFO)); /* a hook that never ran stays clear */
+
+    /* The case being diagnosed: everything served except the format advertisement. */
+    oct_native_hook_report silent = { .fired = OCT_NATIVE_HOOK_STORAGE_IDS | OCT_NATIVE_HOOK_HANDLES,
+                                      .formats_added = false, .handles = 4 };
+    CHECK(oct_native_hooks_unpack(oct_native_hooks_pack(&silent), &out));
+    CHECK(!out.formats_added);
+    CHECK(!(out.fired & OCT_NATIVE_HOOK_DEVICE_INFO));
+
+    /* Every bit and count at maximum, so a busy session is not mistaken for a quiet one. */
+    oct_native_hook_report full = { .fired = 0x3FF, .formats_added = true, .device_info = 255,
+                                    .handles = 255, .object_info = 255, .get_object = 255 };
+    CHECK(oct_native_hooks_unpack(oct_native_hooks_pack(&full), &out));
+    CHECK(hook_reports_equal(&full, &out));
+
+    CHECK(!oct_native_hooks_unpack(0, &out));
+    CHECK(!oct_native_hooks_unpack(oct_native_hooks_pack(&report) ^ (1ull << 20), &out));
+    CHECK(!oct_native_hooks_unpack((oct_native_hooks_pack(&report) & ~0xFull) | 2u, &out));
+    CHECK(!oct_native_hooks_unpack(oct_native_hooks_pack(&report), NULL));
+    CHECK_EQ(oct_native_hooks_pack(NULL), 0u);
+    for (unsigned bit = 0; bit < 10; bit++) {
+        CHECK(strcmp(oct_native_hook_name(1u << bit), "unknown") != 0);
+    }
+    CHECK(strcmp(oct_native_hook_name(1u << 15), "unknown") == 0);
+}
+
 void run_native_io_tests(void)
 {
     test_detailed_failures();
@@ -636,6 +707,7 @@ void run_native_io_tests(void)
     test_signal_verdicts();
     test_lease_word();
     test_runtime_word();
+    test_hook_report();
     char directory[512], path[1024];
     const char *temporary = getenv("OCT_NATIVE_TEST_TMP");
     int count = snprintf(directory, sizeof directory, "%s/octopus-native-XXXXXX", temporary ? temporary : "/tmp");

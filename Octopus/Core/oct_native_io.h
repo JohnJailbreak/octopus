@@ -172,6 +172,49 @@ bool       oct_native_runtime_unpack(uint64_t word, oct_native_runtime *out);
 oct_status oct_native_runtime_publish(const oct_native_runtime *runtime);
 oct_status oct_native_runtime_read(oct_native_runtime *out);
 
+/* ---- Which provider hooks a host actually called -------------------------------------------
+ *
+ * The provider records a named event for every call it serves, but that journal only leaves ptpd
+ * in the status file, which the sandbox refuses, so the app can see a count and nothing else. On
+ * 10 November that left a question unanswerable: Explorer listed the folders and the binary object
+ * and dropped all three text ones, and with only "11 provider events" there was no way to tell
+ * whether the hook that advertises the text format to the host had run at all.
+ *
+ * One bit per hook, set the first time it is called, plus counts for the four that matter to a
+ * listing, plus whether the text format was actually appended to the host's format list.
+ *
+ * version:4 fired:10 formats_added:1 device_info:8 handles:8 object_info:8 get_object:8 check:8. */
+#define OCT_NATIVE_HOOKS_NAME    "com.parv.octopus.native.hooks"
+#define OCT_NATIVE_HOOKS_VERSION 1u
+
+enum {
+    OCT_NATIVE_HOOK_DEVICE_INFO   = 1u << 0, /* deviceInfoDataset */
+    OCT_NATIVE_HOOK_STORAGE_IDS   = 1u << 1, /* allStorageIDs */
+    OCT_NATIVE_HOOK_STORAGE_INFO  = 1u << 2, /* storageInfoDatasetForStorageID: */
+    OCT_NATIVE_HOOK_OBJECT_INFO   = 1u << 3, /* objectInfoDatasetForObjectHandle: */
+    OCT_NATIVE_HOOK_HANDLES       = 1u << 4, /* objectHandlesInStorage:... */
+    OCT_NATIVE_HOOK_BULK_INFO     = 1u << 5, /* objectInfoForObjectsInStorage:... */
+    OCT_NATIVE_HOOK_DATA_SOURCE   = 1u << 6, /* dataSourceForObjectHandle:... */
+    OCT_NATIVE_HOOK_PROP_VALUE    = 1u << 7, /* objectPropValueForHandle:... */
+    OCT_NATIVE_HOOK_PROP_LIST     = 1u << 8, /* objectPropListForHandle:... */
+    OCT_NATIVE_HOOK_PROPS_SUPPORTED = 1u << 9, /* objectPropertiesSupportedForObjectFormatCode: */
+};
+
+typedef struct oct_native_hook_report {
+    uint16_t fired;         /* the OCT_NATIVE_HOOK_* bits above, ten of them */
+    bool     formats_added; /* the text format was appended to a host's format list */
+    uint8_t  device_info;   /* calls, saturating at 255 */
+    uint8_t  handles;
+    uint8_t  object_info;
+    uint8_t  get_object;
+} oct_native_hook_report;
+
+const char *oct_native_hook_name(unsigned bit);
+uint64_t   oct_native_hooks_pack(const oct_native_hook_report *report);
+bool       oct_native_hooks_unpack(uint64_t word, oct_native_hook_report *out);
+oct_status oct_native_hooks_publish(const oct_native_hook_report *report);
+oct_status oct_native_hooks_read(oct_native_hook_report *out);
+
 uint64_t   oct_native_detail_pack(const oct_native_detail *detail);
 bool       oct_native_detail_unpack(uint64_t word, oct_native_detail *out);
 oct_status oct_native_detail_publish(const oct_native_detail *detail);
