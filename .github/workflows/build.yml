@@ -32,6 +32,8 @@ jobs:
         run: make test-native-signal
       - name: Native DeviceInfo dataset parser
         run: bash tools/test_native_dataset.sh
+      - name: The companion's C dependencies are linked by every script that builds it
+        run: python3 Octopus/Tests/RepoTests/test_native_links.py
       - name: Sonnet prerelease pipeline (structure, and its publish scripts run against a stand-in gh)
         run: |
           python3 -c 'import yaml' 2>/dev/null || sudo apt-get install -y python3-yaml

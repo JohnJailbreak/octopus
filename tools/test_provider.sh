@@ -12,7 +12,10 @@ trap 'rm -rf "$build"' EXIT
 # SDK selected, which these host-side tests need for libc and Foundation.
 cc=(xcrun --sdk macosx clang)
 common=(-g -O1 -Wall -Wextra -Werror -DOCT_NATIVE_TEST=1)
-for unit in Octopus/Core/oct_store.c Octopus/Core/oct_backend_memory.c Octopus/Protocol/oct_ptp.c Octopus/Protocol/oct_responder.c Octopus/Native/oct_native_dataset.c; do
+# Every core, protocol and native C file, rather than a list that has to be remembered. Naming
+# five files here is what broke the build when the provider gained two new dependencies
+# (oct_native_lease_root and oct_readonly_store_open): the compile succeeded and the link did not.
+for unit in Octopus/Core/*.c Octopus/Protocol/*.c Octopus/Native/*.c; do
   "${cc[@]}" "${common[@]}" -std=c11 -c "$unit" -o "$build/$(basename "$unit").o"
 done
 "${cc[@]}" "${common[@]}" -fobjc-arc -fblocks -framework Foundation \

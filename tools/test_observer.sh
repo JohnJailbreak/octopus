@@ -12,7 +12,7 @@ trap 'rm -rf "$build"' EXIT
 # SDK selected, which these host-side tests need for libc and Foundation.
 cc=(xcrun --sdk macosx clang)
 common=(-g -O1 -Wall -Wextra -Werror -DOCT_NATIVE_TEST=1)
-for unit in Octopus/Core/*.c Octopus/Protocol/*.c; do
+for unit in Octopus/Core/*.c Octopus/Protocol/*.c Octopus/Native/*.c; do
   "${cc[@]}" "${common[@]}" -std=c11 -c "$unit" -o "$build/$(basename "$unit").o"
 done
 "${cc[@]}" "${common[@]}" -fobjc-arc -fblocks -framework Foundation \
