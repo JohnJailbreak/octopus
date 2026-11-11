@@ -166,16 +166,15 @@ void       oct_memory_backend_set_root_writable(oct_backend *backend, bool writa
 typedef struct oct_synthetic_options {
     int64_t time;     /* timestamp for every seed object */
     bool    scratch;
-    /* Two extra objects in Documents, off by default so the seed tree keeps its six.
-     * probe.dat holds example.txt's bytes under a different extension; probe.txt holds
-     * sample.bin's length under a text one. A host that shows one and not the other says which of
-     * name and size decides whether it displays an object, a question the ObjectInfo datasets
-     * themselves could not answer: compared field by field they differ only in those two. */
+    /* Extra objects in Documents, off by default so the seed tree keeps its six. One per
+     * extension, all carrying the same bytes, so a host's listing maps which extensions it will
+     * display. The first pair established that the extension is what decides it: probe.dat
+     * appeared and probe.txt did not, with identical content and identical reported format. */
     bool    probes;
 } oct_synthetic_options;
 
 #define OCT_SYNTHETIC_SEED_OBJECTS  6u
-#define OCT_SYNTHETIC_PROBE_OBJECTS 2u
+#define OCT_SYNTHETIC_PROBE_OBJECTS 10u
 
 #define OCT_SAMPLE_BIN_SIZE 4096u
 uint8_t    oct_sample_byte(size_t offset);

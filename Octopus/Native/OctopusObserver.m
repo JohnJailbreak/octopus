@@ -489,6 +489,19 @@ static void pollOnce(BOOL match)
                 oct_native_hook_report hooks=hookReport;
                 pthread_mutex_unlock(&lock);
                 oct_native_hooks_publish(&hooks);
+                /* Which of the fixed roots this process can actually open and read. Probed once,
+                 * because the answer is a property of ptpd's sandbox rather than of the moment,
+                 * and published so the app can say which scopes are worth granting. Until this ran
+                 * nothing had established what ptpd may read, so the scopes were untested guesses. */
+                static bool probedRoots;
+                if(!probedRoots){
+                    probedRoots=true;
+                    oct_native_root_report roots;
+                    oct_native_probe_all_roots(&roots);
+                    oct_native_roots_publish(&roots);
+                    os_log(startup_log(),"root reachability: openable 0x%02x listable 0x%02x refused 0x%02x",
+                           roots.openable,roots.listable,roots.refused);
+                }
             }
             post_startup();
     }

@@ -148,15 +148,17 @@ int main(void) { @autoreleasepool {
     NSArray *children=[camera objectHandlesInStorage:UINT32_MAX forObjectFormatCode:0 inAssociation:docs responseCode:&code];
     /* example.txt and sample.bin, plus the two probes the provider enables. */
     assert(code==OCT_RC_OK&&children.count==2+OCT_SYNTHETIC_PROBE_OBJECTS&&![children containsObject:@42]);
-    /* The probes exist and are exactly what they claim: probe.dat carries example.txt's length,
-     * probe.txt carries sample.bin's. That pairing is the whole point of them. */
-    uint32_t probeDat=findNamed(camera,children,@"probe.dat");assert(probeDat);
-    uint32_t probeTxt=findNamed(camera,children,@"probe.txt");assert(probeTxt);
-    uint16_t probeCode=0;uint32_t probeSize=0;
-    (void)[camera dataSourceForObjectHandle:probeDat responseCode:&probeCode size:&probeSize];
-    assert(probeCode==OCT_RC_OK&&probeSize==76);
-    (void)[camera dataSourceForObjectHandle:probeTxt responseCode:&probeCode size:&probeSize];
-    assert(probeCode==OCT_RC_OK&&probeSize==OCT_SAMPLE_BIN_SIZE);
+    /* Every probe is reachable through the provider and every one is the same size, so a host
+     * listing some and not others is deciding on the extension alone. */
+    NSArray<NSString *> *probeNames=@[@"probe.dat",@"probe.txt",@"probe.jpg",@"probe.png",@"probe.pdf",
+                                      @"probe.json",@"probe.log",@"probe.mov",@"probe.plist",@"probe"];
+    assert(probeNames.count==OCT_SYNTHETIC_PROBE_OBJECTS);
+    for(NSString *probeName in probeNames){
+        uint32_t probeHandle=findNamed(camera,children,probeName);assert(probeHandle);
+        uint16_t probeCode=0;uint32_t probeSize=0;
+        id probeSource=[camera dataSourceForObjectHandle:probeHandle responseCode:&probeCode size:&probeSize];
+        assert(probeCode==OCT_RC_OK&&probeSize==76&&[probeSource length]==76);
+    }
     uint32_t example=findNamed(camera,children,@"example.txt");assert(example);
     id source=[camera dataSourceForObjectHandle:example responseCode:&code size:&size];
     assert(code==OCT_RC_OK&&size==76&&[source length]==76);

@@ -270,6 +270,33 @@ enum Diagnostics {
                               capture.companionFilesPresent ? .pass : .blocked,
                               "App effective UID: \(capture.appUID). Companion files \(capture.companionFilesPresent ? "found" : "not found") at /var/jb/usr/lib/TweakInject. File presence does not prove the module loaded or hooks ran.", checks: 1)
             },
+            step("native.roots", "Native integration", "Filesystem roots ptpd can read", .nativeObservation) {
+                // Probed inside ptpd, because its sandbox and not the app's decides this. Until
+                // this is known, granting a filesystem scope is guesswork.
+                var roots = oct_native_root_report()
+                guard oct_native_roots_read(&roots) == OCT_OK else {
+                    return result("native.roots", "Native integration", "Filesystem roots ptpd can read",
+                                  .nativeObservation, .blocked,
+                                  "The companion has not reported which roots it can read. It publishes that once "
+                                      + "after its hooks install; connect USB with Octopus open, then run this again.",
+                                  checks: 1)
+                }
+                var lines: [String] = []
+                for raw in 1..<OCT_NATIVE_ROOT_COUNT.rawValue {
+                    guard let path = oct_native_root_path(oct_native_root(rawValue: raw)) else { continue }
+                    let bit = UInt8(1 << raw)
+                    let name = String(cString: path)
+                    if roots.refused & bit != 0 { lines.append("\(name): refused by the sandbox") }
+                    else if roots.listable & bit != 0 { lines.append("\(name): readable") }
+                    else if roots.openable & bit != 0 { lines.append("\(name): opens but lists nothing") }
+                    else { lines.append("\(name): not reachable") }
+                }
+                let anyReadable = roots.listable != 0
+                return result("native.roots", "Native integration", "Filesystem roots ptpd can read",
+                              .nativeObservation, anyReadable ? .pass : .blocked,
+                              lines.joined(separator: "; ") + ". A readable root can be served read-only; "
+                                  + "serving it to a host is still unverified.", checks: 1)
+            },
             step("native.startup_signal", "Native integration", "Companion startup signal", .nativeObservation) {
                 // Read through Darwin notifications, not the status file, because writing that file
                 // is one of the things that can fail inside ptpd's sandbox. The C side decides what

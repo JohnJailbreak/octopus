@@ -446,8 +446,9 @@ static void test_chunked_streaming_reads(void)
     oct_store_close(store);
 }
 
-/* The probe objects: absent unless asked for, so the seed tree keeps its six, and present in
- * Documents when asked, differing from example.txt and sample.bin in exactly one way each. */
+/* The probe objects: absent unless asked for, so the seed tree keeps its six, and when asked for,
+ * one per extension in Documents, every one carrying identical bytes. Identical content is the
+ * whole point: a host that lists some and not others is then deciding on the extension alone. */
 static void test_probe_objects(void)
 {
     oct_backend backend;
@@ -470,26 +471,47 @@ static void test_probe_objects(void)
     CHECK_OK(oct_store_index_all(store));
     CHECK_EQ(oct_store_object_count(store), OCT_SYNTHETIC_SEED_OBJECTS + OCT_SYNTHETIC_PROBE_OBJECTS);
     documents = find(store, OCT_ROOT, "Documents");
-    uint32_t dat = find(store, documents, "probe.dat");
-    uint32_t txt = find(store, documents, "probe.txt");
+    CHECK(documents != 0);
+
+    static const char *const names[] = {
+        "probe.dat", "probe.txt", "probe.jpg", "probe.png", "probe.pdf",
+        "probe.json", "probe.log", "probe.mov", "probe.plist", "probe",
+    };
+    const size_t count = sizeof names / sizeof names[0];
+    CHECK_EQ(count, (size_t)OCT_SYNTHETIC_PROBE_OBJECTS); /* the constant matches the list */
+
+    /* Every probe exists, and every one is byte-identical in size to example.txt, so nothing but
+     * the name distinguishes them. A difference here would make the experiment meaningless. */
     uint32_t example = find(store, documents, "example.txt");
-    uint32_t sample = find(store, documents, "sample.bin");
-    CHECK(dat && txt && example && sample);
-    oct_object_info d, t2, e, sm;
-    if (dat && txt && example && sample) {
-        CHECK_OK(oct_store_get(store, dat, &d));
-        CHECK_OK(oct_store_get(store, txt, &t2));
-        CHECK_OK(oct_store_get(store, example, &e));
-        CHECK_OK(oct_store_get(store, sample, &sm));
-        /* probe.dat: example.txt's size, sample.bin's kind of extension. */
-        CHECK_EQ(d.size, e.size);
-        CHECK_EQ(d.format, sm.format);
-        /* probe.txt: sample.bin's size, example.txt's extension. */
-        CHECK_EQ(t2.size, sm.size);
-        CHECK_EQ(t2.format, e.format);
-        /* So the pair differs from each other in both, and from the originals in one each. */
-        CHECK(d.size != t2.size);
-        CHECK(d.format != t2.format);
+    oct_object_info reference;
+    CHECK(example != 0);
+    if (example) CHECK_OK(oct_store_get(store, example, &reference));
+    for (size_t i = 0; i < count; i++) {
+        uint32_t handle = find(store, documents, names[i]);
+        CHECK(handle != 0);
+        if (!handle || !example) continue;
+        oct_object_info info;
+        CHECK_OK(oct_store_get(store, handle, &info));
+        CHECK_EQ(info.size, reference.size);
+        CHECK(!info.is_directory);
+        CHECK_EQ(info.parent, documents);
+        /* The bytes match too, not merely the length. */
+        char mine[128], theirs[128];
+        size_t got = 0, want = 0;
+        CHECK_OK(oct_store_read(store, handle, 0, mine, sizeof mine, &got));
+        CHECK_OK(oct_store_read(store, example, 0, theirs, sizeof theirs, &want));
+        CHECK_EQ(got, want);
+        if (got == want) CHECK(memcmp(mine, theirs, got) == 0);
+    }
+    /* The formats differ exactly as the extensions imply, which is what the host is reacting to. */
+    uint32_t text_probe = find(store, documents, "probe.txt");
+    uint32_t data_probe = find(store, documents, "probe.dat");
+    if (text_probe && data_probe) {
+        oct_object_info text_info, data_info;
+        CHECK_OK(oct_store_get(store, text_probe, &text_info));
+        CHECK_OK(oct_store_get(store, data_probe, &data_info));
+        CHECK_EQ(text_info.format, OCT_FORMAT_TEXT);
+        CHECK_EQ(data_info.format, OCT_FORMAT_UNDEFINED);
     }
     oct_store_close(store);
 }
