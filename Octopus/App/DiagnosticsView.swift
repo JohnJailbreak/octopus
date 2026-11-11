@@ -25,8 +25,24 @@ struct DiagnosticsWindow: View {
                 LazyVStack(alignment: .leading, spacing: 2) {
                     VStack(alignment: .leading, spacing: 8) {
                         Toggle("Observe native USB (experimental)", isOn: $native.observe)
-                        Toggle("Expose synthetic storage (experimental)", isOn: $native.synthetic)
+                        Toggle("Expose storage (experimental)", isOn: $native.synthetic)
                             .disabled(!native.observe || (!native.synthetic && !providerPrerequisite))
+                        // Which root to serve. The real ones are read-only and nothing in them is
+                        // writable; which of them ptpd's sandbox permits is reported by the
+                        // "Filesystem roots ptpd can read" check below, so pick one it calls
+                        // readable. Changing this re-opens the store, so reconnect USB afterwards.
+                        Picker("Serve", selection: $native.scope) {
+                            Text("Sample tree").tag(OCT_NATIVE_ROOT_SYNTHETIC)
+                            Text("Media").tag(OCT_NATIVE_ROOT_MEDIA)
+                            Text("DCIM").tag(OCT_NATIVE_ROOT_DCIM)
+                            Text("Mobile").tag(OCT_NATIVE_ROOT_MOBILE)
+                            Text("Temp").tag(OCT_NATIVE_ROOT_TMP)
+                            Text("Whole filesystem").tag(OCT_NATIVE_ROOT_SYSTEM)
+                        }
+                        .pickerStyle(.menu)
+                        .disabled(!native.observe)
+                        Text("Serving \(native.scopeDescription). Reconnect USB after changing this.")
+                            .font(.system(size: 12)).foregroundStyle(Theme.secondary)
                         Text(native.detail)
                             .font(.system(size: 12)).foregroundStyle(Theme.secondary)
                         Text("Requires the optional native companion. Keep Octopus open with USB Access enabled. Turning this off stops new exposure; reconnect USB to refresh Explorer.")

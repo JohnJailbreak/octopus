@@ -554,8 +554,37 @@ enum Diagnostics {
     }
 
     static func usbTransport() -> DiagnosticResult {
-        result("external.usb_transport", "External connection", "USB transport for Octopus", .external, .blocked,
-               "The portable adapter has no direct native USB driver. The optional provider experiment instead uses Apple's existing USB service; its observations appear under Native integration. Explorer visibility and Photos coexistence still require the physical acceptance test.", checks: 0)
+        let id = "external.usb_transport", group = "External connection", title = "USB transport for Octopus"
+        // This used to return a fixed sentence about the app having no USB driver of its own, which
+        // was true and beside the point: the transport was never going to be the app's own: iOS
+        // gives no app the PTP function, so the design is to serve through Apple's ptpd. Once the
+        // companion reports its hooks installed and a host's commands arriving in native USB
+        // receive callbacks, the transport is working, and the check now says so from the counters
+        // rather than asserting the opposite from a hardcoded string.
+        var runtime = oct_native_runtime()
+        guard oct_native_runtime_read(&runtime) == OCT_OK else {
+            return result(id, group, title, .external, .blocked,
+                          "Octopus serves USB through Apple's own ptpd rather than a driver of its own, because iOS "
+                              + "gives no app the USB PTP function. The companion has not reported yet: install it, "
+                              + "enable USB Access and the observer, then connect a computer.", checks: 0)
+        }
+        let hooked = runtime.flags & UInt8(OCT_NATIVE_RUNTIME_HOOKED.rawValue) != 0
+        let serving = runtime.flags & UInt8(OCT_NATIVE_RUNTIME_SERVING.rawValue) != 0
+        let carrying = runtime.commands > 0 && runtime.responses > 0
+        let detail = "Octopus serves USB through Apple's own ptpd, which owns the PTP function on iOS. "
+            + "Hooks \(hooked ? "installed" : "not installed") in that process; storage "
+            + "\(serving ? "being served" : "not being served"); \(runtime.commands) host commands and "
+            + "\(runtime.responses) paired responses observed inside native USB receive callbacks. "
+            + "Reported by notification from ptpd."
+        if hooked && carrying {
+            // Real commands from a real host crossed the real transport. Whether a given object
+            // appears in Explorer is a separate question, answered by the checks above.
+            return result(id, group, title, .realUSB, .pass, detail, checks: 1)
+        }
+        return result(id, group, title, .external, .blocked,
+                      detail + (hooked
+                                ? " No host traffic yet: connect a computer and open the iPhone in its file browser."
+                                : " Install the companion and enable the observer, then reconnect."), checks: 0)
     }
 
     static func hostRequests(_ environment: DiagnosticsEnvironment) -> DiagnosticResult {

@@ -9,6 +9,11 @@ final class NativeIntegration: ObservableObject {
     static let shared = NativeIntegration()
     @Published var observe = false { didSet { changed() } }
     @Published var synthetic = false { didSet { changed() } }
+    /// Which root the companion should serve when exposure is on. `.synthetic` is the built-in
+    /// demo tree; the rest are read-only views of real directories, and which of them ptpd's
+    /// sandbox will actually permit is reported by the "Filesystem roots ptpd can read" check.
+    /// Nothing is writable in any of them.
+    @Published var scope: oct_native_root = OCT_NATIVE_ROOT_SYNTHETIC { didSet { changed() } }
     @Published private(set) var detail = "Optional native companion required. Disabled by default."
     private(set) var token = ""
     private var active = false
@@ -21,9 +26,27 @@ final class NativeIntegration: ObservableObject {
         synchronize()
     }
 
+    /// The lease mode for the current selection. Exposure of a real root maps onto the scope modes,
+    /// which the companion resolves through the same root table it probes, so the app never sends a
+    /// path. Synthetic exposure stays mode 2.
+    private var exposureMode: UInt8 {
+        if scope == OCT_NATIVE_ROOT_SYNTHETIC {
+            return UInt8(OCT_NATIVE_LEASE_EXPOSE_SYNTHETIC.rawValue)
+        }
+        return UInt8(OCT_NATIVE_LEASE_EXPOSE_ROOT_BASE.rawValue + Int32(scope.rawValue) - 1)
+    }
+
+    /// What the selected scope will serve, for the interface to show before it is granted.
+    var scopeDescription: String {
+        guard scope != OCT_NATIVE_ROOT_SYNTHETIC, let path = oct_native_root_path(scope) else {
+            return "the built-in sample tree"
+        }
+        return String(cString: path) + ", read-only"
+    }
+
     func sync(serviceActive: Bool) { active = serviceActive; synchronize() }
     func setForeground(_ value: Bool) { foreground = value; synchronize() }
-    func revoke() { active = false; observe = false; synthetic = false; synchronize() }
+    func revoke() { active = false; observe = false; synthetic = false; scope = OCT_NATIVE_ROOT_SYNTHETIC; synchronize() }
 
     private func synchronize() {
         let wanted: UInt32 = observe && active && foreground ? (synthetic ? 2 : 1) : 0
@@ -82,8 +105,7 @@ final class NativeIntegration: ObservableObject {
         var posted = OCT_E_UNSUPPORTED
         if leasedMode != 0 {
             var word = oct_native_lease_word()
-            word.mode = UInt8(leasedMode == 2 ? OCT_NATIVE_LEASE_EXPOSE_SYNTHETIC.rawValue
-                                              : OCT_NATIVE_LEASE_OBSERVE.rawValue)
+            word.mode = leasedMode == 2 ? exposureMode : UInt8(OCT_NATIVE_LEASE_OBSERVE.rawValue)
             word.deadline_ms = UInt64(now) + UInt64(OCT_NATIVE_LEASE_MS)
             word.generation = generation
             posted = oct_native_lease_publish(&word)
@@ -92,7 +114,7 @@ final class NativeIntegration: ObservableObject {
                     : (result == OCT_OK ? "file" : "neither channel")
         detail = (result == OCT_OK || posted == OCT_OK)
             ? (leasedMode == 2
-               ? "Synthetic storage authorized over \(channel) while Octopus stays open. Reconnect USB, then look for a second volume in Explorer."
+               ? "Serving \(scopeDescription) over \(channel) while Octopus stays open. Reconnect USB, then look for a second volume in Explorer."
                : "Read-only native observer authorized over \(channel) while Octopus stays open. Run diagnostics after using Explorer.")
             : "Native lease failed: file status \(result.rawValue) errno \(error); notification status \(posted.rawValue)."
         #endif

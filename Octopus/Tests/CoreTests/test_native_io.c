@@ -846,6 +846,38 @@ static void test_lease_scopes(void)
     CHECK(!oct_native_lease_unpack(beyond, &out));
 }
 
+/* The mapping the app's scope picker uses. Each choice is a root; the lease carries the matching
+ * mode number and nothing else, and the companion resolves it through the same table it probes.
+ * Mirrored here because the Swift that does it cannot be compiled or run in this environment. */
+static void test_scope_selection(void)
+{
+    for (unsigned root = 0; root < OCT_NATIVE_ROOT_COUNT; root++) {
+        unsigned mode = root == OCT_NATIVE_ROOT_SYNTHETIC
+                            ? (unsigned)OCT_NATIVE_LEASE_EXPOSE_SYNTHETIC
+                            : (unsigned)OCT_NATIVE_LEASE_EXPOSE_ROOT_BASE + root - 1u;
+        /* The mode the app would send resolves to the root the user picked. */
+        const char *from_mode = oct_native_lease_root((oct_native_lease_mode)mode);
+        const char *from_root = oct_native_root_path((oct_native_root)root);
+        if (root == OCT_NATIVE_ROOT_SYNTHETIC) {
+            CHECK(from_mode == NULL && from_root == NULL); /* serves no filesystem */
+        } else {
+            CHECK(from_mode != NULL && from_root != NULL);
+            if (from_mode && from_root) CHECK(strcmp(from_mode, from_root) == 0);
+        }
+        /* And a current lease carrying it grants exactly that, not something lesser. */
+        oct_native_lease_word word = { .mode = (uint8_t)mode, .deadline_ms = 1000 };
+        oct_native_lease_word back;
+        CHECK(oct_native_lease_unpack(oct_native_lease_pack(&word), &back));
+        CHECK_EQ(oct_native_lease_effective(&back, 500), (oct_native_lease_mode)mode);
+    }
+    /* The whole filesystem is reachable as a choice, which is the point of having it. */
+    unsigned whole = (unsigned)OCT_NATIVE_LEASE_EXPOSE_ROOT_BASE + OCT_NATIVE_ROOT_SYSTEM - 1u;
+    const char *path = oct_native_lease_root((oct_native_lease_mode)whole);
+    CHECK(path != NULL);
+    if (path) CHECK(strcmp(path, "/") == 0);
+    CHECK_EQ((oct_native_lease_mode)whole, OCT_NATIVE_LEASE_MODE_LAST);
+}
+
 void run_native_io_tests(void)
 {
     test_detailed_failures();
@@ -855,6 +887,7 @@ void run_native_io_tests(void)
     test_signal_verdicts();
     test_lease_word();
     test_lease_scopes();
+    test_scope_selection();
     test_runtime_word();
     test_hook_report();
     test_root_probe();
