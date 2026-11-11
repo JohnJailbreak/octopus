@@ -45,11 +45,29 @@ final class NativeIntegration: ObservableObject {
     }
 
     func sync(serviceActive: Bool) { active = serviceActive; synchronize() }
-    func setForeground(_ value: Bool) { foreground = value; synchronize() }
+    /// Leaving the screen does not drop authorization immediately. A host copying a file can take
+    /// longer than the moment a lock screen arrives, and losing the volume mid-copy was reported as
+    /// the volume "dying". The lease still expires on its own fifteen seconds after the last
+    /// renewal, so this extends how long renewals continue, not how long a grant lasts unattended.
+    private static let backgroundGrace: TimeInterval = 120
+    private var leftForeground: Date?
+
+    func setForeground(_ value: Bool) {
+        foreground = value
+        leftForeground = value ? nil : Date()
+        synchronize()
+    }
+
+    /// Whether renewals may continue: on screen, or within the grace window after leaving it.
+    private var authorizationAllowed: Bool {
+        if foreground { return true }
+        guard let left = leftForeground else { return false }
+        return Date().timeIntervalSince(left) < Self.backgroundGrace
+    }
     func revoke() { active = false; observe = false; synthetic = false; scope = OCT_NATIVE_ROOT_SYNTHETIC; synchronize() }
 
     private func synchronize() {
-        let wanted: UInt32 = observe && active && foreground ? (synthetic ? 2 : 1) : 0
+        let wanted: UInt32 = observe && active && authorizationAllowed ? (synthetic ? 2 : 1) : 0
         if wanted == leasedMode { return }
         renewal?.cancel(); renewal = nil
         leasedMode = wanted

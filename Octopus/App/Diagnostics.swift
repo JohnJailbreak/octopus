@@ -295,8 +295,10 @@ enum Diagnostics {
                 }
                 return result("native.roots", "Native integration", "Filesystem roots ptpd can read",
                               .nativeObservation, anyReadable ? .pass : .blocked,
-                              lines.joined(separator: "; ") + ". A readable root can be served read-only; "
-                                  + "serving it to a host is still unverified.", checks: 1)
+                              lines.joined(separator: "; ")
+                                  + ". A readable root can be served read-only; pick it beside the exposure "
+                                  + "toggle and reconnect USB. Symlinks whose target stays inside the chosen "
+                                  + "root are followed, which is what makes /var reachable.", checks: 1)
             },
             step("native.startup_signal", "Native integration", "Companion startup signal", .nativeObservation) {
                 // Read through Darwin notifications, not the status file, because writing that file

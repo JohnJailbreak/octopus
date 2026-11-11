@@ -787,9 +787,12 @@ oct_status oct_native_probe_root(const char *path, int *error)
         if (error) *error = EINVAL;
         return OCT_E_INVALID_ARGUMENT;
     }
-    /* O_NOFOLLOW refuses a symlink at the final component, which is what the backend does too; it
-     * says nothing about earlier components, and neither does this. */
-    int fd = open(path, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
+    /* Symlinks are followed, because the backend now follows the ones whose target is inside the
+     * served root. Refusing them here reported our own refusal as a sandbox denial: /var/mobile
+     * came back "refused by the sandbox" when the kernel had never been asked, since /var is a
+     * symlink on iOS. The backend still verifies containment itself; this only answers whether the
+     * path can be opened and read at all. */
+    int fd = open(path, O_RDONLY | O_DIRECTORY | O_CLOEXEC);
     if (fd < 0) {
         if (error) *error = errno;
         return OCT_E_IO;

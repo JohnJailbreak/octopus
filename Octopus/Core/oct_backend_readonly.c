@@ -22,6 +22,10 @@ typedef struct ro_node {
     uint32_t parent;
     uint32_t depth;
     struct stat identity;
+    /* This entry is a symlink whose target was verified to lie inside the served root, so it is
+     * opened and stat'd by following the link. On iOS /etc, /tmp and /var are all symlinks, so
+     * refusing every one of them hid /var and with it everything under it. */
+    bool follow;
 } ro_node;
 
 typedef struct ro_backend {
@@ -35,6 +39,7 @@ typedef struct ro_backend {
 typedef struct ro_entry {
     char *name;
     struct stat identity;
+    bool follow;
 } ro_entry;
 
 static oct_status error_status(int error)
@@ -88,6 +93,45 @@ static void convert(const struct stat *s, oct_node_stat *out)
     out->writable = false;
 }
 
+/*
+ * Whether an opened directory lies inside the served root, decided by walking ".." from it until
+ * the root's own device and inode appear. Paths are never compared as strings, so a symlink
+ * cannot escape by spelling its way out, and crossing a mount boundary is fine because ".." at a
+ * mount point leads to the directory it is mounted on.
+ *
+ * The walk is bounded, and a filesystem root that is not ours ends it: there ".." is itself, which
+ * is detected and refused rather than looped on.
+ */
+static bool contained(const ro_backend *b, int fd)
+{
+    struct stat here;
+    if (fstat(fd, &here) < 0) return false;
+    if (here.st_dev == b->nodes[0].identity.st_dev && here.st_ino == b->nodes[0].identity.st_ino) {
+        return true;
+    }
+    int at = openat(fd, ".", O_RDONLY | O_DIRECTORY | O_CLOEXEC);
+    if (at < 0) return false;
+    for (unsigned step = 0; step < RO_DEPTH; step++) {
+        if (!allowed(b)) { close(at); return false; }
+        int up = openat(at, "..", O_RDONLY | O_DIRECTORY | O_CLOEXEC);
+        if (up < 0) { close(at); return false; }
+        struct stat parent;
+        if (fstat(up, &parent) < 0) { close(up); close(at); return false; }
+        if (parent.st_dev == b->nodes[0].identity.st_dev &&
+            parent.st_ino == b->nodes[0].identity.st_ino) {
+            close(up); close(at);
+            return true;
+        }
+        /* The top of a filesystem that is not ours: ".." no longer moves. */
+        if (parent.st_dev == here.st_dev && parent.st_ino == here.st_ino) { close(up); close(at); return false; }
+        here = parent;
+        close(at);
+        at = up;
+    }
+    close(at);
+    return false;
+}
+
 /* Resolve from the pinned root descriptor, checking the identity of EVERY
  * ancestor. No path strings, symlink resolution, or ambient working directory. */
 static oct_status open_directory(ro_backend *b, uint64_t node, int *out)
@@ -108,7 +152,8 @@ static oct_status open_directory(ro_backend *b, uint64_t node, int *out)
     for (uint32_t i = count; i > 0; i--) {
         if (!allowed(b)) { close(fd); return OCT_E_STATE; }
         ro_node *n = &b->nodes[chain[i - 1]];
-        int next = openat(fd, n->name, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
+        int flags = O_RDONLY | O_DIRECTORY | O_CLOEXEC | (n->follow ? 0 : O_NOFOLLOW);
+        int next = openat(fd, n->name, flags);
         int saved = errno;
         close(fd);
         if (next < 0) return error_status(saved);
@@ -133,7 +178,7 @@ static oct_status ro_stat(void *context, uint64_t node, oct_node_stat *out)
     oct_status status = open_directory(b, node ? n->parent : 0, &fd);
     if (status != OCT_OK) return status;
     struct stat st;
-    int result = node ? fstatat(fd, n->name, &st, AT_SYMLINK_NOFOLLOW) : fstat(fd, &st);
+    int result = node ? fstatat(fd, n->name, &st, n->follow ? 0 : AT_SYMLINK_NOFOLLOW) : fstat(fd, &st);
     int saved = errno;
     close(fd);
     if (result < 0) return error_status(saved);
@@ -181,7 +226,8 @@ static oct_status intern(ro_backend *b, uint32_t parent, const ro_entry *entry, 
 {
     for (uint32_t i = 1; i <= b->count; i++) {
         ro_node *n = &b->nodes[i];
-        if (n->parent == parent && !strcmp(n->name, entry->name) && same(&n->identity, &entry->identity)) {
+        if (n->parent == parent && n->follow == entry->follow && !strcmp(n->name, entry->name) &&
+            same(&n->identity, &entry->identity)) {
             *out = i;
             return OCT_OK;
         }
@@ -196,6 +242,9 @@ static oct_status intern(ro_backend *b, uint32_t parent, const ro_entry *entry, 
     n->parent = parent;
     n->depth = b->nodes[parent].depth + 1;
     n->identity = entry->identity;
+    /* Carried onto the node, or the entry would be listed and then opened without following,
+     * which fails for every symlink it was resolved from. */
+    n->follow = entry->follow;
     b->name_bytes += bytes;
     *out = b->count;
     return OCT_OK;
@@ -228,12 +277,38 @@ static oct_status ro_list(void *context, uint64_t directory, oct_node_visitor vi
             if (errno == ENOENT || errno == EACCES || errno == EPERM) continue;
             status = error_status(errno); break;
         }
-        if (!exportable(&st) || (!b->options.cross_filesystems && st.st_dev != b->nodes[0].identity.st_dev)) continue;
+        bool follow = false;
+        if (S_ISLNK(st.st_mode)) {
+            /* Resolve it and keep it only if the target is a directory or regular file that is
+             * still inside the served root. A link that leaves the root, dangles, or loops is
+             * skipped exactly as before. */
+            struct stat target;
+            if (fstatat(dirfd(stream), item->d_name, &target, 0) < 0) continue;
+            if (!exportable(&target)) continue;
+            if (S_ISDIR(target.st_mode)) {
+                int probe = openat(dirfd(stream), item->d_name, O_RDONLY | O_DIRECTORY | O_CLOEXEC);
+                if (probe < 0) continue;
+                bool inside = contained(b, probe);
+                close(probe);
+                if (!inside) continue;
+            } else if (!b->options.cross_filesystems &&
+                       target.st_dev != b->nodes[0].identity.st_dev) {
+                /* A file reached through a link on another filesystem, when crossing is off. */
+                continue;
+            }
+            st = target;
+            follow = true;
+        }
+        if (!exportable(&st)) continue;
+        /* A directory reached through a verified link may sit on another filesystem, which on iOS
+         * is the normal case for /var; containment above already established it is ours. */
+        if (!follow && !b->options.cross_filesystems && st.st_dev != b->nodes[0].identity.st_dev) continue;
         size_t bytes = strlen(item->d_name) + 1;
         if (bytes > b->options.max_name_bytes - staged_bytes) { status = OCT_E_TOO_LARGE; break; }
         entries[count].name = strdup(item->d_name);
         if (!entries[count].name) { status = OCT_E_NO_MEMORY; break; }
-        entries[count++].identity = st;
+        entries[count].identity = st;
+        entries[count++].follow = follow;
         staged_bytes += bytes;
     }
     closedir(stream);
@@ -266,7 +341,8 @@ static oct_status ro_read(void *context, uint64_t node, uint64_t offset, void *b
     int parent;
     oct_status status = open_directory(b, n->parent, &parent);
     if (status != OCT_OK) return status;
-    int fd = openat(parent, n->name, O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC);
+    int fd = openat(parent, n->name,
+                    O_RDONLY | O_NONBLOCK | O_CLOEXEC | (n->follow ? 0 : O_NOFOLLOW));
     int saved = errno;
     close(parent);
     if (fd < 0) return error_status(saved);
@@ -344,7 +420,10 @@ oct_status oct_readonly_backend_create(const oct_readonly_options *options, oct_
     if (!o.max_depth) o.max_depth = 64;
     if (!o.max_name_bytes) o.max_name_bytes = 1024u * 1024u;
     if (!o.max_read_bytes) o.max_read_bytes = 1024u * 1024u;
-    if (o.max_nodes > 65535 || o.max_entries > 4096 || o.max_depth > RO_DEPTH ||
+    /* The ceiling was 65535, which a real root passes within a few directories: this phone holds
+     * about 600,000 objects under /private alone. Raising it here is what lets a filesystem scope
+     * keep serving instead of failing every listing once the table fills. */
+    if (o.max_nodes > OCT_READONLY_MAX_NODES || o.max_entries > 4096 || o.max_depth > RO_DEPTH ||
         o.max_name_bytes > RO_BYTES || o.max_read_bytes > RO_BYTES) return OCT_E_INVALID_ARGUMENT;
     if (!o.authorized(o.authorization_context)) return OCT_E_STATE;
     int fd = open_root(o.root);

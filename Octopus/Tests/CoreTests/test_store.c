@@ -64,7 +64,7 @@ static void test_relationships(void)
     CHECK(documents && information && example && sample && version && readme);
     CHECK_OK(oct_store_get(store, example, &info));
     CHECK_EQ(info.parent, documents);
-    CHECK_EQ(info.format, OCT_FORMAT_TEXT);
+    CHECK_EQ(info.format, OCT_FORMAT_UNDEFINED); /* text included: see oct_format_for_name */
     CHECK(!info.is_directory);
     CHECK_OK(oct_store_get(store, sample, &info));
     CHECK_EQ(info.parent, documents);
@@ -222,7 +222,7 @@ static void test_writes_in_test_directory(void)
     CHECK_OK(oct_store_get(store, handle, &info));
     CHECK_EQ(info.size, 5);
     CHECK(!info.write_protected);
-    CHECK_EQ(info.format, OCT_FORMAT_TEXT);
+    CHECK_EQ(info.format, OCT_FORMAT_UNDEFINED); /* text included: see oct_format_for_name */
     CHECK_OK(oct_store_write(store, handle, 10, "abc", 3));
     char buffer[16] = { 0 };
     size_t read = 0;
@@ -339,8 +339,16 @@ static void test_names(void)
     memset(units, 0, sizeof units);
     for (int i = 0; i < 127; i++) memcpy(units + 2 * i, "\xC3\xA9", 2); /* 254 bytes, 127 units */
     CHECK_OK(oct_name_validate(units));
-    CHECK_EQ(oct_format_for_name("a.TXT", false), OCT_FORMAT_TEXT);
-    CHECK_EQ(oct_format_for_name("a.text", false), OCT_FORMAT_TEXT);
+    /* No file is reported as text any more: a host dropped exactly the one extension that carried
+     * 0x3004, and dropped it before ObjectInfo, so the format had to change at the source. */
+    CHECK_EQ(oct_format_for_name("a.TXT", false), OCT_FORMAT_UNDEFINED);
+    CHECK_EQ(oct_format_for_name("a.text", false), OCT_FORMAT_UNDEFINED);
+    CHECK_EQ(oct_format_for_name("a.txt", false), OCT_FORMAT_UNDEFINED);
+    CHECK_EQ(oct_format_for_name("a.json", false), OCT_FORMAT_UNDEFINED);
+    CHECK_EQ(oct_format_for_name(NULL, false), OCT_FORMAT_UNDEFINED);
+    /* Directories are still associations, which is what makes a folder a folder to a host. */
+    CHECK_EQ(oct_format_for_name("a.txt", true), OCT_FORMAT_ASSOCIATION);
+    CHECK_EQ(oct_format_for_name(NULL, true), OCT_FORMAT_ASSOCIATION);
     CHECK_EQ(oct_format_for_name("a.bin", false), OCT_FORMAT_UNDEFINED);
     CHECK_EQ(oct_format_for_name(".txt", false), OCT_FORMAT_UNDEFINED);
     CHECK_EQ(oct_format_for_name("folder.txt", true), OCT_FORMAT_ASSOCIATION);
@@ -510,7 +518,7 @@ static void test_probe_objects(void)
         oct_object_info text_info, data_info;
         CHECK_OK(oct_store_get(store, text_probe, &text_info));
         CHECK_OK(oct_store_get(store, data_probe, &data_info));
-        CHECK_EQ(text_info.format, OCT_FORMAT_TEXT);
+        CHECK_EQ(text_info.format, OCT_FORMAT_UNDEFINED);
         CHECK_EQ(data_info.format, OCT_FORMAT_UNDEFINED);
     }
     oct_store_close(store);

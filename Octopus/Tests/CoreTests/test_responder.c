@@ -174,7 +174,10 @@ static void test_enumeration_operations(void)
     CHECK(x.response_code == OCT_RC_OK && !x.has_data && x.param_count == 1 && x.params[0] == 6);
     CHECK_EQ(client_call(&c, OCT_OP_GET_NUM_OBJECTS, 3, storage, 0u, 0xFFFFFFFFu).params[0], 3);
     CHECK_EQ(client_call(&c, OCT_OP_GET_NUM_OBJECTS, 3, storage, 0u, 2u).params[0], 2);
-    CHECK_EQ(client_call(&c, OCT_OP_GET_NUM_OBJECTS, 3, storage, (uint32_t)OCT_FORMAT_TEXT, 0u).params[0], 3);
+    /* Four, not three: every regular file is undefined now, the former text file included. That
+     * count moving is the point of the change, since a host that filters by format was dropping
+     * the one object this used to classify differently. */
+    CHECK_EQ(client_call(&c, OCT_OP_GET_NUM_OBJECTS, 3, storage, (uint32_t)OCT_FORMAT_UNDEFINED, 0u).params[0], 4);
     CHECK_EQ(client_call(&c, OCT_OP_GET_NUM_OBJECTS, 3, storage, (uint32_t)OCT_FORMAT_ASSOCIATION, 0u).params[0], 2);
     CHECK_EQ(client_call(&c, OCT_OP_GET_NUM_OBJECTS, 3, storage, 0xFFFFFFFFu, 0u).params[0], 0); /* images only */
     CHECK_EQ(client_call(&c, OCT_OP_GET_NUM_OBJECTS, 3, 5u, 0u, 0u).response_code, OCT_RC_INVALID_STORAGE_ID);
@@ -194,7 +197,7 @@ static void test_enumeration_operations(void)
     CHECK_OK(oct_dataset_parse_object_info(x.data, x.data_length, &decoded));
     CHECK_STR(decoded.name, "README.txt");
     CHECK_EQ(decoded.parent, 0);
-    CHECK_EQ(decoded.format, OCT_FORMAT_TEXT);
+    CHECK_EQ(decoded.format, OCT_FORMAT_UNDEFINED); /* no file reports text now */
     CHECK_EQ(decoded.protection_status, 1);
     x = client_call(&c, OCT_OP_GET_OBJECT_INFO, 1, 2u);
     CHECK_OK(oct_dataset_parse_object_info(x.data, x.data_length, &decoded));
@@ -283,9 +286,9 @@ static void test_properties(void)
     client_close(&c);
     client_open(&c, true);
     client_open_session(&c);
-    x = client_call(&c, OCT_OP_GET_OBJECT_PROP_DESC, 2, (uint32_t)OCT_PROP_OBJECT_FILE_NAME, (uint32_t)OCT_FORMAT_TEXT);
+    x = client_call(&c, OCT_OP_GET_OBJECT_PROP_DESC, 2, (uint32_t)OCT_PROP_OBJECT_FILE_NAME, (uint32_t)OCT_FORMAT_UNDEFINED);
     CHECK(x.data_length > 4 && x.data[4] == 0x01); /* settable where a writable area exists */
-    x = client_call(&c, OCT_OP_GET_OBJECT_PROP_DESC, 2, (uint32_t)OCT_PROP_STORAGE_ID, (uint32_t)OCT_FORMAT_TEXT);
+    x = client_call(&c, OCT_OP_GET_OBJECT_PROP_DESC, 2, (uint32_t)OCT_PROP_STORAGE_ID, (uint32_t)OCT_FORMAT_UNDEFINED);
     CHECK(x.data_length > 4 && x.data[4] == 0x00);
     client_close(&c);
 }
@@ -347,7 +350,7 @@ static void test_uploads(void)
     CHECK_EQ(code, OCT_RC_INVALID_PARENT_OBJECT);
     client_upload(&c, 0x99u, "x.txt", false, "x", 1, &code);
     CHECK_EQ(code, OCT_RC_INVALID_PARENT_OBJECT);
-    object_info_dataset(&dataset, storage, "x.txt", OCT_FORMAT_TEXT, 1);
+    object_info_dataset(&dataset, storage, "x.txt", OCT_FORMAT_UNDEFINED, 1);
     CHECK_EQ(client_send(&c, OCT_OP_SEND_OBJECT_INFO, dataset.data, dataset.length, 2, 5u, scratch).response_code,
              OCT_RC_INVALID_STORAGE_ID);
     CHECK_EQ(client_send(&c, OCT_OP_SEND_OBJECT_INFO, dataset.data, 5, 2, storage, scratch).response_code,
@@ -368,13 +371,13 @@ static void test_uploads(void)
     CHECK_EQ(client_send(&c, OCT_OP_SEND_OBJECT_INFO, dataset.data, dataset.length, 2, storage, scratch).response_code,
              OCT_RC_STORE_FULL);
     /* A reservation survives unrelated commands, as MTP hosts expect. */
-    object_info_dataset(&dataset, storage, "pending.txt", OCT_FORMAT_TEXT, 5);
+    object_info_dataset(&dataset, storage, "pending.txt", OCT_FORMAT_UNDEFINED, 5);
     uint32_t pending = client_send(&c, OCT_OP_SEND_OBJECT_INFO, dataset.data, dataset.length, 2, storage, scratch).params[2];
     CHECK_EQ(client_call(&c, OCT_OP_GET_STORAGE_IDS, 0).response_code, OCT_RC_OK);
     CHECK_EQ(client_send(&c, OCT_OP_SEND_OBJECT, "12345", 5, 0).response_code, OCT_RC_OK);
     CHECK_EQ(client_call(&c, OCT_OP_GET_OBJECT, 1, pending).data_length, 5);
     /* A SendObject whose data phase never arrives releases the reservation. */
-    object_info_dataset(&dataset, storage, "abandoned.txt", OCT_FORMAT_TEXT, 5);
+    object_info_dataset(&dataset, storage, "abandoned.txt", OCT_FORMAT_UNDEFINED, 5);
     uint32_t abandoned = client_send(&c, OCT_OP_SEND_OBJECT_INFO, dataset.data, dataset.length, 2, storage, scratch).params[2];
     raw_command(&c, OCT_OP_SEND_OBJECT);
     CHECK(oct_responder_awaiting_data(c.responder));
@@ -385,15 +388,15 @@ static void test_uploads(void)
     oct_responder_get_stats(c.responder, &stats);
     CHECK_EQ(stats.abandoned, 1);
     /* A second SendObjectInfo replaces an unfinished one. */
-    object_info_dataset(&dataset, storage, "first.txt", OCT_FORMAT_TEXT, 3);
+    object_info_dataset(&dataset, storage, "first.txt", OCT_FORMAT_UNDEFINED, 3);
     uint32_t first = client_send(&c, OCT_OP_SEND_OBJECT_INFO, dataset.data, dataset.length, 2, storage, scratch).params[2];
-    object_info_dataset(&dataset, storage, "second.txt", OCT_FORMAT_TEXT, 3);
+    object_info_dataset(&dataset, storage, "second.txt", OCT_FORMAT_UNDEFINED, 3);
     uint32_t second = client_send(&c, OCT_OP_SEND_OBJECT_INFO, dataset.data, dataset.length, 2, storage, scratch).params[2];
     CHECK_EQ(client_call(&c, OCT_OP_GET_OBJECT_INFO, 1, first).response_code, OCT_RC_INVALID_OBJECT_HANDLE);
     CHECK_EQ(client_send(&c, OCT_OP_SEND_OBJECT, "abc", 3, 0).response_code, OCT_RC_OK);
     CHECK_EQ(client_call(&c, OCT_OP_GET_OBJECT, 1, second).data_length, 3);
     /* Closing the session discards a reservation. */
-    object_info_dataset(&dataset, storage, "third.txt", OCT_FORMAT_TEXT, 3);
+    object_info_dataset(&dataset, storage, "third.txt", OCT_FORMAT_UNDEFINED, 3);
     uint32_t third = client_send(&c, OCT_OP_SEND_OBJECT_INFO, dataset.data, dataset.length, 2, storage, scratch).params[2];
     CHECK_EQ(client_call(&c, OCT_OP_CLOSE_SESSION, 0).response_code, OCT_RC_OK);
     c.session = false;
@@ -517,7 +520,7 @@ static void test_malformed(void)
     uint32_t transaction = c.transaction++;
     oct_container_command(&request, OCT_OP_SEND_OBJECT_INFO, transaction, params, 2);
     CHECK_OK(feed(&c, request.data, request.length));
-    object_info_dataset(&dataset, OCT_DEFAULT_STORAGE_ID, "framed.txt", OCT_FORMAT_TEXT, 2);
+    object_info_dataset(&dataset, OCT_DEFAULT_STORAGE_ID, "framed.txt", OCT_FORMAT_UNDEFINED, 2);
     oct_buf_clear(&request);
     size_t start = oct_container_data_begin(&request, OCT_OP_SEND_OBJECT_INFO, transaction + 1);
     oct_buf_bytes(&request, dataset.data, dataset.length);
@@ -541,7 +544,7 @@ static void test_malformed(void)
     CHECK(c.scratch.length == 12 && c.scratch.data[6] == 0x07 && c.scratch.data[7] == 0x20);
     CHECK_EQ(client_call(&c, OCT_OP_GET_OBJECT_INFO, 1, framed).response_code, OCT_RC_INVALID_OBJECT_HANDLE);
     /* Every prefix of a valid data phase is handled without leaving bounds. */
-    object_info_dataset(&dataset, OCT_DEFAULT_STORAGE_ID, "prefix.txt", OCT_FORMAT_TEXT, 1);
+    object_info_dataset(&dataset, OCT_DEFAULT_STORAGE_ID, "prefix.txt", OCT_FORMAT_UNDEFINED, 1);
     for (size_t cut = 0; cut <= dataset.length + 12; cut++) {
         transaction = c.transaction++;
         oct_buf_clear(&request);

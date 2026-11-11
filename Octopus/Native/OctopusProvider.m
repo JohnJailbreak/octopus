@@ -427,19 +427,32 @@ static BOOL openStoreLocked(oct_native_lease_mode scope, NSString **reason)
     oct_responder_destroy(encoder);encoder=NULL;
     oct_store_close(store);store=NULL;
     storeScope=OCT_NATIVE_LEASE_NONE;
+    const char *root=oct_native_lease_root(scope);
     oct_store_options storeOptions={.storage_id=OCT_NATIVE_STORAGE_ID,.first_handle=OCT_NATIVE_FIRST_HANDLE,
         .description="Octopus (read-only)",.volume_label="Octopus",
         /* Bounded so a deep root cannot grow the handle table without limit inside ptpd, which also
          * serves Photos. Reaching it answers a whole-hierarchy request with 0xA808, which makes a
-         * host enumerate one directory at a time. */
-        .max_objects=OCT_STORE_DEFAULT_MAX_OBJECTS};
-    const char *root=oct_native_lease_root(scope);
+         * host enumerate one directory at a time.
+         *
+         * The budget is larger for a real root than for the sample tree: this phone has about
+         * 600,000 objects under /private and 291,000 under /System, so browsing a few directories
+         * deep passes the old 65,536 quickly, after which every further listing fails. A handle
+         * costs on the order of a hundred bytes, so this ceiling is a few tens of megabytes at
+         * worst, and only for objects a host has actually asked about. */
+        .max_objects=root?OCT_READONLY_MAX_NODES:OCT_STORE_DEFAULT_MAX_OBJECTS};
     if(root){
         oct_readonly_options ro={.root=root,.authorized=providerAuthorizedForStore,
             /* Per-directory and depth limits keep one listing bounded; the store's budget bounds
-             * the total. Nothing here crosses a filesystem boundary. */
-            .max_nodes=OCT_STORE_DEFAULT_MAX_OBJECTS>65535u?65535u:OCT_STORE_DEFAULT_MAX_OBJECTS,
-            .max_entries=4096,.max_depth=64,.max_read_bytes=1u<<20,.cross_filesystems=false};
+             * the total.
+             *
+             * Filesystem boundaries are crossed, because on iOS they must be: / is the system
+             * partition and everything of interest, /var and so all of /var/mobile, lives on the
+             * Data partition reached through a symlink. Refusing to cross left a host looking at
+             * eleven of the fifteen entries at / and nothing underneath the interesting ones.
+             * Escape is prevented by the backend verifying that a link's target is inside the
+             * served root, by device and inode, rather than by refusing to cross. */
+            .max_nodes=OCT_READONLY_MAX_NODES,
+            .max_entries=4096,.max_depth=64,.max_read_bytes=1u<<20,.cross_filesystems=true};
         if(oct_readonly_store_open(&ro,&storeOptions,&store)!=OCT_OK){
             store=NULL;
             if(reason)*reason=[NSString stringWithFormat:@"Cannot open %s read-only",root];

@@ -730,14 +730,15 @@ static void test_root_probe(void)
     CHECK_EQ(oct_native_probe_root(NULL, &error), OCT_E_INVALID_ARGUMENT);
     CHECK_EQ(oct_native_probe_root(root, NULL), OCT_OK); /* the errno output is optional */
 
-    /* A symlink to a directory is refused, as the backend refuses one. */
+    /* A symlink to a directory is followed, because the backend follows the ones whose target is
+     * inside the served root. Refusing it here reported our own refusal as a sandbox denial, which
+     * is how /var/mobile came back "refused by the sandbox" when the kernel was never asked: /var
+     * is a symlink on iOS. Containment is the backend's job, not this probe's. */
     char link[700];
     snprintf(link, sizeof link, "%s-link", root);
     CHECK_EQ(symlink(root, link), 0);
-    CHECK_EQ(oct_native_probe_root(link, &error), OCT_E_IO);
-    /* Refused either way: Linux reports ENOTDIR for O_NOFOLLOW|O_DIRECTORY on a symlink, macOS
-     * and iOS report ELOOP. What matters is that it is not followed. */
-    CHECK(error == ELOOP || error == ENOTDIR);
+    CHECK_OK(oct_native_probe_root(link, &error));
+    CHECK_EQ(error, 0);
     unlink(link);
 
     /* Unreadable: the case that matters, since a sandbox denial arrives as EACCES or EPERM. */

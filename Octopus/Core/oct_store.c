@@ -121,26 +121,22 @@ oct_status oct_name_validate(const char *name)
     return OCT_OK;
 }
 
-static bool ascii_equal_ignoring_case(const char *a, const char *b)
-{
-    for (;; a++, b++) {
-        char x = *a, y = *b;
-        if (x >= 'A' && x <= 'Z') x = (char)(x - 'A' + 'a');
-        if (y >= 'A' && y <= 'Z') y = (char)(y - 'A' + 'a');
-        if (x != y) return false;
-        if (x == '\0') return true;
-    }
-}
-
+/*
+ * Every regular file is reported as undefined, text included.
+ *
+ * A host asked for ObjectInfo on all ten probe objects and displayed every extension except .txt,
+ * which was the only one this ever gave 0x3004. The provider already mapped that down at
+ * ObjectInfo time and it stayed hidden, which fits a host filtering GetObjectHandles by format:
+ * the object is gone before any ObjectInfo runs, so mapping there is too late. Nine other
+ * extensions, .json and .log among them, are just as textual and have always displayed, as
+ * undefined. 0x3000 means a file whose format the device does not classify, which is honest for an
+ * arbitrary file, and GetDeviceInfo still advertises 0x3004 so a host that wants it is not denied
+ * it. The case-insensitive extension compare this used has gone with it; nothing else called it.
+ */
 uint16_t oct_format_for_name(const char *name, bool is_directory)
 {
-    if (is_directory) return OCT_FORMAT_ASSOCIATION;
-    const char *dot = name ? strrchr(name, '.') : NULL;
-    if (dot && dot != name &&
-        (ascii_equal_ignoring_case(dot + 1, "txt") || ascii_equal_ignoring_case(dot + 1, "text"))) {
-        return OCT_FORMAT_TEXT;
-    }
-    return OCT_FORMAT_UNDEFINED;
+    (void)name;
+    return is_directory ? OCT_FORMAT_ASSOCIATION : OCT_FORMAT_UNDEFINED;
 }
 
 void oct_copy_utf8(char *dst, size_t capacity, const char *src)
