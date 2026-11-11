@@ -7,3 +7,4 @@ uint32_t notify_set_state(int token, uint64_t state);
 uint32_t notify_get_state(int token, uint64_t *state);
 uint32_t notify_post(const char *name);
 uint32_t notify_cancel(int token);
+uint32_t notify_check(int token, int *check);

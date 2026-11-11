@@ -905,6 +905,37 @@ static void test_root_state(void)
     }
 }
 
+/* What the USB Connection screen shows, derived from a runtime snapshot and whether it is fresh. */
+static void test_transport_stage(void)
+{
+    /* Freshness: within the window, never heard, and a clock running backwards. */
+    CHECK(oct_native_transport_fresh(10000, 9000, 5000));
+    CHECK(oct_native_transport_fresh(10000, 5000, 5000));   /* exactly at the edge counts */
+    CHECK(!oct_native_transport_fresh(10001, 5000, 5000));
+    CHECK(!oct_native_transport_fresh(10000, 0, 5000));     /* zero means never heard */
+    CHECK(!oct_native_transport_fresh(4000, 5000, 5000));   /* not a post from the future */
+
+    oct_native_runtime none = { 0 };
+    oct_native_runtime hooked = { .flags = OCT_NATIVE_RUNTIME_HOOKED };
+    oct_native_runtime host = { .flags = OCT_NATIVE_RUNTIME_HOOKED, .commands = 5, .responses = 5 };
+    oct_native_runtime serving = { .flags = OCT_NATIVE_RUNTIME_HOOKED | OCT_NATIVE_RUNTIME_SERVING,
+                                   .commands = 213, .responses = 212 };
+    CHECK_EQ(oct_native_transport_stage_of(&none, true), OCT_NATIVE_TRANSPORT_ABSENT);
+    CHECK_EQ(oct_native_transport_stage_of(&hooked, true), OCT_NATIVE_TRANSPORT_WAITING);
+    CHECK_EQ(oct_native_transport_stage_of(&host, true), OCT_NATIVE_TRANSPORT_HOST);
+    CHECK_EQ(oct_native_transport_stage_of(&serving, true), OCT_NATIVE_TRANSPORT_SERVING);
+    /* Stale is absent whatever the counters say: they describe a session that has ended. */
+    CHECK_EQ(oct_native_transport_stage_of(&serving, false), OCT_NATIVE_TRANSPORT_ABSENT);
+    CHECK_EQ(oct_native_transport_stage_of(&host, false), OCT_NATIVE_TRANSPORT_ABSENT);
+    CHECK_EQ(oct_native_transport_stage_of(NULL, true), OCT_NATIVE_TRANSPORT_ABSENT);
+    /* Serving without hooks is not a transport: the flags would be inconsistent, so no claim. */
+    oct_native_runtime odd = { .flags = OCT_NATIVE_RUNTIME_SERVING, .commands = 9 };
+    CHECK_EQ(oct_native_transport_stage_of(&odd, true), OCT_NATIVE_TRANSPORT_ABSENT);
+    for (int stage = OCT_NATIVE_TRANSPORT_ABSENT; stage <= OCT_NATIVE_TRANSPORT_SERVING; stage++) {
+        CHECK(oct_native_transport_stage_name((oct_native_transport_stage)stage)[0] != '\0');
+    }
+}
+
 void run_native_io_tests(void)
 {
     test_detailed_failures();
@@ -916,6 +947,7 @@ void run_native_io_tests(void)
     test_lease_scopes();
     test_scope_selection();
     test_root_state();
+    test_transport_stage();
     test_runtime_word();
     test_hook_report();
     test_root_probe();

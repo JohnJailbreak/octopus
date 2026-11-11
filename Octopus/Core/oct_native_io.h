@@ -193,6 +193,35 @@ bool       oct_native_runtime_unpack(uint64_t word, oct_native_runtime *out);
 oct_status oct_native_runtime_publish(const oct_native_runtime *runtime);
 oct_status oct_native_runtime_read(oct_native_runtime *out);
 
+/* ---- Is the USB transport live? --------------------------------------------------------------
+ *
+ * The runtime word is posted every poll, about once a second, for as long as ptpd runs, and ptpd
+ * runs only while a host is connected. Its state, though, outlives it: notifyd keeps a name's state
+ * while any registration is open, and the app's own registration keeps it open. So reading the
+ * state alone would show "session active" indefinitely after the cable is pulled.
+ *
+ * What does not outlive it is the posting. This reports whether the runtime name has been posted
+ * since the previous call, on a token held for the life of the process, which is a heartbeat that
+ * stops when ptpd does. */
+oct_status oct_native_runtime_check(bool *posted);
+
+typedef enum oct_native_transport_stage {
+    OCT_NATIVE_TRANSPORT_ABSENT = 0, /* no companion heard from recently: not installed, or unplugged */
+    OCT_NATIVE_TRANSPORT_WAITING,    /* companion live in ptpd with hooks in, no host commands yet */
+    OCT_NATIVE_TRANSPORT_HOST,       /* host commands arriving over USB */
+    OCT_NATIVE_TRANSPORT_SERVING,    /* commands arriving and Octopus's storage being served */
+} oct_native_transport_stage;
+
+/* Whether the companion counts as live: heard from within `window_ms` of `now_ms`. A last-heard
+ * time of zero means never, and a clock that runs backwards is treated as never too, rather than
+ * as a post from the future. */
+bool oct_native_transport_fresh(uint64_t now_ms, uint64_t last_heard_ms, uint64_t window_ms);
+
+/* The stage a runtime snapshot describes. A stale snapshot is ABSENT whatever it says, which is the
+ * point: the counters in a left-behind state describe a session that has ended. */
+oct_native_transport_stage oct_native_transport_stage_of(const oct_native_runtime *runtime, bool fresh);
+const char *oct_native_transport_stage_name(oct_native_transport_stage stage);
+
 /* ---- Real filesystem roots -------------------------------------------------------------
  *
  * The read-only backend can serve a real directory, and has been tested in isolation since it

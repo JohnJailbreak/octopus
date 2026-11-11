@@ -1,5 +1,7 @@
 #if defined(__APPLE__)
 #define _DARWIN_C_SOURCE 1
+#elif defined(__linux__)
+#define _GNU_SOURCE 1 /* O_PATH: walk up through directories we may search but not read */
 #else
 #define _POSIX_C_SOURCE 200809L
 #endif
@@ -11,7 +13,24 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/statvfs.h>
+#include <stdio.h>
 #include <unistd.h>
+
+/*
+ * How the containment walk opens each ancestor: for search only, where the platform allows it.
+ * Opening for reading needs read permission, which is exactly what a sandbox withholds from
+ * /var/mobile while still letting us traverse it, so a read-only walk failed at the very directory
+ * a graft goes through and every grafted child was discarded. O_SEARCH is POSIX and Darwin's;
+ * O_PATH is Linux's. Where neither exists this falls back to reading, which fails closed: a child
+ * whose containment cannot be shown is not offered.
+ */
+#if defined(O_SEARCH)
+#define RO_SEARCH_FLAGS (O_SEARCH | O_CLOEXEC)
+#elif defined(O_PATH)
+#define RO_SEARCH_FLAGS (O_PATH | O_DIRECTORY | O_CLOEXEC)
+#else
+#define RO_SEARCH_FLAGS (O_RDONLY | O_DIRECTORY | O_CLOEXEC)
+#endif
 
 #define RO_DEPTH 256u
 #define RO_BYTES (16u * 1024u * 1024u)
@@ -26,6 +45,11 @@ typedef struct ro_node {
      * opened and stat'd by following the link. On iOS /etc, /tmp and /var are all symlinks, so
      * refusing every one of them hid /var and with it everything under it. */
     bool follow;
+    /* Reached through a parent the sandbox will not let us list or open, by opening
+     * "<parent>/<name>" relative to the grandparent. On iOS /var/mobile is like this: listing it is
+     * denied while /var/mobile/Media beneath it is readable, so traversal is allowed and only
+     * enumeration is not. The parent is skipped on the way down, never opened. */
+    bool via;
 } ro_node;
 
 typedef struct ro_backend {
@@ -40,6 +64,7 @@ typedef struct ro_entry {
     char *name;
     struct stat identity;
     bool follow;
+    bool via;
 } ro_entry;
 
 static oct_status error_status(int error)
@@ -109,11 +134,11 @@ static bool contained(const ro_backend *b, int fd)
     if (here.st_dev == b->nodes[0].identity.st_dev && here.st_ino == b->nodes[0].identity.st_ino) {
         return true;
     }
-    int at = openat(fd, ".", O_RDONLY | O_DIRECTORY | O_CLOEXEC);
+    int at = openat(fd, ".", RO_SEARCH_FLAGS);
     if (at < 0) return false;
     for (unsigned step = 0; step < RO_DEPTH; step++) {
         if (!allowed(b)) { close(at); return false; }
-        int up = openat(at, "..", O_RDONLY | O_DIRECTORY | O_CLOEXEC);
+        int up = openat(at, "..", RO_SEARCH_FLAGS);
         if (up < 0) { close(at); return false; }
         struct stat parent;
         if (fstat(up, &parent) < 0) { close(up); close(at); return false; }
@@ -131,6 +156,20 @@ static bool contained(const ro_backend *b, int fd)
     close(at);
     return false;
 }
+
+
+static bool join_components(char *out, size_t capacity, const char *first, const char *second)
+{
+    int written = snprintf(out, capacity, "%s/%s", first, second);
+    return written > 0 && (size_t)written < capacity;
+}
+
+/* Directory names tried beneath a directory that cannot be listed. Only ones that open, are
+ * directories, and lie inside the served root are shown; the rest are skipped silently, so a name
+ * here that does not exist costs one failed open. These are what an iOS /var/mobile holds. */
+static const char *const graft_candidates[] = {
+    "Media", "Documents", "Library", "Containers", "Downloads",
+};
 
 /* Resolve from the pinned root descriptor, checking the identity of EVERY
  * ancestor. No path strings, symlink resolution, or ambient working directory. */
@@ -152,6 +191,29 @@ static oct_status open_directory(ro_backend *b, uint64_t node, int *out)
     for (uint32_t i = count; i > 0; i--) {
         if (!allowed(b)) { close(fd); return OCT_E_STATE; }
         ro_node *n = &b->nodes[chain[i - 1]];
+        if (i >= 2 && b->nodes[chain[i - 2]].via) {
+            /* The next node is reached through this one without opening it: open both components
+             * at once from here, verify the child, and step past the pair. */
+            ro_node *child = &b->nodes[chain[i - 2]];
+            char joined[2 * (OCT_NAME_MAX + 1) + 2];
+            if (!join_components(joined, sizeof joined, n->name, child->name)) {
+                close(fd);
+                return OCT_E_INVALID_NAME;
+            }
+            int via_flags = O_RDONLY | O_DIRECTORY | O_CLOEXEC | (child->follow ? 0 : O_NOFOLLOW);
+            int reached = openat(fd, joined, via_flags);
+            int reach_error = errno;
+            close(fd);
+            if (reached < 0) return error_status(reach_error);
+            struct stat reached_stat;
+            if (fstat(reached, &reached_stat) < 0 || !same(&child->identity, &reached_stat)) {
+                close(reached);
+                return OCT_E_INVALID_HANDLE;
+            }
+            fd = reached;
+            i--; /* the child is done too */
+            continue;
+        }
         int flags = O_RDONLY | O_DIRECTORY | O_CLOEXEC | (n->follow ? 0 : O_NOFOLLOW);
         int next = openat(fd, n->name, flags);
         int saved = errno;
@@ -175,10 +237,21 @@ static oct_status ro_stat(void *context, uint64_t node, oct_node_stat *out)
     if (node > b->count) return OCT_E_INVALID_HANDLE;
     int fd;
     ro_node *n = &b->nodes[node];
-    oct_status status = open_directory(b, node ? n->parent : 0, &fd);
-    if (status != OCT_OK) return status;
     struct stat st;
-    int result = node ? fstatat(fd, n->name, &st, n->follow ? 0 : AT_SYMLINK_NOFOLLOW) : fstat(fd, &st);
+    int result;
+    if (node && n->via) {
+        /* Its parent cannot be opened, so stat it from the grandparent through the parent's name. */
+        ro_node *parent = &b->nodes[n->parent];
+        char joined[2 * (OCT_NAME_MAX + 1) + 2];
+        if (!join_components(joined, sizeof joined, parent->name, n->name)) return OCT_E_INVALID_NAME;
+        oct_status opened = open_directory(b, parent->parent, &fd);
+        if (opened != OCT_OK) return opened;
+        result = fstatat(fd, joined, &st, n->follow ? 0 : AT_SYMLINK_NOFOLLOW);
+    } else {
+        oct_status opened = open_directory(b, node ? n->parent : 0, &fd);
+        if (opened != OCT_OK) return opened;
+        result = node ? fstatat(fd, n->name, &st, n->follow ? 0 : AT_SYMLINK_NOFOLLOW) : fstat(fd, &st);
+    }
     int saved = errno;
     close(fd);
     if (result < 0) return error_status(saved);
@@ -226,7 +299,8 @@ static oct_status intern(ro_backend *b, uint32_t parent, const ro_entry *entry, 
 {
     for (uint32_t i = 1; i <= b->count; i++) {
         ro_node *n = &b->nodes[i];
-        if (n->parent == parent && n->follow == entry->follow && !strcmp(n->name, entry->name) &&
+        if (n->parent == parent && n->follow == entry->follow && n->via == entry->via &&
+            !strcmp(n->name, entry->name) &&
             same(&n->identity, &entry->identity)) {
             *out = i;
             return OCT_OK;
@@ -245,9 +319,51 @@ static oct_status intern(ro_backend *b, uint32_t parent, const ro_entry *entry, 
     /* Carried onto the node, or the entry would be listed and then opened without following,
      * which fails for every symlink it was resolved from. */
     n->follow = entry->follow;
+    n->via = entry->via;
     b->name_bytes += bytes;
     *out = b->count;
     return OCT_OK;
+}
+
+/* Children of a directory the sandbox will not open, found by opening "<directory>/<candidate>"
+ * from its parent. Each is verified as a directory inside the served root before it is shown. */
+static oct_status list_grafted(ro_backend *b, uint64_t directory, oct_node_visitor visit, void *visit_context)
+{
+    ro_node *dir = &b->nodes[directory];
+    if (dir->depth >= b->options.max_depth) return OCT_E_TOO_LARGE;
+    int parent_fd;
+    oct_status status = open_directory(b, dir->parent, &parent_fd);
+    if (status != OCT_OK) return status;
+    ro_entry found[sizeof graft_candidates / sizeof graft_candidates[0]];
+    uint32_t count = 0;
+    for (size_t i = 0; i < sizeof graft_candidates / sizeof graft_candidates[0]; i++) {
+        if (!allowed(b)) { status = OCT_E_STATE; break; }
+        char joined[2 * (OCT_NAME_MAX + 1) + 2];
+        if (!join_components(joined, sizeof joined, dir->name, graft_candidates[i])) continue;
+        int child = openat(parent_fd, joined, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
+        if (child < 0) continue;
+        struct stat st;
+        bool keep = fstat(child, &st) == 0 && S_ISDIR(st.st_mode) && contained(b, child);
+        close(child);
+        if (!keep) continue;
+        found[count].name = strdup(graft_candidates[i]);
+        if (!found[count].name) { status = OCT_E_NO_MEMORY; break; }
+        found[count].identity = st;
+        found[count].follow = false;
+        found[count].via = true;
+        count++;
+    }
+    close(parent_fd);
+    for (uint32_t i = 0; i < count && status == OCT_OK; i++) {
+        uint64_t node;
+        status = intern(b, (uint32_t)directory, &found[i], &node);
+        oct_node_stat stat;
+        if (status == OCT_OK) status = ro_stat(b, node, &stat);
+        if (status == OCT_OK) status = visit(visit_context, node, found[i].name, &stat);
+    }
+    for (uint32_t i = 0; i < count; i++) free(found[i].name);
+    if (status == OCT_OK && !allowed(b)) status = OCT_E_STATE;
+    return status;
 }
 
 static oct_status ro_list(void *context, uint64_t directory, oct_node_visitor visit, void *visit_context)
@@ -256,6 +372,11 @@ static oct_status ro_list(void *context, uint64_t directory, oct_node_visitor vi
     if (!visit) return OCT_E_INVALID_ARGUMENT;
     int fd;
     oct_status status = open_directory(b, directory, &fd);
+    if (status == OCT_E_WRITE_PROTECTED && directory != 0) {
+        /* The sandbox refused this directory. Traversal through it may still be allowed, as it is
+         * for /var/mobile, so offer the children that can be reached rather than nothing. */
+        return list_grafted(b, directory, visit, visit_context);
+    }
     if (status != OCT_OK) return status;
     if (b->nodes[directory].depth >= b->options.max_depth) { close(fd); return OCT_E_TOO_LARGE; }
     DIR *stream = fdopendir(fd);

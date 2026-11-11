@@ -22,6 +22,8 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <fcntl.h>
+#include <sys/wait.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -464,6 +466,89 @@ static void test_real_file_downloads_over_the_protocol(void)
     oct_store_close(store);
 }
 
+/*
+ * A directory the sandbox will not list, with readable children beneath it. On iOS /var/mobile is
+ * exactly this: listing it is refused while /var/mobile/Media is readable, so a host browsing from /
+ * found it empty and never reached the photos under it. Its reachable children are now grafted in.
+ *
+ * Reproduced with a mode 0111 directory, which can be searched but not read, as a user who is
+ * subject to permissions. Root is not, so as root the check runs in a child that has given them up.
+ */
+static int graft_scenario(const char *root)
+{
+    int failures = 0;
+#define GRAFT_EXPECT(c) do { if (!(c)) { fprintf(stderr, "graft: %s failed\n", #c); failures++; } } while (0)
+    char path[PATH_CAPACITY];
+    snprintf(path, sizeof path, "%s/private/var/mobile", root);
+    int direct = open(path, O_RDONLY | O_DIRECTORY);
+    GRAFT_EXPECT(direct < 0);                     /* the precondition: not listable */
+    if (direct >= 0) close(direct);
+
+    grant = true;
+    oct_readonly_options options = { .root = root, .authorized = authorized, .cross_filesystems = true };
+    oct_store *store = NULL;
+    if (oct_readonly_store_open(&options, NULL, &store) != OCT_OK || !store) return failures + 1;
+    uint32_t var = named(store, OCT_ROOT, "var");
+    uint32_t mobile = var ? named(store, var, "mobile") : 0;
+    GRAFT_EXPECT(mobile != 0);
+    uint32_t media = mobile ? named(store, mobile, "Media") : 0;
+    GRAFT_EXPECT(media != 0);                     /* grafted in */
+    GRAFT_EXPECT(!mobile || named(store, mobile, "Secret") == 0); /* not a candidate: stays hidden */
+    uint32_t dcim = media ? named(store, media, "DCIM") : 0;
+    GRAFT_EXPECT(dcim != 0);                      /* and browsable below the graft */
+    uint32_t photo = dcim ? named(store, dcim, "IMG_0001.JPG") : 0;
+    GRAFT_EXPECT(photo != 0);
+    if (photo) {
+        char bytes[32] = { 0 };
+        size_t got = 0;
+        GRAFT_EXPECT(oct_store_read(store, photo, 0, bytes, sizeof bytes, &got) == OCT_OK);
+        GRAFT_EXPECT(got == 11 && memcmp(bytes, "jpeg bytes\n", 11) == 0);
+    }
+    oct_store_close(store);
+#undef GRAFT_EXPECT
+    return failures;
+}
+
+static void test_graft_beneath_denied_directory(void)
+{
+    char root[ROOT_CAPACITY] = "/tmp/octopus-ro-XXXXXX", path[PATH_CAPACITY];
+    CHECK(mkdtemp(root) != NULL);
+    CHECK(real_path_of(root, ROOT_CAPACITY));
+    static const char *const dirs[] = { "private", "private/var", "private/var/mobile",
+                                        "private/var/mobile/Media", "private/var/mobile/Media/DCIM",
+                                        "private/var/mobile/Secret" };
+    for (size_t i = 0; i < sizeof dirs / sizeof dirs[0]; i++) {
+        snprintf(path, sizeof path, "%s/%s", root, dirs[i]);
+        CHECK_EQ(mkdir(path, 0755), 0);
+    }
+    snprintf(path, sizeof path, "%s/private/var/mobile/Media/DCIM/IMG_0001.JPG", root);
+    put(path, "jpeg bytes\n");
+    snprintf(path, sizeof path, "%s/var", root);
+    CHECK_EQ(symlink("private/var", path), 0);
+    /* Everyone may read the tree, then mobile becomes search-only: the iOS shape. */
+    CHECK_EQ(chmod(root, 0755), 0);
+    snprintf(path, sizeof path, "%s/private/var/mobile", root);
+    CHECK_EQ(chmod(path, 0111), 0);
+
+    if (geteuid() != 0) {
+        CHECK_EQ(graft_scenario(root), 0);
+    } else {
+        pid_t child = fork();
+        CHECK(child >= 0);
+        if (child == 0) {
+            /* Become someone permissions apply to; without that the precondition cannot hold. */
+            if (setgid(65534) != 0 || setuid(65534) != 0) _exit(2);
+            _exit(graft_scenario(root) == 0 ? 0 : 1);
+        }
+        int status = 0;
+        CHECK_EQ(waitpid(child, &status, 0), child);
+        CHECK(WIFEXITED(status));
+        CHECK_EQ(WEXITSTATUS(status), 0);
+    }
+    snprintf(path, sizeof path, "%s/private/var/mobile", root);
+    CHECK_EQ(chmod(path, 0755), 0); /* so the temporary tree can be removed */
+}
+
 void run_readonly_tests(void)
 {
     test_creation_is_guarded();
@@ -475,4 +560,5 @@ void run_readonly_tests(void)
     test_symlink_traversal();
     test_large_node_ceiling();
     test_real_file_downloads_over_the_protocol();
+    test_graft_beneath_denied_directory();
 }

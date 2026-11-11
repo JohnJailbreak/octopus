@@ -347,6 +347,32 @@ bool oct_native_lease_unpack(uint64_t word, oct_native_lease_word *out)
     return true;
 }
 
+bool oct_native_transport_fresh(uint64_t now_ms, uint64_t last_heard_ms, uint64_t window_ms)
+{
+    if (last_heard_ms == 0 || now_ms < last_heard_ms) return false;
+    return now_ms - last_heard_ms <= window_ms;
+}
+
+oct_native_transport_stage oct_native_transport_stage_of(const oct_native_runtime *runtime, bool fresh)
+{
+    if (!runtime || !fresh) return OCT_NATIVE_TRANSPORT_ABSENT;
+    if (!(runtime->flags & OCT_NATIVE_RUNTIME_HOOKED)) return OCT_NATIVE_TRANSPORT_ABSENT;
+    if (runtime->commands == 0) return OCT_NATIVE_TRANSPORT_WAITING;
+    if (runtime->flags & OCT_NATIVE_RUNTIME_SERVING) return OCT_NATIVE_TRANSPORT_SERVING;
+    return OCT_NATIVE_TRANSPORT_HOST;
+}
+
+const char *oct_native_transport_stage_name(oct_native_transport_stage stage)
+{
+    switch (stage) {
+    case OCT_NATIVE_TRANSPORT_ABSENT: return "Transport unavailable";
+    case OCT_NATIVE_TRANSPORT_WAITING: return "Waiting for a connection";
+    case OCT_NATIVE_TRANSPORT_HOST: return "Host connected";
+    case OCT_NATIVE_TRANSPORT_SERVING: return "Session active";
+    }
+    return "Transport unavailable";
+}
+
 const char *oct_native_root_state_name(oct_native_root_state state)
 {
     switch (state) {
@@ -621,6 +647,23 @@ static oct_status notify_read(const char *name, uint64_t *word)
     return status == NOTIFY_STATUS_OK ? OCT_OK : OCT_E_IO;
 }
 
+oct_status oct_native_runtime_check(bool *posted)
+{
+    /* Held for the life of the process: notify_check reports posts since this token last looked,
+     * so a token made per call would report every post forever. */
+    static int token = -1;
+    if (!posted) return OCT_E_INVALID_ARGUMENT;
+    *posted = false;
+    if (token < 0 && notify_register_check(OCT_NATIVE_RUNTIME_NAME, &token) != NOTIFY_STATUS_OK) {
+        token = -1;
+        return OCT_E_IO;
+    }
+    int check = 0;
+    if (notify_check(token, &check) != NOTIFY_STATUS_OK) return OCT_E_IO;
+    *posted = check != 0;
+    return OCT_OK;
+}
+
 oct_status oct_native_detail_publish(const oct_native_detail *detail)
 {
     static int token = -1;
@@ -750,6 +793,12 @@ oct_status oct_native_hooks_read(oct_native_hook_report *out)
 oct_status oct_native_runtime_read(oct_native_runtime *out)
 {
     if (out) memset(out, 0, sizeof *out);
+    return OCT_E_UNSUPPORTED;
+}
+oct_status oct_native_runtime_check(bool *posted)
+{
+    /* No notifyd here, so nothing is ever heard: the transport reads as absent. */
+    if (posted) *posted = false;
     return OCT_E_UNSUPPORTED;
 }
 oct_status oct_native_lease_read(oct_native_lease_word *out)
