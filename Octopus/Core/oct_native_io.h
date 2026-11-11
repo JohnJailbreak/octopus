@@ -242,6 +242,24 @@ oct_status oct_native_roots_read(oct_native_root_report *out);
 /* Fills `report` by probing every root in the table. Serial caller. */
 void       oct_native_probe_all_roots(oct_native_root_report *report);
 
+/* What a report says about one root, so a caller reads a verdict rather than doing bit arithmetic
+ * on three masks. */
+typedef enum oct_native_root_state {
+    OCT_NATIVE_ROOT_UNREACHABLE = 0, /* not openable, and not refused either */
+    OCT_NATIVE_ROOT_REFUSED,         /* EPERM or EACCES: the sandbox said no */
+    OCT_NATIVE_ROOT_OPENED_EMPTY,    /* opened, but no entry could be read */
+    OCT_NATIVE_ROOT_READABLE,        /* opened and listed: servable read-only */
+} oct_native_root_state;
+
+const char *oct_native_root_state_name(oct_native_root_state state);
+oct_native_root_state oct_native_root_state_of(const oct_native_root_report *report, oct_native_root root);
+
+/* The lease mode that serves a root: synthetic exposure for the in-memory tree, the matching scope
+ * for a real one. Lives here, next to the table it indexes, rather than in a caller that would have
+ * to do the arithmetic itself; the first caller to try that got the types wrong. Returns
+ * OCT_NATIVE_LEASE_NONE for a root outside the table. */
+oct_native_lease_mode oct_native_lease_mode_for_root(oct_native_root root);
+
 /* ---- Which provider hooks a host actually called -------------------------------------------
  *
  * The provider records a named event for every call it serves, but that journal only leaves ptpd

@@ -281,17 +281,18 @@ enum Diagnostics {
                                       + "after its hooks install; connect USB with Octopus open, then run this again.",
                                   checks: 1)
                 }
+                // Each verdict comes from C too, rather than from bit arithmetic over three masks
+                // written in Swift, for the same reason as the mapping above.
                 var lines: [String] = []
+                var anyReadable = false
                 for raw in 1..<OCT_NATIVE_ROOT_COUNT.rawValue {
-                    guard let path = oct_native_root_path(oct_native_root(rawValue: raw)) else { continue }
-                    let bit = UInt8(1 << raw)
-                    let name = String(cString: path)
-                    if roots.refused & bit != 0 { lines.append("\(name): refused by the sandbox") }
-                    else if roots.listable & bit != 0 { lines.append("\(name): readable") }
-                    else if roots.openable & bit != 0 { lines.append("\(name): opens but lists nothing") }
-                    else { lines.append("\(name): not reachable") }
+                    let root = oct_native_root(rawValue: raw)
+                    guard let path = oct_native_root_path(root) else { continue }
+                    let state = oct_native_root_state_of(&roots, root)
+                    if state == OCT_NATIVE_ROOT_READABLE { anyReadable = true }
+                    let verdict = String(cString: oct_native_root_state_name(state))
+                    lines.append("\(String(cString: path)): \(verdict)")
                 }
-                let anyReadable = roots.listable != 0
                 return result("native.roots", "Native integration", "Filesystem roots ptpd can read",
                               .nativeObservation, anyReadable ? .pass : .blocked,
                               lines.joined(separator: "; ") + ". A readable root can be served read-only; "

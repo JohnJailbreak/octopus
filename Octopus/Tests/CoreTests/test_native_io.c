@@ -846,36 +846,62 @@ static void test_lease_scopes(void)
     CHECK(!oct_native_lease_unpack(beyond, &out));
 }
 
-/* The mapping the app's scope picker uses. Each choice is a root; the lease carries the matching
- * mode number and nothing else, and the companion resolves it through the same table it probes.
- * Mirrored here because the Swift that does it cannot be compiled or run in this environment. */
+/* The mapping the app's scope picker uses, and the verdict it prints per root. Both live in C
+ * because the first version did the arithmetic in Swift and got the integer types wrong, which
+ * only a Swift compiler would catch and this environment has none. */
 static void test_scope_selection(void)
 {
     for (unsigned root = 0; root < OCT_NATIVE_ROOT_COUNT; root++) {
-        unsigned mode = root == OCT_NATIVE_ROOT_SYNTHETIC
-                            ? (unsigned)OCT_NATIVE_LEASE_EXPOSE_SYNTHETIC
-                            : (unsigned)OCT_NATIVE_LEASE_EXPOSE_ROOT_BASE + root - 1u;
-        /* The mode the app would send resolves to the root the user picked. */
-        const char *from_mode = oct_native_lease_root((oct_native_lease_mode)mode);
+        oct_native_lease_mode mode = oct_native_lease_mode_for_root((oct_native_root)root);
+        const char *from_mode = oct_native_lease_root(mode);
         const char *from_root = oct_native_root_path((oct_native_root)root);
         if (root == OCT_NATIVE_ROOT_SYNTHETIC) {
+            CHECK_EQ(mode, OCT_NATIVE_LEASE_EXPOSE_SYNTHETIC);
             CHECK(from_mode == NULL && from_root == NULL); /* serves no filesystem */
         } else {
             CHECK(from_mode != NULL && from_root != NULL);
             if (from_mode && from_root) CHECK(strcmp(from_mode, from_root) == 0);
         }
-        /* And a current lease carrying it grants exactly that, not something lesser. */
+        /* A current lease carrying it grants exactly that, not something lesser. */
         oct_native_lease_word word = { .mode = (uint8_t)mode, .deadline_ms = 1000 };
         oct_native_lease_word back;
         CHECK(oct_native_lease_unpack(oct_native_lease_pack(&word), &back));
-        CHECK_EQ(oct_native_lease_effective(&back, 500), (oct_native_lease_mode)mode);
+        CHECK_EQ(oct_native_lease_effective(&back, 500), mode);
     }
     /* The whole filesystem is reachable as a choice, which is the point of having it. */
-    unsigned whole = (unsigned)OCT_NATIVE_LEASE_EXPOSE_ROOT_BASE + OCT_NATIVE_ROOT_SYSTEM - 1u;
-    const char *path = oct_native_lease_root((oct_native_lease_mode)whole);
+    oct_native_lease_mode whole = oct_native_lease_mode_for_root(OCT_NATIVE_ROOT_SYSTEM);
+    const char *path = oct_native_lease_root(whole);
     CHECK(path != NULL);
     if (path) CHECK(strcmp(path, "/") == 0);
-    CHECK_EQ((oct_native_lease_mode)whole, OCT_NATIVE_LEASE_MODE_LAST);
+    CHECK_EQ(whole, OCT_NATIVE_LEASE_MODE_LAST);
+    /* Out of range serves nothing rather than something arbitrary. */
+    CHECK_EQ(oct_native_lease_mode_for_root((oct_native_root)OCT_NATIVE_ROOT_COUNT), OCT_NATIVE_LEASE_NONE);
+    CHECK(oct_native_lease_root(OCT_NATIVE_LEASE_NONE) == NULL);
+}
+
+/* The per-root verdict the diagnostic prints. */
+static void test_root_state(void)
+{
+    const uint8_t media = (uint8_t)(1u << OCT_NATIVE_ROOT_MEDIA);
+    const uint8_t dcim = (uint8_t)(1u << OCT_NATIVE_ROOT_DCIM);
+    const uint8_t system = (uint8_t)(1u << OCT_NATIVE_ROOT_SYSTEM);
+    oct_native_root_report report = { .openable = (uint8_t)(media | dcim),
+                                      .listable = media,
+                                      .refused = system };
+    CHECK_EQ(oct_native_root_state_of(&report, OCT_NATIVE_ROOT_MEDIA), OCT_NATIVE_ROOT_READABLE);
+    CHECK_EQ(oct_native_root_state_of(&report, OCT_NATIVE_ROOT_DCIM), OCT_NATIVE_ROOT_OPENED_EMPTY);
+    CHECK_EQ(oct_native_root_state_of(&report, OCT_NATIVE_ROOT_SYSTEM), OCT_NATIVE_ROOT_REFUSED);
+    CHECK_EQ(oct_native_root_state_of(&report, OCT_NATIVE_ROOT_MOBILE), OCT_NATIVE_ROOT_UNREACHABLE);
+    /* A refusal outranks anything else recorded for the same root. */
+    oct_native_root_report both = { .openable = system, .listable = system, .refused = system };
+    CHECK_EQ(oct_native_root_state_of(&both, OCT_NATIVE_ROOT_SYSTEM), OCT_NATIVE_ROOT_REFUSED);
+    /* Out of range and absent inputs are unreachable, never a false positive. */
+    CHECK_EQ(oct_native_root_state_of(&report, (oct_native_root)OCT_NATIVE_ROOT_COUNT),
+             OCT_NATIVE_ROOT_UNREACHABLE);
+    CHECK_EQ(oct_native_root_state_of(NULL, OCT_NATIVE_ROOT_MEDIA), OCT_NATIVE_ROOT_UNREACHABLE);
+    for (int state = OCT_NATIVE_ROOT_UNREACHABLE; state <= OCT_NATIVE_ROOT_READABLE; state++) {
+        CHECK(strcmp(oct_native_root_state_name((oct_native_root_state)state), "unknown") != 0);
+    }
 }
 
 void run_native_io_tests(void)
@@ -888,6 +914,7 @@ void run_native_io_tests(void)
     test_lease_word();
     test_lease_scopes();
     test_scope_selection();
+    test_root_state();
     test_runtime_word();
     test_hook_report();
     test_root_probe();

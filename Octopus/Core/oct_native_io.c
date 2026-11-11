@@ -347,6 +347,36 @@ bool oct_native_lease_unpack(uint64_t word, oct_native_lease_word *out)
     return true;
 }
 
+const char *oct_native_root_state_name(oct_native_root_state state)
+{
+    switch (state) {
+    case OCT_NATIVE_ROOT_UNREACHABLE: return "not reachable";
+    case OCT_NATIVE_ROOT_REFUSED: return "refused by the sandbox";
+    case OCT_NATIVE_ROOT_OPENED_EMPTY: return "opens but lists nothing";
+    case OCT_NATIVE_ROOT_READABLE: return "readable";
+    }
+    return "unknown";
+}
+
+oct_native_root_state oct_native_root_state_of(const oct_native_root_report *report, oct_native_root root)
+{
+    if (!report || root >= OCT_NATIVE_ROOT_COUNT) return OCT_NATIVE_ROOT_UNREACHABLE;
+    uint8_t bit = (uint8_t)(1u << (unsigned)root);
+    /* Refused outranks the rest: a sandbox denial is the fact worth reporting even if something
+     * else about the probe also failed. */
+    if (report->refused & bit) return OCT_NATIVE_ROOT_REFUSED;
+    if (report->listable & bit) return OCT_NATIVE_ROOT_READABLE;
+    if (report->openable & bit) return OCT_NATIVE_ROOT_OPENED_EMPTY;
+    return OCT_NATIVE_ROOT_UNREACHABLE;
+}
+
+oct_native_lease_mode oct_native_lease_mode_for_root(oct_native_root root)
+{
+    if (root == OCT_NATIVE_ROOT_SYNTHETIC) return OCT_NATIVE_LEASE_EXPOSE_SYNTHETIC;
+    if (root >= OCT_NATIVE_ROOT_COUNT) return OCT_NATIVE_LEASE_NONE;
+    return (oct_native_lease_mode)((unsigned)OCT_NATIVE_LEASE_EXPOSE_ROOT_BASE + (unsigned)root - 1u);
+}
+
 const char *oct_native_lease_root(oct_native_lease_mode mode)
 {
     if (mode < OCT_NATIVE_LEASE_EXPOSE_ROOT_BASE || mode > OCT_NATIVE_LEASE_MODE_LAST) return NULL;

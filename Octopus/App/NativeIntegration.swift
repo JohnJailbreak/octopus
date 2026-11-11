@@ -30,10 +30,10 @@ final class NativeIntegration: ObservableObject {
     /// which the companion resolves through the same root table it probes, so the app never sends a
     /// path. Synthetic exposure stays mode 2.
     private var exposureMode: UInt8 {
-        if scope == OCT_NATIVE_ROOT_SYNTHETIC {
-            return UInt8(OCT_NATIVE_LEASE_EXPOSE_SYNTHETIC.rawValue)
-        }
-        return UInt8(OCT_NATIVE_LEASE_EXPOSE_ROOT_BASE.rawValue + Int32(scope.rawValue) - 1)
+        // The mapping lives in C, beside the table it indexes, and is tested there. Doing the
+        // arithmetic here is what broke the build: the two enums import with different integer
+        // types and the mix only shows up at Swift compile time, which this environment has none of.
+        UInt8(truncatingIfNeeded: oct_native_lease_mode_for_root(scope).rawValue)
     }
 
     /// What the selected scope will serve, for the interface to show before it is granted.
