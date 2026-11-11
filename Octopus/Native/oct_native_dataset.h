@@ -33,4 +33,17 @@ int oct_native_device_info_add_format(const uint8_t *input, size_t length,
  * dataset. */
 int oct_native_object_info_set_format(unsigned char *bytes, size_t length, uint16_t from, uint16_t to);
 
+
+/* ---- Advertising an operation -------------------------------------------------------------
+ *
+ * Appends an operation code to OperationsSupported, the first array in a PTPDeviceInfoDataset,
+ * exactly as add_format appends to the playback formats array: same arguments, same returns, same
+ * refusal to touch a dataset whose layout is not completely understood.
+ *
+ * A host reads that array to decide which operations to offer. Without DeleteObject in it Explorer
+ * will not offer to delete, however willing the device is. */
+int oct_native_device_info_add_operation(const uint8_t *input, size_t length,
+                                         uint16_t operation, uint8_t *output,
+                                         size_t capacity, size_t *output_length);
+
 #endif

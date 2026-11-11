@@ -32,11 +32,15 @@ int main(void)
     /* The USB transport heartbeat, on the real Darwin code path. This is what the USB Connection
      * screen reads, and the case that matters most is the last one: a state left behind after the
      * poster stops must not read as a live session. */
-    bool posted = true;
-    EXPECT(oct_native_runtime_check(&posted) == OCT_OK);
-    EXPECT(!posted);                                               /* nothing posted yet */
     oct_native_runtime live = { .mode = 2, .flags = OCT_NATIVE_RUNTIME_HOOKED | OCT_NATIVE_RUNTIME_SERVING,
                                 .commands = 213, .responses = 212, .provider_events = 115 };
+    /* A ptpd that has since exited left a state behind, posted before the app first looked. That
+     * must not count as a heartbeat: on Apple's platforms notify_check reports a post on its first
+     * call unconditionally, and trusting it showed a live session on an unplugged phone. */
+    EXPECT(oct_native_runtime_publish(&live) == OCT_OK);
+    bool posted = true;
+    EXPECT(oct_native_runtime_check(&posted) == OCT_OK);
+    EXPECT(!posted);                                               /* the leftover is not a heartbeat */
     EXPECT(oct_native_runtime_publish(&live) == OCT_OK);           /* ptpd's poll publishes */
     EXPECT(oct_native_runtime_check(&posted) == OCT_OK);
     EXPECT(posted);                                                /* heard */

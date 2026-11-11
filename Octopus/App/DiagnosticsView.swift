@@ -41,6 +41,10 @@ struct DiagnosticsWindow: View {
                         }
                         .pickerStyle(.menu)
                         .disabled(!native.observe)
+                        // Writes are a separate, explicit grant: a computer that can read the
+                        // chosen root is not thereby allowed to change it.
+                        Toggle("Allow a computer to change files", isOn: $native.allowWrites)
+                            .disabled(!native.observe || native.scope == OCT_NATIVE_ROOT_SYNTHETIC)
                         Text("Serving \(native.scopeDescription). Reconnect USB after changing this.")
                             .font(.system(size: 12)).foregroundStyle(Theme.secondary)
                         Text(native.detail)

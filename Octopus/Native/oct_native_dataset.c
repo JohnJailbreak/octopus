@@ -12,9 +12,10 @@ static bool skip_string(const uint8_t *p,size_t length,size_t *offset) {
     if (units && (p[*offset+bytes-2] || p[*offset+bytes-1])) return false;
     *offset+=bytes;return true;
 }
-int oct_native_device_info_add_format(const uint8_t *input,size_t length,
-                                     uint16_t format,uint8_t *output,
-                                     size_t capacity,size_t *output_length) {
+/* Shared by both public appends: the arrays differ, the walk does not. `which` is the array's
+ * index in the dataset, 0 for OperationsSupported and 4 for the playback formats. */
+static int add_to_array(const uint8_t *input,size_t length,uint16_t value,unsigned which,
+                        uint8_t *output,size_t capacity,size_t *output_length) {
     if (!output_length) return -1;
     *output_length=0;
     if (!input || length<8 || length>OCT_NATIVE_DEVICE_INFO_MAX) return -1;
@@ -27,28 +28,41 @@ int oct_native_device_info_add_format(const uint8_t *input,size_t length,
         if (length-offset<4) return -1;
         size_t count_offset=offset;uint32_t count=u32(input+offset);offset+=4;
         if (count>(length-offset)/2) return -1;
-        if (array==4) {
+        if (array==which) {
             format_count_offset=count_offset;formats=count;
             for (uint32_t i=0;i<count;i++) {
                 const uint8_t *item=input+offset+(size_t)i*2;
-                if (((uint16_t)item[0] | (uint16_t)item[1]<<8)==format) present=true;
+                if (((uint16_t)item[0] | (uint16_t)item[1]<<8)==value) present=true;
             }
         }
         offset+=(size_t)count*2;
-        if (array==4) format_end=offset;
+        if (array==which) format_end=offset;
     }
     /* Manufacturer, model, device version and serial number. Require the
-     * complete known layout before changing even one advertised format. */
+     * complete known layout before changing even one advertised entry. */
     for(unsigned i=0;i<4;i++)if(!skip_string(input,length,&offset))return -1;
     if (offset!=length) return -1;
     if (present) return 0;
     if (length>OCT_NATIVE_DEVICE_INFO_MAX-2 || !output || capacity<length+2) return -2;
     memcpy(output,input,format_end);
-    output[format_end]=(uint8_t)format;output[format_end+1]=(uint8_t)(format>>8);
+    output[format_end]=(uint8_t)value;output[format_end+1]=(uint8_t)(value>>8);
     memcpy(output+format_end+2,input+format_end,length-format_end);
     uint32_t count=formats+1;
     for(unsigned i=0;i<4;i++)output[format_count_offset+i]=(uint8_t)(count>>(i*8));
     *output_length=length+2;return 1;
+}
+
+
+int oct_native_device_info_add_format(const uint8_t *input,size_t length,
+                                     uint16_t format,uint8_t *output,
+                                     size_t capacity,size_t *output_length) {
+    return add_to_array(input,length,format,4,output,capacity,output_length); /* playback formats */
+}
+
+int oct_native_device_info_add_operation(const uint8_t *input,size_t length,
+                                         uint16_t operation,uint8_t *output,
+                                         size_t capacity,size_t *output_length) {
+    return add_to_array(input,length,operation,0,output,capacity,output_length); /* OperationsSupported */
 }
 
 int oct_native_object_info_set_format(unsigned char *bytes, size_t length, uint16_t from, uint16_t to)

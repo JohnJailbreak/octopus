@@ -721,3 +721,8 @@ oct_status oct_exchange_run(oct_responder *r, uint16_t operation, uint32_t trans
     for (uint32_t i = 0; i < result->param_count; i++) result->params[i] = oct_read_u32(&reader);
     return OCT_OK;
 }
+
+uint16_t oct_response_for_status(oct_status status)
+{
+    return response_for(status);
+}

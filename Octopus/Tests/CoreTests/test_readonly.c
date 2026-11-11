@@ -549,6 +549,115 @@ static void test_graft_beneath_denied_directory(void)
     CHECK_EQ(chmod(path, 0755), 0); /* so the temporary tree can be removed */
 }
 
+/*
+ * Writes, which are off unless asked for. A host copying a file onto the phone needs create, then
+ * write, and Explorer deletes through DeleteObject. Rename works too, once the identity it
+ * changes is re-recorded.
+ */
+static void test_writes(void)
+{
+    char root[ROOT_CAPACITY] = "/tmp/octopus-ro-XXXXXX", path[PATH_CAPACITY];
+    CHECK(mkdtemp(root) != NULL);
+    CHECK(real_path_of(root, ROOT_CAPACITY));
+    grant = true;
+
+    /* Read-only by default, so no existing caller starts writing by accident. */
+    oct_readonly_options readonly = { .root = root, .authorized = authorized };
+    oct_store *store = NULL;
+    CHECK_OK(oct_readonly_store_open(&readonly, NULL, &store));
+    if (store) {
+        uint32_t refused = 0;
+        CHECK_EQ(oct_store_create(store, OCT_ROOT, "nope.txt", false, &refused), OCT_E_WRITE_PROTECTED);
+        oct_store_close(store);
+        store = NULL;
+    }
+
+    oct_readonly_options writable = { .root = root, .authorized = authorized, .writable = true,
+                                     .max_read_bytes = 1u << 20 };
+    CHECK_OK(oct_readonly_store_open(&writable, NULL, &store));
+    if (!store) return;
+
+    /* The storage says read-write, which is what a host reads in GetStorageInfo. */
+    oct_storage_info storage = { 0 };
+    CHECK_OK(oct_store_storage_info(store, &storage));
+    CHECK_EQ(storage.access_capability, 0x0000);
+
+    uint32_t file = 0;
+    CHECK_OK(oct_store_create(store, OCT_ROOT, "hello.txt", false, &file));
+    CHECK(file != 0);
+    const char *text = "written over USB\n";
+    const size_t length = strlen(text);
+    CHECK_OK(oct_store_write(store, file, 0, text, length));
+
+    /* Read back through the store, and independently off the filesystem. */
+    char back[64] = { 0 };
+    size_t got = 0;
+    CHECK_OK(oct_store_read(store, file, 0, back, sizeof back, &got));
+    CHECK_EQ(got, length);
+    if (got == length) CHECK(memcmp(back, text, length) == 0);
+    snprintf(path, sizeof path, "%s/hello.txt", root);
+    FILE *opened = fopen(path, "rb");
+    CHECK(opened != NULL);
+    if (opened) {
+        char disk[64] = { 0 };
+        size_t read_bytes = fread(disk, 1, sizeof disk, opened);
+        fclose(opened);
+        CHECK_EQ(read_bytes, length);
+        if (read_bytes == length) CHECK(memcmp(disk, text, length) == 0);
+    }
+
+    /* A write at an offset, which a host does when sending a file in pieces. */
+    CHECK_OK(oct_store_write(store, file, 4, "XXXX", 4));
+    CHECK_OK(oct_store_read(store, file, 0, back, sizeof back, &got));
+    CHECK_EQ(got, length);
+    if (got == length) CHECK(memcmp(back, "writXXXXover USB\n", length) == 0);
+    /* Truncating, then growing again, leaves the handle usable: our own change is re-recorded. */
+    CHECK_OK(oct_store_truncate(store, file, 4));
+    CHECK_OK(oct_store_read(store, file, 0, back, sizeof back, &got));
+    CHECK_EQ(got, 4u);
+
+    /* Directories, nesting, and delete. */
+    uint32_t folder = 0, inner = 0;
+    CHECK_OK(oct_store_create(store, OCT_ROOT, "folder", true, &folder));
+    CHECK_OK(oct_store_create(store, folder, "inner.bin", false, &inner));
+    CHECK_OK(oct_store_write(store, inner, 0, "abc", 3));
+    uint32_t deleted = 0;
+    CHECK_OK(oct_store_delete(store, inner, &deleted));
+    snprintf(path, sizeof path, "%s/folder/inner.bin", root);
+    CHECK(access(path, F_OK) != 0); /* really gone from the filesystem */
+
+    /* Refusals. A duplicate, a traversal, a separator, writing to a directory, and a lapsed
+     * lease, which must stop a write as surely as it stops a read. */
+    uint32_t again = 0;
+    CHECK_EQ(oct_store_create(store, OCT_ROOT, "hello.txt", false, &again), OCT_E_EXISTS);
+    CHECK(oct_store_create(store, OCT_ROOT, "../escape", false, &again) != OCT_OK);
+    CHECK(oct_store_create(store, OCT_ROOT, "a/b", false, &again) != OCT_OK);
+    CHECK_EQ(oct_store_write(store, folder, 0, "x", 1), OCT_E_IS_DIRECTORY);
+    /* Rename, which changes ctime and so needs the same identity re-recording a write does: the
+     * rename succeeded and every later call on the handle reported it invalid until that was
+     * fixed. The handle must keep working and the listing must show the new name, not lose both. */
+    CHECK_OK(oct_store_rename(store, file, "other.txt"));
+    oct_object_info renamed = { 0 };
+    CHECK_OK(oct_store_get(store, file, &renamed));
+    CHECK(strcmp(renamed.name, "other.txt") == 0);
+    CHECK(named(store, OCT_ROOT, "other.txt") != 0);
+    CHECK_EQ(named(store, OCT_ROOT, "hello.txt"), 0u);
+    CHECK_OK(oct_store_read(store, file, 0, back, sizeof back, &got)); /* still readable */
+    /* Renaming onto a name already taken is refused rather than replacing it silently. */
+    uint32_t other = 0;
+    CHECK_OK(oct_store_create(store, OCT_ROOT, "taken.txt", false, &other));
+    CHECK(oct_store_rename(store, file, "taken.txt") != OCT_OK);
+    CHECK(named(store, OCT_ROOT, "other.txt") != 0); /* unchanged after the refusal */
+    CHECK(oct_store_rename(store, file, "a/b") != OCT_OK);
+    CHECK(oct_store_rename(store, file, "..") != OCT_OK);
+    grant = false;
+    CHECK_EQ(oct_store_create(store, OCT_ROOT, "after-revoke", false, &again), OCT_E_STATE);
+    CHECK(oct_store_write(store, file, 0, "x", 1) != OCT_OK);
+    CHECK(oct_store_delete(store, file, &deleted) != OCT_OK);
+    grant = true;
+    oct_store_close(store);
+}
+
 void run_readonly_tests(void)
 {
     test_creation_is_guarded();
@@ -561,4 +670,5 @@ void run_readonly_tests(void)
     test_large_node_ceiling();
     test_real_file_downloads_over_the_protocol();
     test_graft_beneath_denied_directory();
+    test_writes();
 }

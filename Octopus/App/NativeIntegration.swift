@@ -14,6 +14,10 @@ final class NativeIntegration: ObservableObject {
     /// sandbox will actually permit is reported by the "Filesystem roots ptpd can read" check.
     /// Nothing is writable in any of them.
     @Published var scope: oct_native_root = OCT_NATIVE_ROOT_SYNTHETIC { didSet { changed() } }
+    /// Whether a connected computer may change files in the served root: create, overwrite, and
+    /// delete. Off by default and never persisted, like every other switch here. The sample tree
+    /// is never writable, so this does nothing until a real root is chosen.
+    @Published var allowWrites = false { didSet { changed() } }
     @Published private(set) var detail = "Optional native companion required. Disabled by default."
     private(set) var token = ""
     private var active = false
@@ -29,11 +33,18 @@ final class NativeIntegration: ObservableObject {
     /// The lease mode for the current selection. Exposure of a real root maps onto the scope modes,
     /// which the companion resolves through the same root table it probes, so the app never sends a
     /// path. Synthetic exposure stays mode 2.
+    /// Writes only make sense for a real root, so asking for them on the sample tree is ignored
+    /// rather than quietly treated as a grant.
+    var writesEffective: Bool { allowWrites && scope != OCT_NATIVE_ROOT_SYNTHETIC }
+
     private var exposureMode: UInt8 {
         // The mapping lives in C, beside the table it indexes, and is tested there. Doing the
         // arithmetic here is what broke the build: the two enums import with different integer
         // types and the mix only shows up at Swift compile time, which this environment has none of.
-        UInt8(truncatingIfNeeded: oct_native_lease_mode_for_root(scope).rawValue)
+        let mode = writesEffective
+            ? oct_native_lease_write_mode_for_root(scope)
+            : oct_native_lease_mode_for_root(scope)
+        return UInt8(truncatingIfNeeded: mode.rawValue)
     }
 
     /// What the selected scope will serve, for the interface to show before it is granted.
@@ -41,7 +52,7 @@ final class NativeIntegration: ObservableObject {
         guard scope != OCT_NATIVE_ROOT_SYNTHETIC, let path = oct_native_root_path(scope) else {
             return "the built-in sample tree"
         }
-        return String(cString: path) + ", read-only"
+        return String(cString: path) + (writesEffective ? ", read and write" : ", read-only")
     }
 
     func sync(serviceActive: Bool) { active = serviceActive; synchronize() }
@@ -64,7 +75,7 @@ final class NativeIntegration: ObservableObject {
         guard let left = leftForeground else { return false }
         return Date().timeIntervalSince(left) < Self.backgroundGrace
     }
-    func revoke() { active = false; observe = false; synthetic = false; scope = OCT_NATIVE_ROOT_SYNTHETIC; synchronize() }
+    func revoke() { active = false; observe = false; synthetic = false; allowWrites = false; scope = OCT_NATIVE_ROOT_SYNTHETIC; synchronize() }
 
     private func synchronize() {
         let wanted: UInt32 = observe && active && authorizationAllowed ? (synthetic ? 2 : 1) : 0

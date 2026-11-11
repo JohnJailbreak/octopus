@@ -22,6 +22,12 @@ typedef struct oct_readonly_options {
     size_t max_name_bytes;    /* 0 = 1 MiB; maximum 16 MiB total retained name bytes */
     size_t max_read_bytes;    /* 0 = 1 MiB; maximum 16 MiB per read call */
     bool cross_filesystems;  /* false skips entries whose st_dev differs from the root */
+    /* Writes. Off by default, so every existing caller stays read-only and a caller that wants to
+     * change a user's files has to say so. With it on, create, write, truncate, remove and rename
+     * work inside the served root, under the same authorization check as every read: a lapsed
+     * lease stops a write in progress. Nothing here follows a symlink to reach a target, so a
+     * write cannot be redirected out of the root by one appearing underneath us. */
+    bool writable;
 } oct_readonly_options;
 
 /* Output ownership follows oct_store_open. The backend's access gate prevents

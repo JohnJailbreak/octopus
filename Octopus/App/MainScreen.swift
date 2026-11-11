@@ -38,6 +38,9 @@ struct MainScreen: View {
     let layout: Layout
     @EnvironmentObject private var service: ServiceController
     @EnvironmentObject private var updater: Updater
+    /// Observed so the header warning clears the moment the companion is heard from, rather than
+    /// only when the service itself next changes.
+    @ObservedObject private var native = NativeTransport.shared
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage(Preferences.updateNotifications) private var updateNotifications = false
     @State private var window: AppWindow? = nil
@@ -105,7 +108,7 @@ struct MainScreen: View {
 
     private var mainLayer: some View {
         ZStack(alignment: .topLeading) {
-            HeaderView(warning: service.headerWarning)
+            HeaderView(warning: service.headerWarning(nativeHeard: native.everHeard))
                 .frame(width: layout.columnWidth - 10, height: layout.headerHeight, alignment: .topLeading)
                 .position(x: layout.size.width / 2, y: layout.columnTop + layout.headerHeight / 2)
                 .offset(y: sheetOpen ? -25 : 0)

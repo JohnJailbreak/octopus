@@ -405,11 +405,32 @@ oct_native_lease_mode oct_native_lease_mode_for_root(oct_native_root root)
 
 const char *oct_native_lease_root(oct_native_lease_mode mode)
 {
-    if (mode < OCT_NATIVE_LEASE_EXPOSE_ROOT_BASE || mode > OCT_NATIVE_LEASE_MODE_LAST) return NULL;
     /* One table, shared with the probe above, so a scope a lease can name is always a root whose
-     * reachability the companion also reports. */
-    unsigned root = (unsigned)(mode - OCT_NATIVE_LEASE_EXPOSE_ROOT_BASE) + 1u;
+     * reachability the companion also reports. Read-only modes start at one base, writable ones at
+     * another, and both index the same roots. */
+    unsigned base;
+    if (mode >= OCT_NATIVE_LEASE_WRITE_ROOT_BASE && mode <= OCT_NATIVE_LEASE_MODE_LAST) {
+        base = OCT_NATIVE_LEASE_WRITE_ROOT_BASE;
+    } else if (mode >= OCT_NATIVE_LEASE_EXPOSE_ROOT_BASE &&
+               mode < OCT_NATIVE_LEASE_WRITE_ROOT_BASE) {
+        base = OCT_NATIVE_LEASE_EXPOSE_ROOT_BASE;
+    } else {
+        return NULL;
+    }
+    unsigned root = (unsigned)mode - base + 1u;
     return root < OCT_NATIVE_ROOT_COUNT ? oct_native_root_path((oct_native_root)root) : NULL;
+}
+
+bool oct_native_lease_is_writable(oct_native_lease_mode mode)
+{
+    return mode >= OCT_NATIVE_LEASE_WRITE_ROOT_BASE && mode <= OCT_NATIVE_LEASE_MODE_LAST &&
+           oct_native_lease_root(mode) != NULL;
+}
+
+oct_native_lease_mode oct_native_lease_write_mode_for_root(oct_native_root root)
+{
+    if (root == OCT_NATIVE_ROOT_SYNTHETIC || root >= OCT_NATIVE_ROOT_COUNT) return OCT_NATIVE_LEASE_NONE;
+    return (oct_native_lease_mode)((unsigned)OCT_NATIVE_LEASE_WRITE_ROOT_BASE + (unsigned)root - 1u);
 }
 
 bool oct_native_lease_is_filesystem(oct_native_lease_mode mode)
@@ -654,9 +675,17 @@ oct_status oct_native_runtime_check(bool *posted)
     static int token = -1;
     if (!posted) return OCT_E_INVALID_ARGUMENT;
     *posted = false;
-    if (token < 0 && notify_register_check(OCT_NATIVE_RUNTIME_NAME, &token) != NOTIFY_STATUS_OK) {
-        token = -1;
-        return OCT_E_IO;
+    if (token < 0) {
+        if (notify_register_check(OCT_NATIVE_RUNTIME_NAME, &token) != NOTIFY_STATUS_OK) {
+            token = -1;
+            return OCT_E_IO;
+        }
+        /* notify_check reports a post on its first call whatever has happened since, so without
+         * this a state left behind by a ptpd that has already exited would read as a heartbeat,
+         * and for one window after launch an unplugged phone would show a live session. The first
+         * answer is consumed here, so only a post that arrives after this point counts. */
+        int primed = 0;
+        (void)notify_check(token, &primed);
     }
     int check = 0;
     if (notify_check(token, &check) != NOTIFY_STATUS_OK) return OCT_E_IO;

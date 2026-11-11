@@ -38,7 +38,58 @@ static void test_object_info_format(void)
 }
 
 
+/* Appending an operation to OperationsSupported, the first array, where the format append puts a
+ * value in the fifth. A host will not offer to delete unless DeleteObject is in this array. */
+static void test_operation_append(void)
+{
+    /* standardVersion, vendorExtensionID, extensionVersion, an empty vendor string, functionalMode,
+     * then five arrays: operations [0x1001, 0x1002], events, properties, capture, playback [0x3801],
+     * then four empty strings. */
+    const unsigned char input[] = {
+        0x64,0x00, 0x00,0x00,0x00,0x00, 0x64,0x00, 0x00, 0x00,0x00,
+        0x02,0x00,0x00,0x00, 0x01,0x10, 0x02,0x10,
+        0x00,0x00,0x00,0x00,
+        0x00,0x00,0x00,0x00,
+        0x00,0x00,0x00,0x00,
+        0x01,0x00,0x00,0x00, 0x01,0x38,
+        0x00, 0x00, 0x00, 0x00,
+    };
+    unsigned char output[sizeof input + 8];
+    size_t produced = 0;
+    assert(oct_native_device_info_add_operation(input, sizeof input, 0x100B, output,
+                                                sizeof output, &produced) == 1);
+    assert(produced == sizeof input + 2);
+    /* The count went from two to three, and the new code sits at the end of that array. */
+    assert(output[11] == 0x03 && output[12] == 0 && output[13] == 0 && output[14] == 0);
+    assert(output[19] == 0x0B && output[20] == 0x10);
+    /* Everything after the operations array shifted by two and is otherwise unchanged. */
+    assert(memcmp(output + 21, input + 19, sizeof input - 19) == 0);
+    /* The first ten bytes, before the array, are untouched. */
+    assert(memcmp(output, input, 11) == 0);
+
+    /* An operation already advertised is not added twice. */
+    produced = 12345;
+    assert(oct_native_device_info_add_operation(input, sizeof input, 0x1001, output,
+                                                sizeof output, &produced) == 0);
+    assert(produced == 0);
+
+    /* A buffer two bytes too small is refused rather than truncated. */
+    assert(oct_native_device_info_add_operation(input, sizeof input, 0x100B, output,
+                                                sizeof input, &produced) == -2);
+    /* Malformed and absent inputs. */
+    assert(oct_native_device_info_add_operation(NULL, sizeof input, 0x100B, output,
+                                                sizeof output, &produced) == -1);
+    assert(oct_native_device_info_add_operation(input, 4, 0x100B, output, sizeof output, &produced) == -1);
+    assert(oct_native_device_info_add_operation(input, sizeof input, 0x100B, output, sizeof output, NULL) == -1);
+
+    /* And the two appends stay independent: a format goes to the playback array, not this one. */
+    assert(oct_native_device_info_add_format(input, sizeof input, 0x3004, output,
+                                             sizeof output, &produced) == 1);
+    assert(output[11] == 0x02); /* operations count unchanged */
+}
+
 int main(void){
+    test_operation_append();
     test_object_info_format();
     uint8_t input[256]={0},backup[256],output[258];size_t n=8,out=0;
     put16(input,100);put32(input+2,6);put16(input+6,100);

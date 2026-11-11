@@ -125,7 +125,11 @@ typedef enum oct_native_lease_mode {
      * Mode 4 is oct_native_root 1, and so on, so the two stay in step by construction rather than
      * by a second list that could drift from the first. */
     OCT_NATIVE_LEASE_EXPOSE_ROOT_BASE = 4,
-    OCT_NATIVE_LEASE_MODE_LAST = OCT_NATIVE_LEASE_EXPOSE_ROOT_BASE + 4, /* roots 1..5 */
+    /* The same roots again, read-write. A grant that changes a user's files is a different grant
+     * from one that reads them, so it is a different mode rather than a flag on the same one: a
+     * lease asking to read cannot be mistaken for one asking to write. */
+    OCT_NATIVE_LEASE_WRITE_ROOT_BASE = 9,
+    OCT_NATIVE_LEASE_MODE_LAST = OCT_NATIVE_LEASE_WRITE_ROOT_BASE + 4, /* roots 1..5, writable */
 } oct_native_lease_mode;
 
 /* The root a mode serves, or NULL for the modes that serve no filesystem. The returned string is
@@ -288,6 +292,10 @@ oct_native_root_state oct_native_root_state_of(const oct_native_root_report *rep
  * to do the arithmetic itself; the first caller to try that got the types wrong. Returns
  * OCT_NATIVE_LEASE_NONE for a root outside the table. */
 oct_native_lease_mode oct_native_lease_mode_for_root(oct_native_root root);
+/* The writable mode for a root, or NONE for the synthetic tree, which is never writable. */
+oct_native_lease_mode oct_native_lease_write_mode_for_root(oct_native_root root);
+/* Whether a mode grants writes. Read-only modes return false, as does anything outside the table. */
+bool oct_native_lease_is_writable(oct_native_lease_mode mode);
 
 /* ---- Which provider hooks a host actually called -------------------------------------------
  *

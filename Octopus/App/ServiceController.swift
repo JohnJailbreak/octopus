@@ -432,12 +432,19 @@ final class ServiceController: ObservableObject {
     var primaryTitle: String { isActive ? "Disable USB Access" : "Enable USB Access" }
 
     /// The header's second line becomes a warning when something needs attention.
-    var headerWarning: String? {
+    ///
+    /// `nativeHeard` is whether the companion in Apple's ptpd has reported since launch. The app's
+    /// own portable adapter is never available on iOS, which gives no app the USB PTP function, so
+    /// warning about its absence was permanent and wrong: the transport is ptpd with the companion,
+    /// and once that has been heard from there is nothing to warn about, connected or not.
+    func headerWarning(nativeHeard: Bool) -> String? {
         switch state {
         case .error:
             return lastError ?? "Octopus couldn't enable USB access."
         case .ready where !status.transportAvailable:
-            return "The portable USB adapter is unavailable. Check Diagnostics for the optional native integration experiment."
+            return nativeHeard
+                ? nil
+                : "Connect a computer to start USB. If the iPhone doesn't appear in its file browser, check Diagnostics."
         case .waitingForConnection where status.transportState == .error,
              .connected where status.transportState == .error:
             return status.transportFailure.isEmpty ? "The USB transport failed." : status.transportFailure

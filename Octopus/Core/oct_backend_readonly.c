@@ -104,9 +104,12 @@ static bool same(const struct stat *a, const struct stat *b)
 #endif
 }
 
-static void convert(const struct stat *s, oct_node_stat *out)
+static void convert_with(const struct stat *s, oct_node_stat *out, bool writable)
 {
     memset(out, 0, sizeof *out);
+    /* Per-object, because the store consults this before changing anything. Whether the kernel
+     * then permits it is a separate question, answered when the operation runs. */
+    out->writable = writable;
     out->is_directory = S_ISDIR(s->st_mode);
     out->size = out->is_directory ? 0 : (uint64_t)s->st_size;
     out->modified = (int64_t)s->st_mtime;
@@ -115,7 +118,12 @@ static void convert(const struct stat *s, oct_node_stat *out)
 #else
     out->created = (int64_t)s->st_mtime;
 #endif
-    out->writable = false;
+}
+
+/* The backend's own calls, which know the option. */
+static void convert_node(const ro_backend *b, const struct stat *s, oct_node_stat *out)
+{
+    convert_with(s, out, b->options.writable);
 }
 
 /*
@@ -257,7 +265,7 @@ static oct_status ro_stat(void *context, uint64_t node, oct_node_stat *out)
     if (result < 0) return error_status(saved);
     if (!same(&n->identity, &st)) return OCT_E_INVALID_HANDLE;
     if (!allowed(b)) return OCT_E_STATE;
-    convert(&st, out);
+    convert_node(b, &st, out);
     return OCT_OK;
 }
 
@@ -287,6 +295,10 @@ static oct_status ro_describe(void *context, oct_backend_info *out)
     out->capacity = multiply_clamped((uint64_t)fs.f_blocks, (uint64_t)fs.f_frsize);
     out->available = multiply_clamped((uint64_t)fs.f_bavail, (uint64_t)fs.f_frsize);
     out->storage_type = 0x0003;
+    /* The store refuses a write to a hierarchy that says it accepts none, and a host is told
+     * read-only in GetStorageInfo, so both follow the option rather than being hardcoded. */
+    out->writable = b->options.writable;
+    out->root_writable = b->options.writable;
     return OCT_OK;
 }
 
@@ -487,16 +499,205 @@ static oct_status ro_read(void *context, uint64_t node, uint64_t offset, void *b
     return OCT_OK;
 }
 
+/* ---- Writes -------------------------------------------------------------------------------
+ *
+ * Only when options.writable is set; otherwise every one of these refuses exactly as before, so a
+ * read-only scope cannot be talked into changing anything.
+ *
+ * Each resolves its parent through the same descriptor walk reads use, which re-checks the
+ * identity of every component, and operates with openat relative to that descriptor. No path
+ * string is ever handed to the kernel, so a directory swapped for a symlink mid-operation cannot
+ * redirect a write outside the root. Authorization is checked before and after, so a lease that
+ * lapses during a write is caught rather than ignored.
+ */
+static bool writes_allowed(const ro_backend *b) { return b->options.writable; }
+
+/* The descriptor of a node's parent directory, plus the node's own name, for an openat. */
+static oct_status parent_for_write(ro_backend *b, uint64_t node, int *fd, const char **name)
+{
+    if (!node || node > b->count) return OCT_E_INVALID_HANDLE;
+    ro_node *n = &b->nodes[node];
+    if (n->via) {
+        /* Its parent cannot be opened; writing through a grafted path is refused rather than
+         * reached around, because the result would depend on a name we assembled. */
+        return OCT_E_WRITE_PROTECTED;
+    }
+    *name = n->name;
+    return open_directory(b, n->parent, fd);
+}
+
 static oct_status ro_create(void *c, uint64_t p, const char *n, bool d, uint64_t *o, oct_node_stat *s)
-{ (void)p; (void)n; (void)d; (void)o; (void)s; return allowed(c) ? OCT_E_WRITE_PROTECTED : OCT_E_STATE; }
-static oct_status ro_write(void *c, uint64_t n, uint64_t o, const void *b, size_t l)
-{ (void)n; (void)o; (void)b; (void)l; return allowed(c) ? OCT_E_WRITE_PROTECTED : OCT_E_STATE; }
-static oct_status ro_truncate(void *c, uint64_t n, uint64_t s)
-{ (void)n; (void)s; return allowed(c) ? OCT_E_WRITE_PROTECTED : OCT_E_STATE; }
-static oct_status ro_remove(void *c, uint64_t n)
-{ (void)n; return allowed(c) ? OCT_E_WRITE_PROTECTED : OCT_E_STATE; }
-static oct_status ro_rename(void *c, uint64_t n, const char *s)
-{ (void)n; (void)s; return allowed(c) ? OCT_E_WRITE_PROTECTED : OCT_E_STATE; }
+{
+    ro_backend *b = c;
+    if (!allowed(b)) return OCT_E_STATE;
+    if (!writes_allowed(b)) return OCT_E_WRITE_PROTECTED;
+    if (!n || !*n || !o) return OCT_E_INVALID_ARGUMENT;
+    if (strchr(n, '/') || !strcmp(n, ".") || !strcmp(n, "..")) return OCT_E_INVALID_NAME;
+    if (strlen(n) > OCT_NAME_MAX) return OCT_E_INVALID_NAME;
+    if (p && (p > b->count || !S_ISDIR(b->nodes[p].identity.st_mode))) return OCT_E_NOT_DIRECTORY;
+    if (b->nodes[p].depth >= b->options.max_depth) return OCT_E_TOO_LARGE;
+    int fd;
+    oct_status status = open_directory(b, (uint32_t)p, &fd);
+    if (status != OCT_OK) return status;
+    struct stat st;
+    if (d) {
+        if (mkdirat(fd, n, 0755) < 0) { int e = errno; close(fd); return error_status(e); }
+    } else {
+        /* O_EXCL so an existing object is never silently replaced, and O_NOFOLLOW so a symlink
+         * planted at the name cannot send the new file elsewhere. */
+        int file = openat(fd, n, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0644);
+        if (file < 0) { int e = errno; close(fd); return error_status(e); }
+        close(file);
+    }
+    if (fstatat(fd, n, &st, AT_SYMLINK_NOFOLLOW) < 0) { int e = errno; close(fd); return error_status(e); }
+    close(fd);
+    if (!allowed(b)) return OCT_E_STATE;
+    ro_entry entry = { .name = (char *)(uintptr_t)n, .identity = st, .follow = false, .via = false };
+    status = intern(b, (uint32_t)p, &entry, o);
+    if (status == OCT_OK && s) convert_node(b, &st, s);
+    return status;
+}
+
+static oct_status ro_write(void *c, uint64_t node, uint64_t offset, const void *data, size_t length)
+{
+    ro_backend *b = c;
+    if (!allowed(b)) return OCT_E_STATE;
+    if (!writes_allowed(b)) return OCT_E_WRITE_PROTECTED;
+    if (!data && length) return OCT_E_INVALID_ARGUMENT;
+    if (length > b->options.max_read_bytes) return OCT_E_TOO_LARGE;
+    if (offset > (uint64_t)INT64_MAX - length) return OCT_E_TOO_LARGE;
+    int fd;
+    const char *name = NULL;
+    oct_status status = parent_for_write(b, node, &fd, &name);
+    if (status != OCT_OK) return status;
+    if (S_ISDIR(b->nodes[node].identity.st_mode)) { close(fd); return OCT_E_IS_DIRECTORY; }
+    int file = openat(fd, name, O_WRONLY | O_NOFOLLOW | O_CLOEXEC);
+    int opened = errno;
+    close(fd);
+    if (file < 0) return error_status(opened);
+    const uint8_t *from = data;
+    size_t written = 0;
+    while (written < length) {
+        if (!allowed(b)) { close(file); return OCT_E_STATE; }
+        ssize_t now = pwrite(file, from + written, length - written, (off_t)(offset + written));
+        if (now <= 0) {
+            if (now < 0 && errno == EINTR) continue;
+            int e = errno;
+            close(file);
+            return now == 0 ? OCT_E_IO : error_status(e);
+        }
+        written += (size_t)now;
+    }
+    /* same() compares size and timestamps to catch a file being swapped for another, and a write
+     * we just performed changes both. Re-record the identity from the descriptor we wrote through,
+     * so later calls on this handle still resolve while the check keeps its meaning for files we
+     * did not touch. Device and inode are re-verified, so this cannot adopt a different file. */
+    struct stat after;
+    bool restated = fstat(file, &after) == 0 &&
+                    after.st_dev == b->nodes[node].identity.st_dev &&
+                    after.st_ino == b->nodes[node].identity.st_ino;
+    close(file);
+    if (!restated) return OCT_E_IO;
+    b->nodes[node].identity = after;
+    return allowed(b) ? OCT_OK : OCT_E_STATE;
+}
+
+static oct_status ro_truncate(void *c, uint64_t node, uint64_t size)
+{
+    ro_backend *b = c;
+    if (!allowed(b)) return OCT_E_STATE;
+    if (!writes_allowed(b)) return OCT_E_WRITE_PROTECTED;
+    if (size > (uint64_t)INT64_MAX) return OCT_E_TOO_LARGE;
+    int fd;
+    const char *name = NULL;
+    oct_status status = parent_for_write(b, node, &fd, &name);
+    if (status != OCT_OK) return status;
+    if (S_ISDIR(b->nodes[node].identity.st_mode)) { close(fd); return OCT_E_IS_DIRECTORY; }
+    int file = openat(fd, name, O_WRONLY | O_NOFOLLOW | O_CLOEXEC);
+    int opened = errno;
+    close(fd);
+    if (file < 0) return error_status(opened);
+    int result = ftruncate(file, (off_t)size);
+    int e = errno;
+    struct stat after;
+    bool restated = result == 0 && fstat(file, &after) == 0 &&
+                    after.st_dev == b->nodes[node].identity.st_dev &&
+                    after.st_ino == b->nodes[node].identity.st_ino;
+    close(file);
+    if (result < 0) return error_status(e);
+    if (!restated) return OCT_E_IO;
+    b->nodes[node].identity = after; /* as in ro_write: our own change, re-verified */
+    return allowed(b) ? OCT_OK : OCT_E_STATE;
+}
+
+static oct_status ro_remove(void *c, uint64_t node)
+{
+    ro_backend *b = c;
+    if (!allowed(b)) return OCT_E_STATE;
+    if (!writes_allowed(b)) return OCT_E_WRITE_PROTECTED;
+    int fd;
+    const char *name = NULL;
+    oct_status status = parent_for_write(b, node, &fd, &name);
+    if (status != OCT_OK) return status;
+    bool directory = S_ISDIR(b->nodes[node].identity.st_mode);
+    if (unlinkat(fd, name, directory ? AT_REMOVEDIR : 0) < 0) {
+        int e = errno;
+        close(fd);
+        return error_status(e);
+    }
+    close(fd);
+    /* The node stays in the table with its old identity; a later stat of it fails, which is what a
+     * host sees as the object being gone. Removing the entry would renumber nothing but would make
+     * a handle a host still holds point at a different object. */
+    return allowed(b) ? OCT_OK : OCT_E_STATE;
+}
+
+static oct_status ro_rename(void *c, uint64_t node, const char *to)
+{
+    ro_backend *b = c;
+    if (!allowed(b)) return OCT_E_STATE;
+    if (!writes_allowed(b)) return OCT_E_WRITE_PROTECTED;
+    if (!to || !*to) return OCT_E_INVALID_ARGUMENT;
+    if (strchr(to, '/') || !strcmp(to, ".") || !strcmp(to, "..")) return OCT_E_INVALID_NAME;
+    if (strlen(to) > OCT_NAME_MAX) return OCT_E_INVALID_NAME;
+    int fd;
+    const char *name = NULL;
+    oct_status status = parent_for_write(b, node, &fd, &name);
+    if (status != OCT_OK) return status;
+    if (!strcmp(name, to)) { close(fd); return OCT_OK; }
+    /* Refuse to replace an existing object: renameat would do it silently. */
+    struct stat existing;
+    if (fstatat(fd, to, &existing, AT_SYMLINK_NOFOLLOW) == 0) { close(fd); return OCT_E_EXISTS; }
+    char *copy = strdup(to);
+    if (!copy) { close(fd); return OCT_E_NO_MEMORY; }
+    if (renameat(fd, name, fd, to) < 0) {
+        int e = errno;
+        close(fd);
+        free(copy);
+        return error_status(e);
+    }
+    close(fd);
+    size_t was = strlen(b->nodes[node].name) + 1, now = strlen(copy) + 1;
+    free(b->nodes[node].name);
+    b->nodes[node].name = copy;
+    b->name_bytes = b->name_bytes + now - was;
+    /* Renaming changes ctime, which same() compares to catch a file being swapped for another, so
+     * without re-recording the identity the handle stops resolving the moment it is used again:
+     * the rename succeeded and every later call reported an invalid handle. Re-stat through the
+     * new name and require device and inode to match, so this cannot adopt a different file. */
+    int reopened;
+    oct_status reopen = open_directory(b, b->nodes[node].parent, &reopened);
+    if (reopen != OCT_OK) return reopen;
+    struct stat after;
+    bool restated = fstatat(reopened, copy, &after, AT_SYMLINK_NOFOLLOW) == 0 &&
+                    after.st_dev == b->nodes[node].identity.st_dev &&
+                    after.st_ino == b->nodes[node].identity.st_ino;
+    close(reopened);
+    if (!restated) return OCT_E_IO;
+    b->nodes[node].identity = after;
+    return allowed(b) ? OCT_OK : OCT_E_STATE;
+}
+
 static void ro_destroy(void *context)
 {
     ro_backend *b = context;
@@ -507,7 +708,7 @@ static void ro_destroy(void *context)
     free(b);
 }
 static const oct_backend_ops readonly_ops = {
-    "filesystem-readonly", ro_describe, ro_list, ro_stat, ro_read, ro_create,
+    "filesystem", ro_describe, ro_list, ro_stat, ro_read, ro_create,
     ro_write, ro_truncate, ro_remove, ro_rename, ro_destroy, ro_access
 };
 

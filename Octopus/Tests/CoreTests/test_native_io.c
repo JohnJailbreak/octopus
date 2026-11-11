@@ -874,7 +874,34 @@ static void test_scope_selection(void)
     const char *path = oct_native_lease_root(whole);
     CHECK(path != NULL);
     if (path) CHECK(strcmp(path, "/") == 0);
-    CHECK_EQ(whole, OCT_NATIVE_LEASE_MODE_LAST);
+    CHECK_EQ(whole, (oct_native_lease_mode)(OCT_NATIVE_LEASE_WRITE_ROOT_BASE - 1));
+    CHECK(!oct_native_lease_is_writable(whole)); /* the read-only whole filesystem */
+
+    /* The writable modes: the same roots, granting changes. */
+    for (unsigned root = 1; root < OCT_NATIVE_ROOT_COUNT; root++) {
+        oct_native_lease_mode read = oct_native_lease_mode_for_root((oct_native_root)root);
+        oct_native_lease_mode write = oct_native_lease_write_mode_for_root((oct_native_root)root);
+        CHECK(write != OCT_NATIVE_LEASE_NONE);
+        CHECK(read != write);                                    /* a different grant entirely */
+        CHECK(!oct_native_lease_is_writable(read));
+        CHECK(oct_native_lease_is_writable(write));
+        const char *from_read = oct_native_lease_root(read);
+        const char *from_write = oct_native_lease_root(write);
+        CHECK(from_read && from_write);
+        if (from_read && from_write) CHECK(strcmp(from_read, from_write) == 0); /* same root */
+        /* And a lease carrying the writable mode grants exactly it. */
+        oct_native_lease_word word = { .mode = (uint8_t)write, .deadline_ms = 1000 };
+        oct_native_lease_word back;
+        CHECK(oct_native_lease_unpack(oct_native_lease_pack(&word), &back));
+        CHECK_EQ(oct_native_lease_effective(&back, 500), write);
+    }
+    /* The synthetic tree has no writable mode, and nothing outside the table is writable. */
+    CHECK_EQ(oct_native_lease_write_mode_for_root(OCT_NATIVE_ROOT_SYNTHETIC), OCT_NATIVE_LEASE_NONE);
+    CHECK_EQ(oct_native_lease_write_mode_for_root((oct_native_root)OCT_NATIVE_ROOT_COUNT), OCT_NATIVE_LEASE_NONE);
+    CHECK(!oct_native_lease_is_writable(OCT_NATIVE_LEASE_EXPOSE_SYNTHETIC));
+    CHECK(!oct_native_lease_is_writable(OCT_NATIVE_LEASE_NONE));
+    CHECK(!oct_native_lease_is_writable((oct_native_lease_mode)(OCT_NATIVE_LEASE_MODE_LAST + 1)));
+    CHECK(oct_native_lease_root((oct_native_lease_mode)(OCT_NATIVE_LEASE_MODE_LAST + 1)) == NULL);
     /* Out of range serves nothing rather than something arbitrary. */
     CHECK_EQ(oct_native_lease_mode_for_root((oct_native_root)OCT_NATIVE_ROOT_COUNT), OCT_NATIVE_LEASE_NONE);
     CHECK(oct_native_lease_root(OCT_NATIVE_LEASE_NONE) == NULL);

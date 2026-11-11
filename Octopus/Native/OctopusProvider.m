@@ -19,7 +19,9 @@ static atomic_bool installed;
 static IMP originalIDs, originalStorage, originalInfo, originalHandles;
 static IMP originalSource, originalValue, originalList, originalSupported;
 static IMP originalLookup;
-static IMP originalDeviceInfo, originalBulkInfo;
+static IMP originalDeviceInfo, originalBulkInfo, originalDelete;
+/* Whether the store being served accepts changes, which decides what DeviceInfo advertises. */
+static bool storeWritable;
 
 /* Dynamic class lookup avoids linking against private classes exported by the
  * executable. These are only the exact signatures verified in this image. */
@@ -192,9 +194,43 @@ static id deviceInfo(id self, SEL cmd) {
                                                 copy.mutableBytes,copy.length,&length);
     if (result!=1) return base;
     copy.length=length;
+    /* When the served store accepts changes, advertise DeleteObject as well: a host reads
+     * OperationsSupported to decide what to offer, and will not offer to delete without it. The
+     * two appends are separate calls because each grows the dataset by two bytes. */
+    if (storeWritable) {
+        NSMutableData *withDelete=[NSMutableData dataWithLength:copy.length+2];
+        size_t grown=0;
+        if (oct_native_device_info_add_operation(copy.bytes,copy.length,OCT_OP_DELETE_OBJECT,
+                                                 withDelete.mutableBytes,withDelete.length,&grown)==1) {
+            withDelete.length=grown;
+            copy=withDelete;
+            OCTNativeProviderEvent("provider-advertised-delete",OCT_OP_DELETE_OBJECT,OCT_RC_OK);
+        }
+    }
     OCTNativeDataset *dataset=[OCTNativeDataset new];dataset.content=copy;dataset.original=base;
     OCTNativeProviderEvent("provider-device-info",OCT_FORMAT_TEXT,OCT_RC_OK);
     return dataset;
+}
+
+/*
+ * Deleting one of our objects. Apple's responder calls this on the camera for DeleteObject, so
+ * unlike an upload it needs no interception of the request itself: the handle arrives here and the
+ * response code goes back through the pointer.
+ *
+ * A handle that is not ours is forwarded untouched, so Apple's own photo deletion is unaffected.
+ */
+static void deleteObject(id self, SEL cmd, uint32_t handle, unsigned short *code) {
+    if (!isSynthetic(handle) || !available(self)) {
+        ((void (*)(id,SEL,uint32_t,unsigned short *))originalDelete)(self,cmd,handle,code);
+        return;
+    }
+    uint32_t removed=0;
+    pthread_mutex_lock(&coreLock);
+    oct_status status=store?oct_store_delete(store,handle,&removed):OCT_E_STATE;
+    pthread_mutex_unlock(&coreLock);
+    uint16_t response=oct_response_for_status(status);
+    if (code) *code=(unsigned short)response;
+    OCTNativeProviderEvent("provider-delete",handle,response);
 }
 
 static id storageInfo(id self, SEL cmd, uint32_t storageID) {
@@ -381,6 +417,10 @@ static id supportedProperties(id self, SEL cmd, uint16_t format, uint16_t *code)
 typedef struct { const char *selector; const char *encoding; IMP replacement; IMP *original; } Hook;
 static Hook hooks[] = {
     {"deviceInfoDataset","@16@0:8",(IMP)deviceInfo,&originalDeviceInfo},
+    /* Recorded from the device: v28@0:8I16^S20, void with a uint32 handle and a response-code
+     * pointer. The hook validates that encoding before installing, so a different build's method
+     * is left alone rather than called with the wrong arguments. */
+    {"deleteObjectWithObjectHandle:responseCode:","v28@0:8I16^S20",(IMP)deleteObject,&originalDelete},
     {"allStorageIDs","@16@0:8",(IMP)storageIDs,&originalIDs},
     {"storageInfoDatasetForStorageID:","@20@0:8I16",(IMP)storageInfo,&originalStorage},
     {"objectInfoDatasetForObjectHandle:","@20@0:8I16",(IMP)objectInfo,&originalInfo},
@@ -452,7 +492,10 @@ static BOOL openStoreLocked(oct_native_lease_mode scope, NSString **reason)
              * Escape is prevented by the backend verifying that a link's target is inside the
              * served root, by device and inode, rather than by refusing to cross. */
             .max_nodes=OCT_READONLY_MAX_NODES,
-            .max_entries=4096,.max_depth=64,.max_read_bytes=1u<<20,.cross_filesystems=true};
+            .max_entries=4096,.max_depth=64,.max_read_bytes=1u<<20,.cross_filesystems=true,
+            /* Writes follow the lease: a scope that asks for them gets create, write, truncate and
+             * delete inside that root, each re-checking authorization as it runs. */
+            .writable=oct_native_lease_is_writable(scope)};
         if(oct_readonly_store_open(&ro,&storeOptions,&store)!=OCT_OK){
             store=NULL;
             if(reason)*reason=[NSString stringWithFormat:@"Cannot open %s read-only",root];
@@ -481,6 +524,7 @@ static BOOL openStoreLocked(oct_native_lease_mode scope, NSString **reason)
         if(reason)*reason=@"Cannot create the provider's responder";return NO;
     }
     storeScope=scope;
+    storeWritable=root && oct_native_lease_is_writable(scope);
     OCTNativeProviderEvent("provider-store-opened",(uint32_t)scope,OCT_RC_OK);
     return YES;
 }

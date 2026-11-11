@@ -216,3 +216,44 @@ is that USB photo import stops working until ptpd is clean.
    filesystem access and is the guaranteed way out.
 
 Before trusting photo import again, reconnect and copy one ordinary photo.
+
+## Writes, and what stands between here and uploading (11 November 2026)
+
+What a host can do now: delete. `deleteObjectWithObjectHandle:responseCode:` is a
+method on the class the provider already hooks, recorded from the device as
+`v28@0:8I16^S20`, so DeleteObject arrives as a plain method call with the handle
+and a response-code pointer. `GetDeviceInfo` advertises DeleteObject when the
+served store accepts changes, because a host reads OperationsSupported to decide
+what to offer.
+
+What the backend can do now: create, write, truncate, remove and rename, inside
+the served root, when the lease grants writes. All five are tested against a real
+directory, including a write at an offset and a delete that really removes the
+file, and all five refuse when the lease lapses mid-operation.
+
+Two of those capabilities a host cannot yet reach, and the reason is the same for
+both.
+
+- **Uploading a file.** PTP sends SendObjectInfo then SendObject. Neither has a
+  per-object receiver on the camera class: of the 786 methods recorded from
+  `/usr/libexec/ptpd`, none takes an incoming object.
+- **Renaming from the host.** Explorer renames over MTP with SetObjectPropValue
+  on ObjectFileName. There is no `setObjectPropValue` among the recorded methods
+  either, only `objectPropValueForHandle:withObjectPropertyCode:responseCode:`,
+  which reads.
+
+Both therefore need `handleRequest:` (`0x100023384`, `@24@0:8@16`), which the
+observer already wraps for counting. Handling an operation there means more than
+returning a different value: Apple's machinery runs the data phase after that
+call, so an interception would have to produce the response itself and, for
+SendObject, consume a host-to-device data phase that arrives through
+`handleBulkData:result:` (also already wrapped). That is a two-phase transaction
+inside a state machine we did not write, and unlike every capability added so
+far, it cannot be made safe by forwarding to Apple's implementation when the
+handle is not ours: by the time the operation is recognised the transaction has
+begun.
+
+So the next step is an experiment, not an implementation: record what
+`handleRequest:` receives and returns for a SendObjectInfo aimed at Apple's own
+storage, and what `handleBulkData:result:` sees during the data phase, before any
+attempt to answer one. The observer can do that with the hooks it already has.
