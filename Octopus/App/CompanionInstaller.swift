@@ -87,6 +87,29 @@ final class CompanionInstaller: ObservableObject {
         }
     }
 
+    /// The companion's version for Settings, beside the app's, so a mismatch is visible at a glance.
+    var versionLabel: String {
+        switch state {
+        case .unknown: return "Checking"
+        case .notCarried: return CompanionPackage.installedVersion() ?? "Not installed"
+        case .matching(let version): return version
+        case .mismatched(let installed, _): return "\(installed), app is \(CompanionPackage.appVersion)"
+        case .notInstalled: return "Not installed"
+        case .installing: return "Installing"
+        case .installed(let version): return version
+        case .failed: return "Install failed"
+        }
+    }
+
+    /// Whether the label above describes a healthy pair, for its colour.
+    var versionHealthy: Bool {
+        switch state {
+        case .matching, .installed, .unknown, .installing: return true
+        case .notCarried: return CompanionPackage.installedVersion() != nil
+        case .mismatched, .notInstalled, .failed: return false
+        }
+    }
+
     /// One line for the interface, in every state.
     var summary: String {
         switch state {
@@ -104,7 +127,7 @@ final class CompanionInstaller: ObservableObject {
         case .installing:
             return "Installing the companion."
         case .installed(let version):
-            return "Companion \(version) installed. Reconnect USB for it to load into Apple's responder."
+            return "Companion \(version) installed and loading into Apple's responder."
         case .failed(let reason):
             return reason
         }
@@ -145,6 +168,10 @@ final class CompanionInstaller: ObservableObject {
                      "Helper exit \(outcome.status)\(outcome.errors.last.map { ": \($0)" } ?? "")")
         if outcome.status == 0 {
             state = .installed(CompanionPackage.appVersion)
+            // A newly installed companion only loads into a ptpd that starts after it, so end the
+            // current one rather than asking for a reconnect. If nothing is connected this does
+            // nothing, and the next connection loads it.
+            NativeIntegration.shared.restartResponder(reason: "loading the companion just installed")
             return
         }
         // The helper's own message says more than a number, so it is preferred when there is one.

@@ -23,6 +23,13 @@ final class NativeIntegration: ObservableObject {
     private var active = false
     private var foreground = true
     private var leasedMode: UInt32 = 0
+    /// Set by serveFilesystem and consumed by the first publish of a grant that serves storage. The
+    /// restart has to follow the grant, never precede it: a ptpd restarted before there is a grant
+    /// comes back with nothing to serve, a host reads an empty list, and the grant then arrives too
+    /// late for that session. The last build restarted at once on tapping Enable USB Access, while
+    /// the grant was still waiting for the service to finish starting, and so defeated itself
+    /// whenever the phone was already plugged in.
+    private var restartWhenGranted = false
     private var renewal: Task<Void, Never>?
 
     private func changed() {
@@ -41,11 +48,14 @@ final class NativeIntegration: ObservableObject {
     /// Then it restarts Apple's responder, because a host reads the storage list once per session:
     /// without that, the volume appears only after unplugging and reconnecting.
     func serveFilesystem() {
+        restartWhenGranted = true
         observe = true
         scope = OCT_NATIVE_ROOT_SYSTEM
         synthetic = true
         synchronize()
-        restartResponder(reason: "serving the filesystem")
+        // The restart happens in renew(), once the grant has actually gone out. If the service has
+        // not finished starting, that is when sync(serviceActive:) runs; if it has, it is now.
+        renew()
     }
 
     /// Ends Apple's PTP responder so the next session sees what Octopus is serving. launchd starts
@@ -54,15 +64,23 @@ final class NativeIntegration: ObservableObject {
     /// Refused while a host is mid-transfer: ending the process then would interrupt a copy. If
     /// nothing is connected there is nothing to restart, and the volume will be there on the next
     /// connection anyway.
-    func restartResponder(reason: String) {
+    /// Returns false only when the restart was put off because a transfer is in flight, so a caller
+    /// with a pending request keeps it and tries again on the next renewal, five seconds on.
+    @discardableResult
+    func restartResponder(reason: String) -> Bool {
+        #if targetEnvironment(simulator)
+        // The Simulator's processes are the host Mac's, so looking for ptpd here would look on the
+        // Mac running the tests, and there is no responder of ours to restart.
+        DebugLog.log(.info, "native", "restart", "Not restarting \(reason): the Simulator has no responder")
+        return true
+        #else
+        // Not gated on the companion's heartbeat: one just installed, or not yet heard from, has
+        // none, while ptpd may still be running a session that has to end. Whether ptpd is running
+        // is the real question, and the restart answers it itself, doing nothing when it is not.
         let transport = NativeTransport.shared
-        guard transport.live else {
-            DebugLog.log(.info, "native", "restart", "No responder to restart: nothing connected")
-            return
-        }
         if transport.busy {
-            DebugLog.log(.info, "native", "restart", "Not restarting \(reason): a transfer is in flight")
-            return
+            DebugLog.log(.info, "native", "restart", "Waiting to restart for \(reason): a transfer is in flight")
+            return false
         }
         var report = oct_responder_restart()
         let status = oct_diag_restart_responder(&report)
@@ -76,6 +94,8 @@ final class NativeIntegration: ObservableObject {
             DebugLog.log(.warning, "native", "restart",
                          "Could not restart Apple's responder: errno \(report.error). Unplug and reconnect instead.")
         }
+        return true
+        #endif
     }
 
     /// The lease mode for the current selection. Exposure of a real root maps onto the scope modes,
@@ -123,7 +143,7 @@ final class NativeIntegration: ObservableObject {
         guard let left = leftForeground else { return false }
         return Date().timeIntervalSince(left) < Self.backgroundGrace
     }
-    func revoke() { active = false; observe = false; synthetic = false; allowWrites = false; scope = OCT_NATIVE_ROOT_SYNTHETIC; synchronize() }
+    func revoke() { restartWhenGranted = false; active = false; observe = false; synthetic = false; allowWrites = false; scope = OCT_NATIVE_ROOT_SYNTHETIC; synchronize() }
 
     private func synchronize() {
         let wanted: UInt32 = observe && active && authorizationAllowed ? (synthetic ? 2 : 1) : 0
@@ -186,12 +206,19 @@ final class NativeIntegration: ObservableObject {
             word.deadline_ms = UInt64(now) + UInt64(OCT_NATIVE_LEASE_MS)
             word.generation = generation
             posted = oct_native_lease_publish(&word)
+            // The grant is out, so a fresh ptpd will find it as its companion starts. Now is the
+            // moment to end the current session, and not before: see restartWhenGranted.
+            if restartWhenGranted, posted == OCT_OK, leasedMode == 2 {
+                // Kept when the restart is put off for a transfer, so the next renewal tries again
+                // rather than leaving the volume to appear only after a reconnect.
+                if restartResponder(reason: "serving \(scopeDescription)") { restartWhenGranted = false }
+            }
         }
         let channel = posted == OCT_OK ? "notification"
                     : (result == OCT_OK ? "file" : "neither channel")
         detail = (result == OCT_OK || posted == OCT_OK)
             ? (leasedMode == 2
-               ? "Serving \(scopeDescription) over \(channel) while Octopus stays open. Reconnect USB, then look for a second volume in Explorer."
+               ? "Serving \(scopeDescription) over \(channel) while Octopus stays open. Look for a second volume in Explorer."
                : "Read-only native observer authorized over \(channel) while Octopus stays open. Run diagnostics after using Explorer.")
             : "Native lease failed: file status \(result.rawValue) errno \(error); notification status \(posted.rawValue)."
         #endif

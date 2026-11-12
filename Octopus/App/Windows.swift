@@ -462,6 +462,9 @@ struct ActivityWindow: View {
 // MARK: - Settings
 
 struct SettingsWindow: View {
+    /// Shown under Version so the two can be compared: an app and a companion from different builds
+    /// behave like a bug in whatever changed between them.
+    @ObservedObject private var companion = CompanionInstaller.shared
     let showUpdate: () -> Void
     let showDebugLog: () -> Void
     let showDiagnostics: () -> Void
@@ -571,6 +574,9 @@ struct SettingsWindow: View {
             }
             Section {
                 InfoRow(title: "Version", value: AppInfo.version)
+                InfoRow(title: "Companion", value: companion.versionLabel,
+                        tint: companion.versionHealthy ? Theme.chevron : Theme.failure)
+                    .onAppear { companion.refresh() }
                 InfoRow(title: "Core", value: CoreService.version)
                 InfoRow(title: "System", value: "iOS \(UIDevice.current.systemVersion)")
                 Link(destination: AppInfo.repository) {
