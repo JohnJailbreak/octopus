@@ -30,6 +30,20 @@ final class NativeIntegration: ObservableObject {
     /// the grant was still waiting for the service to finish starting, and so defeated itself
     /// whenever the phone was already plugged in.
     private var restartWhenGranted = false
+
+    /// What the last restart of Apple's responder did, for the enable sheet to report specifically.
+    enum RestartOutcome: Equatable {
+        case notRequested
+        case restarted(Int32)   /// signalled this process, and it ended
+        case signalled(Int32)   /// signalled it, but it had not ended within the wait
+        case notRunning         /// no computer attached, so nothing to restart
+        case deferred           /// a transfer was in flight; retried on the next renewal
+        case refused(Int32)     /// the signal was refused, with this errno
+        case simulator
+    }
+    @Published private(set) var lastRestart: RestartOutcome = .notRequested
+    /// Whether the current grant has been published at least once, over either channel.
+    private(set) var grantPublished = false
     private var renewal: Task<Void, Never>?
 
     private func changed() {
@@ -49,9 +63,15 @@ final class NativeIntegration: ObservableObject {
     /// without that, the volume appears only after unplugging and reconnecting.
     func serveFilesystem() {
         restartWhenGranted = true
+        lastRestart = .notRequested
         observe = true
         scope = OCT_NATIVE_ROOT_SYSTEM
         synthetic = true
+        // Writes are on by default now, at the person's request: Enable USB Access is meant to be
+        // the whole of it. The switch still turns them off. What a host can actually change is
+        // bounded by ptpd's own permissions: it runs as mobile, so the system volume, which is
+        // sealed and owned by root, stays out of reach whatever this grants.
+        allowWrites = true
         synchronize()
         // The restart happens in renew(), once the grant has actually gone out. If the service has
         // not finished starting, that is when sync(serviceActive:) runs; if it has, it is now.
@@ -72,6 +92,7 @@ final class NativeIntegration: ObservableObject {
         // The Simulator's processes are the host Mac's, so looking for ptpd here would look on the
         // Mac running the tests, and there is no responder of ours to restart.
         DebugLog.log(.info, "native", "restart", "Not restarting \(reason): the Simulator has no responder")
+        lastRestart = .simulator
         return true
         #else
         // Not gated on the companion's heartbeat: one just installed, or not yet heard from, has
@@ -80,6 +101,7 @@ final class NativeIntegration: ObservableObject {
         let transport = NativeTransport.shared
         if transport.busy {
             DebugLog.log(.info, "native", "restart", "Waiting to restart for \(reason): a transfer is in flight")
+            lastRestart = .deferred
             return false
         }
         var report = oct_responder_restart()
@@ -87,9 +109,12 @@ final class NativeIntegration: ObservableObject {
         if status == OCT_OK, report.signalled {
             DebugLog.log(.info, "native", "restart",
                          "Restarted Apple's responder (pid \(report.previous_pid)) for \(reason)")
+            lastRestart = report.exited ? .restarted(report.previous_pid) : .signalled(report.previous_pid)
         } else if status == OCT_OK {
             DebugLog.log(.info, "native", "restart", "No responder running")
+            lastRestart = .notRunning
         } else {
+            lastRestart = .refused(report.error)
             // Most likely the app may not signal it, which no amount of retrying changes.
             DebugLog.log(.warning, "native", "restart",
                          "Could not restart Apple's responder: errno \(report.error). Unplug and reconnect instead.")
@@ -149,6 +174,7 @@ final class NativeIntegration: ObservableObject {
         let wanted: UInt32 = observe && active && authorizationAllowed ? (synthetic ? 2 : 1) : 0
         if wanted == leasedMode { return }
         renewal?.cancel(); renewal = nil
+        grantPublished = false
         leasedMode = wanted
         token = ""
         #if !targetEnvironment(simulator)
@@ -206,6 +232,7 @@ final class NativeIntegration: ObservableObject {
             word.deadline_ms = UInt64(now) + UInt64(OCT_NATIVE_LEASE_MS)
             word.generation = generation
             posted = oct_native_lease_publish(&word)
+            if posted == OCT_OK || result == OCT_OK { grantPublished = true }
             // The grant is out, so a fresh ptpd will find it as its companion starts. Now is the
             // moment to end the current session, and not before: see restartWhenGranted.
             if restartWhenGranted, posted == OCT_OK, leasedMode == 2 {

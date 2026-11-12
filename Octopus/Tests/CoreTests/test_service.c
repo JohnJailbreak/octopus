@@ -67,9 +67,9 @@ static void test_lifecycle(void)
         { OCT_EVENT_STEP_BEGIN, "Running protocol self-test", false },
         { OCT_EVENT_STEP_END, "Self-test passed: ", false },
         { OCT_EVENT_STEP_BEGIN, "Checking USB transport", false },
-        { OCT_EVENT_STEP_END, "No USB transport in this build", true },
+        { OCT_EVENT_STEP_END, "USB runs through Apple's ptpd, not the app", false },
         { OCT_EVENT_STATE, "Ready", false },
-        { OCT_EVENT_OPERATION_END, "Ready \xC2\xB7 local service only", false },
+        { OCT_EVENT_OPERATION_END, "Ready", false },
     };
     size_t matched = 0;
     uint32_t last_sequence = 0, open_step = 0;
@@ -88,7 +88,9 @@ static void test_lifecycle(void)
         matched++;
     }
     CHECK_EQ(matched, sizeof expected / sizeof expected[0]);
-    CHECK(find_event(count, OCT_EVENT_LOG, "! No USB transport") >= 0);
+    /* Logged plainly, without the "! " a failed step's line carries, because it is not one. */
+    CHECK(find_event(count, OCT_EVENT_LOG, "USB runs through Apple's ptpd") >= 0);
+    CHECK(find_event(count, OCT_EVENT_LOG, "! USB runs through") < 0);
     oct_service_status status;
     CHECK_OK(oct_service_get_status(service, &status));
     CHECK(!status.transport_available && !status.session_open && !status.scratch);

@@ -817,9 +817,12 @@ static oct_status start_locked(oct_service *s, uint32_t operation)
 
     step = step_begin(s, "Checking USB transport");
     if (!s->has_transport) {
-        step_end(s, step, true, "No USB transport in this build");
+        /* Not a failure, and it used to be reported as one on every enable. iOS gives no app the
+         * USB PTP function, so this core never drives USB itself on a phone: the companion inside
+         * Apple's ptpd does, and the app reports those steps after this one. */
+        step_end(s, step, false, "USB runs through Apple's ptpd, not the app");
         set_state(s, OCT_SERVICE_READY);
-        operation_end(s, operation, false, "Ready \xC2\xB7 local service only");
+        operation_end(s, operation, false, "Ready");
         return OCT_OK;
     }
     status = s->transport.ops->start(s->transport.context, s);

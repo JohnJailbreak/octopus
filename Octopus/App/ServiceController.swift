@@ -415,6 +415,8 @@ final class ServiceController: ObservableObject {
 
     let core: CoreService
     private let pacing: Pacing
+    /// Set by enable() and consumed when its summary is reached; see playNativeSteps.
+    private var withNativeSteps = false
     private var operation: Task<Void, Never>?
     private var lineCounter = 0
 
@@ -462,13 +464,12 @@ final class ServiceController: ObservableObject {
         let configuration = CoreConfiguration(
             scratch: Preferences.bool(Preferences.scratchFolder, default: false),
             selfTest: Preferences.bool(Preferences.selfTestOnEnable, default: true))
+        // One tap is the whole request. After the core's own steps the sheet runs the ones that
+        // make USB work, the companion, the grant, the restart and the companion serving, each as
+        // its own line, so a failure names the step it happened in rather than leaving the volume
+        // simply absent.
+        withNativeSteps = true
         run(title: "Enabling") { core in core.start(configuration) }
-        // One tap is the whole request: observe, serve the filesystem, and end the current PTP
-        // session so a connected computer sees it. Previously this enabled nothing beyond the
-        // app's own responder and left three switches and a reconnect to the person.
-        //
-        // Writes stay off: a tap asking for USB access is not a grant to change files.
-        NativeIntegration.shared.serveFilesystem()
     }
 
     func disable() {
@@ -553,18 +554,147 @@ final class ServiceController: ObservableObject {
                 }
                 await pause(pacing.stepSettle)
             case .operationEnd:
+                var summary = event.text
+                var failed = event.failed
+                if withNativeSteps && !event.failed {
+                    let native = await playNativeSteps()
+                    summary = native.summary
+                    failed = !native.ok
+                }
+                withNativeSteps = false
                 let id = nextLineID()
                 withAnimation(Motion.lineAppear) {
-                    sheet.lines.append(SheetLine(id: id, text: event.text,
-                                                 status: event.failed ? .failedSummary : .summary))
-                    sheet.title = event.failed ? "Failed" : "Done"
+                    sheet.lines.append(SheetLine(id: id, text: summary, status: failed ? .failedSummary : .summary))
+                    sheet.title = failed ? "Failed" : "Done"
                 }
-                if event.failed { Haptics.failure() } else { Haptics.success() }
+                if failed { Haptics.failure() } else { Haptics.success() }
                 await pause(pacing.foldDelay)
             case .log:
                 append(event)
             }
         }
+    }
+
+    /// One line in the sheet for a step the app runs itself: it appears running, then settles to
+    /// what happened, exactly as the core's steps do.
+    private func nativeStep(_ title: String, _ work: () async -> (ok: Bool, text: String)) async -> (ok: Bool, text: String) {
+        let id = nextLineID()
+        withAnimation(Motion.lineAppear) {
+            sheet.lines.append(SheetLine(id: id, text: title, status: .running))
+        }
+        await pause(pacing.stepDisplay)
+        let outcome = await work()
+        if let index = sheet.lines.firstIndex(where: { $0.id == id }) {
+            withAnimation(Motion.lineFinish) {
+                sheet.lines[index].text = outcome.text
+                sheet.lines[index].status = outcome.ok ? .done : .failed
+            }
+            Haptics.light()
+        }
+        await pause(pacing.stepSettle)
+        return outcome
+    }
+
+    /// The steps that make USB work, after the core is ready. Each reports what it found, so the
+    /// sheet says which one stopped the volume appearing. Returns the summary for the sheet.
+    ///
+    /// Not run in the Simulator, which has no ptpd: there the core's own steps are the whole story.
+    private func playNativeSteps() async -> (ok: Bool, summary: String) {
+        #if targetEnvironment(simulator)
+        return (true, "Ready")
+        #else
+        var firstFailure: String?
+        func note(_ outcome: (ok: Bool, text: String)) {
+            if !outcome.ok && firstFailure == nil { firstFailure = outcome.text }
+        }
+
+        // 1. The companion: installed, and the same build as this app.
+        note(await nativeStep("Checking the companion") {
+            let companion = CompanionInstaller.shared
+            companion.refresh()
+            switch companion.state {
+            case .matching(let version), .installed(let version):
+                return (true, "Companion \(version), matching this app")
+            case .notInstalled:
+                return (false, "Companion not installed: tap Install Companion")
+            case .mismatched(let installed, let carried):
+                return (false, "Companion \(installed) doesn't match this app (\(carried)): tap Update Companion")
+            case .notCarried:
+                if let version = CompanionPackage.installedVersion() {
+                    return (true, "Companion \(version) installed")
+                }
+                return (false, "No companion installed, and this build carries none")
+            case .installing:
+                return (true, "Companion installing")
+            case .failed(let reason):
+                return (false, "Companion: \(reason)")
+            case .unknown:
+                return (true, "Companion not checked")
+            }
+        })
+
+        // 2. The grant: serve /, read and write, renewed while Octopus is open.
+        let native = NativeIntegration.shared
+        note(await nativeStep("Granting access to /") {
+            refresh()                 // the service now reports itself active, so a grant can go out
+            native.serveFilesystem()  // publishes it, and restarts ptpd once it is out
+            return native.grantPublished
+                ? (true, "Granted /, read and write, while Octopus is open")
+                : (false, "Couldn't grant access: \(native.detail)")
+        })
+
+        // 3. The restart, which is what makes an already-connected computer read the drives again.
+        let restart = native.lastRestart
+        note(await nativeStep("Restarting Apple's responder") {
+            switch restart {
+            case .restarted(let pid):
+                return (true, "Restarted Apple's responder (was \(pid)) so the computer reads its drives again")
+            case .signalled(let pid):
+                return (true, "Asked Apple's responder (\(pid)) to restart")
+            case .notRunning:
+                return (true, "No computer connected yet: / appears when one is")
+            case .deferred:
+                return (true, "A transfer is in progress: restarting when it finishes")
+            case .refused(let error):
+                return (false, "Couldn't restart Apple's responder (errno \(error)): unplug and reconnect")
+            case .simulator:
+                return (true, "No responder in the Simulator")
+            case .notRequested:
+                return (false, "Not restarted: there was no grant to serve")
+            }
+        })
+
+        // 4. The companion serving, which only a connected computer can show.
+        var connected = false
+        switch restart {
+        case .restarted, .signalled, .deferred: connected = true
+        default: connected = NativeTransport.shared.live
+        }
+        if connected {
+            note(await nativeStep("Waiting for the companion to serve /") {
+                let transport = NativeTransport.shared
+                // A restarted ptpd has to start, load the companion and post its first heartbeat;
+                // eight seconds is generous for that and short enough to wait for in a sheet.
+                for _ in 0..<16 {
+                    if transport.stage == .sessionActive { break }
+                    try? await Task.sleep(nanoseconds: 500_000_000)
+                }
+                switch transport.stage {
+                case .sessionActive:
+                    return (true, "Serving / to the computer: \(transport.commands) requests so far")
+                case .waiting:
+                    return (true, "Companion running; waiting for the computer to open the drive")
+                case .hostConnected:
+                    return (false, "Computer connected, but / isn't being served: run Diagnostics")
+                default:
+                    return (false, "Apple's responder hasn't come back after the restart: unplug and reconnect")
+                }
+            })
+        }
+
+        if let firstFailure { return (false, "USB isn't serving /: \(firstFailure)") }
+        return (true, connected ? "Ready \u{00B7} / is on the computer" : "Ready \u{00B7} connect a computer")
+        #endif
     }
 
     private func finish() {

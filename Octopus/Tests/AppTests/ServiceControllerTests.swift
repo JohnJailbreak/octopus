@@ -13,7 +13,8 @@ final class ServiceControllerTests: XCTestCase {
         let started = await core.perform { $0.start(CoreConfiguration(scratch: false, selfTest: true)) }
         XCTAssertEqual(core.state(), .ready)
         XCTAssertEqual(started.first?.kind, .operationBegin)
-        XCTAssertTrue(started.contains { $0.kind == .stepEnd && $0.failed && $0.text == "No USB transport in this build" })
+        // Not a failure: on a phone USB runs through Apple's ptpd, and the app reports those steps itself.
+        XCTAssertTrue(started.contains { $0.kind == .stepEnd && !$0.failed && $0.text == "USB runs through Apple's ptpd, not the app" })
         XCTAssertTrue(started.contains { $0.kind == .stepEnd && $0.text.hasPrefix("Self-test passed") })
         XCTAssertTrue(started.contains { $0.kind == .operationEnd && !$0.failed })
         XCTAssertFalse(started.contains { $0.state == .waitingForConnection || $0.state == .connected })
