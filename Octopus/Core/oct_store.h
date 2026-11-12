@@ -61,6 +61,10 @@ const char *oct_status_name(oct_status status);
  * at most 254 UTF-16 code units plus its terminator. Both limits apply. */
 #define OCT_NAME_MAX        255
 #define OCT_NAME_UTF16_MAX  254
+/* Enough for a deep browse of a real filesystem without letting one enumeration exhaust memory
+ * inside ptpd: at ~96 bytes per tracked object this is a few megabytes. */
+#define OCT_STORE_DEFAULT_MAX_OBJECTS 65536u
+
 #define OCT_LABEL_MAX       63
 
 typedef struct oct_object_info {
@@ -135,6 +139,10 @@ typedef struct oct_backend_ops {
     oct_status (*remove)(void *ctx, uint64_t node);  /* file or empty directory */
     oct_status (*rename)(void *ctx, uint64_t node, const char *name);
     void       (*destroy)(void *ctx);
+    /* Optional live authorization/identity gate, including cached store reads.
+     * Recursive requests can be refused before any traversal. Source ABI only:
+     * all backends must be rebuilt with this header. NULL preserves prior behavior. */
+    oct_status (*access)(void *ctx, uint64_t node, bool recursive);
 } oct_backend_ops;
 
 typedef struct oct_backend {
@@ -158,7 +166,15 @@ void       oct_memory_backend_set_root_writable(oct_backend *backend, bool writa
 typedef struct oct_synthetic_options {
     int64_t time;     /* timestamp for every seed object */
     bool    scratch;
+    /* Extra objects in Documents, off by default so the seed tree keeps its six. One per
+     * extension, all carrying the same bytes, so a host's listing maps which extensions it will
+     * display. The first pair established that the extension is what decides it: probe.dat
+     * appeared and probe.txt did not, with identical content and identical reported format. */
+    bool    probes;
 } oct_synthetic_options;
+
+#define OCT_SYNTHETIC_SEED_OBJECTS  6u
+#define OCT_SYNTHETIC_PROBE_OBJECTS 10u
 
 #define OCT_SAMPLE_BIN_SIZE 4096u
 uint8_t    oct_sample_byte(size_t offset);
@@ -181,6 +197,16 @@ typedef struct oct_store_options {
     uint32_t    first_handle;  /* 0 selects 1 */
     const char *description;   /* NULL selects "Octopus" */
     const char *volume_label;  /* NULL selects the description */
+    /* The most handles one enumeration may return, and the ceiling on objects the store will
+     * track at once. 0 selects OCT_STORE_DEFAULT_MAX_OBJECTS.
+     *
+     * This exists because PTP's GetObjectHandles asks for the whole hierarchy when the host
+     * passes association 0, which on a filesystem-backed store means walking everything below
+     * the root. Over a real filesystem that never finishes: the handle list and the object
+     * table grow until the allocator fails, inside Apple's ptpd. A store that exceeds the
+     * budget answers OCT_E_TOO_LARGE instead, which the responder reports to the host as
+     * "specification by depth unsupported" so it enumerates one directory at a time. */
+    uint32_t    max_objects;
 } oct_store_options;
 
 /* Takes ownership of `backend` in all cases. */
@@ -193,6 +219,8 @@ uint32_t   oct_store_object_count(const oct_store *store);
 const char *oct_store_backend_kind(const oct_store *store);
 oct_status oct_store_storage_info(oct_store *store, oct_storage_info *out);
 oct_status oct_store_index_all(oct_store *store);
+/* The budget in force, for diagnostics and for callers that size their own buffers. */
+uint32_t   oct_store_max_objects(const oct_store *store);
 
 oct_status oct_store_get(oct_store *store, uint32_t handle, oct_object_info *out);
 oct_status oct_store_find(oct_store *store, uint32_t parent, const char *name,

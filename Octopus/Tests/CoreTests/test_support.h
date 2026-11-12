@@ -58,12 +58,16 @@ extern const char *fixture_directory;
 #define SEED_TIME 1794009600 /* 2026-11-07T00:00:00Z */
 
 void run_store_tests(void);
+void run_image_tests(void);
+void run_readonly_tests(void);
 void run_protocol_tests(void);
 void run_responder_tests(void);
 void run_service_tests(void);
 void run_log_tests(void);
 void run_link_tests(void);
 void run_usb_tests(void);
+void run_native_tests(void);
+void run_native_io_tests(void);
 void run_diag_tests(void);
 
 oct_store *open_synthetic(bool scratch);

@@ -693,7 +693,7 @@ oct_status oct_self_test_open(bool scratch, oct_self_test_run **out)
     oct_self_test_run *run = calloc(1, sizeof *run);
     if (!run) return OCT_E_NO_MEMORY;
     oct_buf_init(&run->test.scratch, 0);
-    oct_synthetic_options synthetic = { 0, scratch };
+    oct_synthetic_options synthetic = { .scratch = scratch };
     oct_backend backend;
     oct_status status = oct_synthetic_backend_create(&synthetic, &backend);
     if (status == OCT_OK) status = oct_store_open(NULL, backend, &run->store);
@@ -766,11 +766,11 @@ static oct_status start_locked(oct_service *s, uint32_t operation)
 {
     char text[512], size[32];
     uint32_t step = step_begin(s, "Preparing Octopus storage");
-    oct_synthetic_options synthetic = { s->config.seed_time, s->config.scratch };
+    oct_synthetic_options synthetic = { .time = s->config.seed_time, .scratch = s->config.scratch };
     oct_backend backend;
     oct_status status = oct_synthetic_backend_create(&synthetic, &backend);
     if (status == OCT_OK) {
-        oct_store_options options = { 0, 0, "Octopus", "Octopus" };
+        oct_store_options options = { .description = "Octopus", .volume_label = "Octopus" };
         status = oct_store_open(&options, backend, &s->store);
     }
     oct_handle_list list = { 0 };
@@ -998,7 +998,7 @@ oct_status oct_service_self_test(oct_service *s)
     oct_status status = OCT_OK;
     if (!store) {
         uint32_t step = step_begin(s, "Preparing temporary storage");
-        oct_synthetic_options synthetic = { 0, true };
+        oct_synthetic_options synthetic = { .scratch = true };
         oct_backend backend;
         status = oct_synthetic_backend_create(&synthetic, &backend);
         if (status == OCT_OK) status = oct_store_open(NULL, backend, &temporary);

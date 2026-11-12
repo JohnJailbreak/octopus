@@ -1,42 +1,259 @@
-# Implementation status and validation
+# Implementation status and the staged device procedure
 
-## Delivered code
+What is built, what is proven, and what is still unknown. Written against the branch
+`engineering/native-ptp-observer`. Nothing here has run on a phone or against Windows.
 
-- `oct_usb`: bounded USB2 PTP interface/endpoint selection and full control SETUP validation/routing to the existing oct_link. Integrated core tests and one-tap simulated diagnostic, not a replacement responder.
-- `oct_device`: actual read-only iOS IOKit matching using ptpd's verified match dictionary; explicit errors, resource cleanup and enumeration bound. Portable Mach-O identity parser with truncation/malformed tests.
-- Existing diagnostics: adds PTP registry and ptpd UUID/SHA-256 observations, preserves error codes, fixes process/transaction-count overclaims, adds device-observations.json and connection-timeline.txt to the existing ZIP export. New adapter diagnostic remains SIMULATED.
-- Existing native UI, updater, IPA/TIPA packaging, entitlements and release workflows retained. No DEB/injection/driver or filesystem exposure added.
+## Evidence levels
 
-## Validation performed on Windows
+Each claim below carries one of these. They are not interchangeable.
 
-Portable workspace-only MSYS GCC 16.2.0, strict existing warnings including conversion/sign-conversion and Werror. Tool packages fetched from MSYS repository and checked against database SHA-256. No toolchain committed.
-
-| Check | Result |
+| Level | Meaning |
 |---|---|
-| Strict C core/test compilation | Pass |
-| `make test-usb` | **836 checks, 0 failures**, actual new implementation with existing link/service/responder |
-| Full updated core suite | **3350 checks, 7 failures** |
-| Unchanged baseline core suite | **2506 checks, same 7 failures** |
-| Repository checks | **12 pass** |
-| Helper/spawn/ZIP suite | 17 tests: 15 pass, 1 failure, 1 skipped; baseline reproduces identical failure/skip |
-| GCC `make analyze` | No findings (includes core, helper and spawn; iOS-only branch excluded on Windows) |
-| Responder fuzz, unsanitized | **300000 iterations, no faults**; 180340 commands, 59823 data phases, 44662 mutations |
-| New identity parser against all five real binaries | Pass; UUID/CPU/platform/minimum match independent inventory |
-| ASan/UBSan/TSan | Attempted, blocked by missing -lasan/-lubsan/-ltsan runtimes in MSYS toolchain |
-| Swift Simulator / native iOS build | Not run: no macOS/Xcode available |
-| GitHub CI | Not triggered: connector Git tree write rejected HTTP403, local push credential unavailable |
-| Physical iPhone/Explorer | No new live verification |
+| **Tested** | Exercised by the portable C suites on Linux, under the sanitizers |
+| **Type-checked** | Its C calls compile against the real headers; the Objective-C around them has not been compiled |
+| **Compiled for iOS** | Built by the Apple toolchain for arm64e |
+| **Verified in ptpd** | Observed running inside the real process on the device |
+| **Verified with Windows** | Observed serving a real File Explorer session |
 
-The seven full-suite failures are the exact existing symlink/root-alias/path-replacement and chmod-based write-refusal assertions under Windows/MSYS. Helper's existing symlink rejection test also fails identically on baseline. These are not silenced or reclassified as passing. Linux/macOS checks remain required. A preliminary run also lacked MSYS /tmp; creating the workspace runtime's tmp directory resolved that setup problem. A stale expected adapter count was fixed from 5 to 6. Separate unsanitized fuzz executable was built from plain objects after sanitizer runtime failures; no sanitized pass is claimed.
+As of this commit **nothing is Compiled for iOS, Verified in ptpd, or Verified with Windows.**
+There is no Swift, Objective-C or Theos toolchain in the environment this work was done in, so
+the macOS CI job is the first real compile of the native component.
 
-See [validation logs](evidence/validation). Paths in logs are normalized to WORKSPACE. These logs are host tests, not USB traces. Swift changes were source-reviewed and tests updated but not compiled here.
+## What the portable core can do
 
-## Static findings versus runtime evidence
+**Tested.** The C core has a real filesystem backend (`oct_backend_directory.c`) with
+`pread`-based offset reads, `O_NOFOLLOW` on every path component, and create, write, truncate,
+remove and rename. Directory listing is lazy: one directory's children load on demand, which is
+exactly how PTP enumerates, so recursive browsing needs no eager index.
 
-All five binaries have identities/load commands/signatures inventoried. Ghidra implementation-level evidence retained for USB setup/read/write, provider routing, configuration selection, lockdown service/trust, AFC lifecycle and camera initiator paths. Private imported frameworks/shared-cache implementations remain missing. No public additional-storage registration interface was established.
+### Two blockers to pointing that at a real filesystem, now fixed
 
-Only the user-supplied v0.4.8 diagnostic run is physical-device evidence: 26 PASS / 3 BLOCKED / zero external transactions. Existing synthetic example digest remains aeeb6cba90d7d6adfcd42d673f64897f26cfcc479c5cf489a86146e09a9d2bd2. The immediate File Explorer synthetic-storage milestone is **not achieved**. Actual native driver, additional provider, root browsing, writes and physical Photos coexistence are unverified/unimplemented. This release deliberately does not advance filesystem exposure past the prerequisite milestone.
+**1. Unbounded enumeration (tested).** PTP's `GetObjectHandles` means "the whole hierarchy" when
+the host passes association 0, and the responder mapped that onto a recursive walk from the root.
+Over the six-object synthetic tree that is free. Over `/` it never finishes: the handle list and
+the object table grow until the allocator refuses, inside the process that also serves Photos.
 
-## Delivery and recovery
+`oct_store_options.max_objects` (default 65536) now caps both the handles one enumeration returns
+and the objects the store tracks at once. Exceeding it yields `OCT_E_TOO_LARGE`, which the
+responder reports as `0xA808` specification-by-depth-unsupported — the MTP code for a depth the
+device will not serve, which leads a host to enumerate one directory at a time. Per-directory
+listing is unaffected.
 
-Engineering branch based on original cdca0da history; local committed changes, full source archive and Git bundle delivered. Push was attempted through authorized access but denied; main/release remains unchanged. Build and install an engineering artifact only after macOS checks below. No Apple binary or system-volume write occurred; disabling Octopus uses the existing app control. There is no native transport mutation to undo.
+**2. A 32 MiB ceiling on downloads (tested, and type-checked in the provider).** The native data
+source held an entire file in an `NSData` before Apple's writer read a byte of it, so a download
+cost the file's size in memory and could not exceed `OCT_PTP_MAX_TRANSFER`. On a real filesystem
+that rules out most media.
+
+`PTPDataPacket::copyToBuffer:numBytes:` already asks the source for one chunk at a time through
+`-read:length:offset:`, so the source now fetches each chunk with `oct_store_read` at that offset
+and holds nothing. A file above 4 GiB is refused with `OBJECT_TOO_LARGE` rather than having its
+32-bit size truncated, which would make Apple send a short data phase and the host write a corrupt
+file. Authorization is rechecked per chunk, so a download stops at the next chunk after a lease
+expires.
+
+The streaming contract is tested against the directory backend over a file larger than the old
+ceiling: every byte matches through chunked offset reads, an oversized request is clamped to what
+remains, the end of the file reads nothing and succeeds, and past the end is an error rather than
+silent zeros.
+
+## What the native component does
+
+**Type-checked only.** It observes and overlays; it does not take ownership of the protocol.
+
+- Before any hook, `OctopusRuntime.m` checks the method's runtime type encoding and that its
+  implementation lives in `/usr/libexec/ptpd`, and refuses on mismatch or on a concurrent change.
+- `OctopusObserver.m` gates on iOS 17.0.0, the exact ptpd UUID, arm64e and the on-disk SHA-256.
+  It opens a thread-local scope around `handleBulkData:result:`, so a `handleRequest:` nested
+  inside it is known to come from real host traffic rather than any internal call.
+- `OctopusProvider.m` appends a synthetic storage to Apple's own provider results instead of
+  calling `addStorage:`. Apple keeps sessions, transaction numbers, USB buffers, asynchronous
+  writes and final responses.
+
+Handle ownership is now a store lookup rather than a fixed list, so objects discovered as the host
+browses are recognized. The collision check still runs on every call, as it must, since Apple can
+allocate a handle in our range at any time; it now asks about one handle instead of every one we
+own. Apple's handles come from `FUN_100004224`, which only increments a global counter and is called
+only by the `PTPFolder` and `PTPFile` initializers, so Apple cannot hold a handle in our range
+without first having allocated its base. That makes the check one message into Apple's code per call
+rather than one per owned object per call, which a filesystem would make unbounded.
+
+Directory listings were also capped at six entries, a sanity bound for the synthetic tree that would
+have refused every larger real directory. They are now bounded by the store's enumeration budget.
+
+## Why the design should survive contact with Apple's code
+
+**Traced from the disassembly, not assumed.** The risk with an overlay is that a handler validates
+a handle or storage before reaching the provider, so synthetic IDs are rejected before any hook
+runs. `objectForObjectHandle:` is called only from inside the provider methods themselves, each of
+which returns early for synthetic handles, and no handler validates storage through
+`storageWithID:`. So the early-return design holds for the paths covered by the evidence.
+
+## What is still unknown
+
+- **Whether Windows accepts a second storage at all.** Appending a storage ID does not mean
+  Explorer shows a volume. It may ignore it, show it empty, or reject the device. Not answerable
+  from static analysis.
+- **Three unhooked provider methods** have no callers in the collected evidence, but the evidence
+  is a subset of the binary: `deviceInfoDataset` (which tells the host which operations and
+  formats exist), `visibleStorage:` (which may filter storages), and the bulk
+  `objectInfoForObjectsInStorage:forObjectFormatCode:inAssociation:withContentType:responseCode:`.
+  If Explorer shows the storage but no files, these are the first places to look.
+- **`hostIsWindows` exists in ptpd**, so there is Windows-specific behaviour in there that has not
+  been traced.
+- **Whether ptpd can read the paths we would serve.** Its launchd job runs as `UserName = mobile`,
+  recorded in the v0.4.9 device capture, which settles that it shares a uid with the app and can
+  therefore reach the lease directory. It does not establish what that uid can read under `/`.
+- **Write operations.** The core has create, write, truncate, remove and rename, and the responder
+  accepts `SendObjectInfo`, `SendObject` and `SetObjectPropValue`. None of that is wired into the
+  native provider, and no write path has been exercised against Apple's responder.
+
+## The v0.4.20 device run, and what the next run decides
+
+**Observed.** Three diagnostic exports (app only, after installing the DEB, after a reboot) each gave 29 pass,
+0 fail, 5 blocked. The companion was installed at `/var/jb/usr/lib/TweakInject/OctopusNative.dylib` with a
+`ptpd` executable filter, Dopamine's `systemhook.dylib` was in ptpd's environment, the app wrote its lease as
+uid 501 and ptpd ran as uid 501. The status file never appeared: the app read it as `OCT_E_IO` with `ENOENT`.
+Windows kept showing Apple's Photos folders. Nothing shows the companion loaded, a native USB callback, or a
+synthetic object.
+
+**Leading hypothesis, not proven.** `launchctl procinfo` lists ptpd's entitlements, and they include
+`seatbelt-profiles = ("ptpd")`: ptpd runs under Apple's ptpd sandbox. Its other entitlements cover Photos
+storage, its own temporary space and some preference domains; nothing suggests access to
+`/var/mobile/Library/Caches/Octopus/native`. The same uid does not give the same sandbox rights. If the sandbox
+refuses that folder, then the lease is never read, nothing is hooked, Photos is unaffected and no status is
+written, which is everything observed. The profile's rules are not in the evidence, and whether the dylib
+loaded at all is still unknown.
+
+**Not causes.** zsh's `log` builtin shadowed Apple's tool and `/usr/bin/log` is absent, so the attempted log
+query never ran; the `zsh/watch.so` signature message came from the shell, not from Octopus; the `plutil -lint`
+attempt used an unsupported syntax; `launchctl procinfo` reporting `status = stopped` is a moment's scheduling
+state, and `ps` showed ptpd alive throughout.
+
+**What changed so one run can tell.** The status file was the only channel, so it could not report its own
+failure. There are now two channels that need no files:
+
+- **A startup signal** posted through Darwin notifications: how far startup got, which identity check failed,
+  and the exact stage and errno of the last lease read and status write. Run Full Diagnostics shows it as
+  **Companion startup signal**, with one verdict: not loaded, a stale ptpd, rejected identity, sandbox refusal,
+  waiting for a lease, status write failed, hooks refused, or running.
+- **An os_log marker** under subsystem `com.parv.octopus.native` the moment the constructor runs in ptpd.
+  Readable from Windows with `idevicesyslog`, not on the phone.
+
+Stage and errno are captured at the failing call. A refusal of `open()` by the kernel or sandbox is reported
+separately from a folder that opened but is not private, which used to look identical.
+
+## The next device run
+
+One run, observer-only, answers the open question. Nothing in it exposes a synthetic storage.
+
+1. Install the prerelease's Octopus.tipa with TrollStore and its paired DEB with Sileo. Leave the provider off.
+2. Open Octopus, enable USB Access, keep it in the foreground, and connect the cable to Windows.
+3. **Photos regression first:** in File Explorer, copy one ordinary photo from DCIM. If that fails, stop and
+   roll back.
+4. Run Full Diagnostics and export. Read **Companion startup signal**:
+   - *No startup signal*: the dylib never ran its constructor in ptpd. Next: injection or code signing, not the
+     sandbox. Optionally run `idevicesyslog | findstr OctopusNative` on Windows while reconnecting the cable.
+   - *Sandbox refused the shared folder*, with a stage and errno: the hypothesis holds; the lease and status
+     must move somewhere ptpd's profile allows.
+   - *Rejected identity*: a different ptpd build; nothing was hooked, by design.
+   - *Running*: then check **Native observer** for commands paired with Apple's responses during the copy.
+5. Only after a *running* verdict with paired callbacks: authorize the synthetic provider, reconnect, and look
+   for a second volume. Download `Documents/example.txt` and confirm 76 bytes and SHA-256
+   `aeeb6cba90d7d6adfcd42d673f64897f26cfcc479c5cf489a86146e09a9d2bd2`.
+
+The read-only filesystem backend is not connected to the live provider and stays that way until step 5
+succeeds. Writes are not implemented.
+
+**Roll back** at any point: uninstall the companion in Sileo and `killall -9 ptpd`, or reboot without
+re-running Dopamine; rootless tweaks load only while jailbroken, so that boot runs stock ptpd.
+
+## The staged device procedure
+
+Each stage answers one question and stops. Do not skip ahead: a later stage's failure is
+uninterpretable without the earlier one's result.
+
+**Stage 1 — the app alone.** Touches nothing in ptpd, so there is nothing to recover from.
+Install the IPA/TIPA, open Octopus, enable USB Access with no cable attached, run Run Full
+Diagnostics, then disable and run them again. Send both exports. This confirms the app builds,
+the authorization lease is written and withdrawn, and the diagnostics capture it.
+
+**Stage 2 — the component loads.** Install the DEB from the `tweak`/`native` CI artifact for this
+exact commit. With Octopus open and USB Access enabled, attach the cable, then `killall -9 ptpd`
+so it reloads. Export diagnostics. The `loaded` line records the reference UUID and the uid and
+gid ptpd runs as. A UUID mismatch means no hooks were installed at all, which is the safe outcome
+on any other build.
+
+**Stage 3 — real traffic, read-only.** Connect to Windows 11, trust the PC, open the iPhone in
+File Explorer and copy one ordinary photo. Export diagnostics. The journal should show commands
+inside native USB receive callbacks paired with Apple's successful response writes. Confirm the
+photo copied and Photos import still works. This proves the observation path without the overlay
+having changed anything.
+
+**Stage 4 — the synthetic storage.** Only after Stage 3. Authorize the provider, reconnect, and
+look for a second volume in Explorer. If it appears, open `Documents/example.txt` and download it,
+then verify 76 bytes and SHA-256
+`aeeb6cba90d7d6adfcd42d673f64897f26cfcc479c5cf489a86146e09a9d2bd2`. If the volume appears but is
+empty, capture the diagnostics: that is the signature of the unhooked enumeration paths above.
+
+**Stage 5 — the real filesystem, read-only.** Only after Stage 4 downloads a file correctly. Point
+the store at a real directory, not `/`, and confirm recursive browsing and a download. `/` comes
+after a budget has been chosen from what Stage 5 shows about Explorer's enumeration behaviour.
+
+**Stage 6 — writes.** Only in a disposable directory, and only after Stage 5.
+
+## Recovery
+
+The filter is `ptpd` alone, so nothing else is injected and the phone stays usable. The worst case
+is that USB photo import stops working until ptpd is clean.
+
+1. `killall -9 ptpd` — launchd starts it again on the next connection.
+2. Uninstall the package in Sileo, then `killall -9 ptpd`.
+3. Remove the files by hand, from both locations a rootless tweak can occupy:
+   `/var/jb/Library/MobileSubstrate/DynamicLibraries/` and `/var/jb/usr/lib/TweakInject/`.
+   The CI job prints `dpkg-deb --contents`, which names the real paths.
+4. Reboot without re-running Dopamine. Rootless tweaks load only while jailbroken, so an
+   unjailbroken boot runs stock ptpd with nothing injected. This needs no SSH, Sileo or
+   filesystem access and is the guaranteed way out.
+
+Before trusting photo import again, reconnect and copy one ordinary photo.
+
+## Writes, and what stands between here and uploading (11 November 2026)
+
+What a host can do now: delete. `deleteObjectWithObjectHandle:responseCode:` is a
+method on the class the provider already hooks, recorded from the device as
+`v28@0:8I16^S20`, so DeleteObject arrives as a plain method call with the handle
+and a response-code pointer. `GetDeviceInfo` advertises DeleteObject when the
+served store accepts changes, because a host reads OperationsSupported to decide
+what to offer.
+
+What the backend can do now: create, write, truncate, remove and rename, inside
+the served root, when the lease grants writes. All five are tested against a real
+directory, including a write at an offset and a delete that really removes the
+file, and all five refuse when the lease lapses mid-operation.
+
+Two of those capabilities a host cannot yet reach, and the reason is the same for
+both.
+
+- **Uploading a file.** PTP sends SendObjectInfo then SendObject. Neither has a
+  per-object receiver on the camera class: of the 786 methods recorded from
+  `/usr/libexec/ptpd`, none takes an incoming object.
+- **Renaming from the host.** Explorer renames over MTP with SetObjectPropValue
+  on ObjectFileName. There is no `setObjectPropValue` among the recorded methods
+  either, only `objectPropValueForHandle:withObjectPropertyCode:responseCode:`,
+  which reads.
+
+Both therefore need `handleRequest:` (`0x100023384`, `@24@0:8@16`), which the
+observer already wraps for counting. Handling an operation there means more than
+returning a different value: Apple's machinery runs the data phase after that
+call, so an interception would have to produce the response itself and, for
+SendObject, consume a host-to-device data phase that arrives through
+`handleBulkData:result:` (also already wrapped). That is a two-phase transaction
+inside a state machine we did not write, and unlike every capability added so
+far, it cannot be made safe by forwarding to Apple's implementation when the
+handle is not ours: by the time the operation is recognised the transaction has
+begun.
+
+So the next step is an experiment, not an implementation: record what
+`handleRequest:` receives and returns for a SendObjectInfo aimed at Apple's own
+storage, and what `handleBulkData:result:` sees during the data phase, before any
+attempt to answer one. The observer can do that with the hooks it already has.

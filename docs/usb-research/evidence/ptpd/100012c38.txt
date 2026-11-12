@@ -1,0 +1,144 @@
+===== 100012c38 PTPVirtualCamera::objectPropertiesSupportedForObjectFormatCode:responseCode: =====
+XREF 10005d804 DATA null
+XREF 100033580 DATA null
+100012c38 pacibsp
+100012c3c sub sp,sp,#0x120
+100012c40 stp x26,x25,[sp, #0xd0]
+100012c44 stp x24,x23,[sp, #0xe0]
+100012c48 stp x22,x21,[sp, #0xf0]
+100012c4c stp x20,x19,[sp, #0x100]
+100012c50 stp x29,x30,[sp, #0x110]
+100012c54 add x29,sp,#0x110
+100012c58 mov x20,x3
+100012c5c mov x21,x0
+100012c60 nop
+100012c64 ldr x8,0x100044518
+100012c68 ldr x8,[x8]
+100012c6c stur x8,[x29, #-0x48]
+100012c70 nop
+100012c74 ldr x0,0x100059738
+100012c78 mov x2,#0x0
+100012c7c bl 0x10002f0c0
+100012c80 mov x19,x0
+100012c84 mov w8,#0x2001
+100012c88 strh w8,[x20]
+100012c8c movi v0.2D,#0x0
+100012c90 stp q0,q0,[sp]
+100012c94 stp q0,q0,[sp, #0x20]
+100012c98 ldr x20,[x21, #0x78]
+100012c9c mov x2,sp
+100012ca0 add x3,sp,#0x48
+100012ca4 mov x0,x20
+100012ca8 mov w4,#0x10
+100012cac bl 0x10002f640
+100012cb0 cbz x0,0x100012d30
+100012cb4 mov x21,x0
+100012cb8 ldr x8,[sp, #0x10]
+100012cbc ldr x23,[x8]
+100012cc0 adrp x24,0x100059000
+100012cc4 mov x25,#0x0
+100012cc8 ldr x8,[sp, #0x10]
+100012ccc ldr x8,[x8]
+100012cd0 cmp x8,x23
+100012cd4 b.eq 0x100012ce0
+100012cd8 mov x0,x20
+100012cdc bl 0x10002e9a0
+100012ce0 ldr x8,[sp, #0x8]
+100012ce4 ldr x0,[x8, x25, LSL #0x3]
+100012ce8 ldr x22,[x24, #0x740]
+100012cec bl 0x1000315e0
+100012cf0 mov x2,x0
+100012cf4 mov x0,x22
+100012cf8 bl 0x100030e20
+100012cfc mov x2,x0
+100012d00 mov x0,x19
+100012d04 bl 0x10002eee0
+100012d08 add x25,x25,#0x1
+100012d0c cmp x21,x25
+100012d10 b.ne 0x100012cc8
+100012d14 mov x2,sp
+100012d18 add x3,sp,#0x48
+100012d1c mov x0,x20
+100012d20 mov w4,#0x10
+100012d24 bl 0x10002f640
+100012d28 mov x21,x0
+100012d2c cbnz x0,0x100012cc4
+100012d30 ldur x8,[x29, #-0x48]
+100012d34 nop
+100012d38 ldr x9,0x100044518
+100012d3c ldr x9,[x9]
+100012d40 cmp x9,x8
+100012d44 b.ne 0x100012d68
+100012d48 mov x0,x19
+100012d4c ldp x29,x30,[sp, #0x110]
+100012d50 ldp x20,x19,[sp, #0x100]
+100012d54 ldp x22,x21,[sp, #0xf0]
+100012d58 ldp x24,x23,[sp, #0xe0]
+100012d5c ldp x26,x25,[sp, #0xd0]
+100012d60 add sp,sp,#0x120
+100012d64 retab
+100012d68 bl 0x10002e690
+
+/* Function Stack Size: 0x1c bytes */
+
+ID PTPVirtualCamera::objectPropertiesSupportedForObjectFormatCode_responseCode_
+             (ID param_1,SEL param_2,unsigned_short param_3,unsigned_short *param_4)
+
+{
+  undefined *self;
+  ID self_00;
+  ID IVar1;
+  ID IVar2;
+  ID self_01;
+  long lVar3;
+  ID IVar4;
+  undefined8 local_120;
+  long lStack_118;
+  long *local_110;
+  undefined8 uStack_108;
+  undefined8 local_100;
+  undefined8 uStack_f8;
+  undefined8 uStack_f0;
+  undefined8 uStack_e8;
+  undefined1 auStack_d8 [128];
+  long local_58;
+  
+  local_58 = *(long *)PTR____stack_chk_guard_100044518;
+  self_00 = NSMutableArray::arrayWithCapacity_((ID)PTR__OBJC_CLASS___NSMutableArray_100059738,0);
+  *param_4 = 0x2001;
+  lStack_118 = 0;
+  local_120 = 0;
+  uStack_108 = 0;
+  local_110 = (long *)0x0;
+  uStack_f8 = 0;
+  local_100 = 0;
+  uStack_e8 = 0;
+  uStack_f0 = 0;
+  self_01 = *(ID *)(param_1 + 0x78);
+  IVar1 = objc_stub::countByEnumeratingWithState_objects_count_(self_01,&local_120,auStack_d8,0x10);
+  if (IVar1 != 0) {
+    lVar3 = *local_110;
+    do {
+      IVar4 = 0;
+      do {
+        if (*local_110 != lVar3) {
+          _objc_enumerationMutation(self_01);
+        }
+        self = PTR__OBJC_CLASS___NSNumber_100059740;
+        IVar2 = objc_stub::propertyCode(*(ID *)(lStack_118 + IVar4 * 8));
+        IVar2 = NSNumber::numberWithUnsignedShort_((ID)self,IVar2);
+        NSMutableArray::addObject_(self_00,IVar2);
+        IVar4 = IVar4 + 1;
+      } while (IVar1 != IVar4);
+      IVar1 = objc_stub::countByEnumeratingWithState_objects_count_
+                        (self_01,&local_120,auStack_d8,0x10);
+    } while (IVar1 != 0);
+  }
+  if (*(long *)PTR____stack_chk_guard_100044518 == local_58) {
+    return self_00;
+  }
+                    /* WARNING: Subroutine does not return */
+  ___stack_chk_fail();
+}
+
+

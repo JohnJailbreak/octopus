@@ -28,6 +28,18 @@ enum DiagnosticStatus: String, Codable, Sendable, CaseIterable {
 
 enum DiagnosticKind: String, Codable, Sendable {
     case local, simulated, external
+    case nativeObservation = "native_observation"
+    case realUSB = "real_external_usb_transaction"
+
+    var label: String {
+        switch self {
+        case .local: return "Local"
+        case .simulated: return "Simulated"
+        case .external: return "External"
+        case .nativeObservation: return "Native observation"
+        case .realUSB: return "USB callback + response"
+        }
+    }
 
     init(_ raw: oct_diag_kind) {
         switch raw {
@@ -56,6 +68,7 @@ struct DiagnosticsEnvironment: Codable, Sendable {
     var transportFailure: String
     var transportTransactions: UInt64
     var settings: [String: String]
+    var nativeCapture: NativeCapture? = nil
 
     @MainActor
     init(service: ServiceController) {
@@ -64,6 +77,7 @@ struct DiagnosticsEnvironment: Codable, Sendable {
         transportFailure = service.status.transportFailure
         transportTransactions = service.status.transportTransactions
         settings = Diagnostics.settingsSnapshot()
+        nativeCapture = NativeCapture.read(expectedLease: NativeIntegration.shared.token)
     }
 
     static let unknown = DiagnosticsEnvironment(serviceState: "unknown", transportState: "unknown",
@@ -250,6 +264,91 @@ enum Diagnostics {
             step("device.ptp_registry", "Device (read-only)", "PTP interface discovery", .local) { ptpRegistry() },
             step("device.ptpd_identity", "Device (read-only)", "ptpd binary identity", .local) { ptpdIdentity() },
             step("device.ptpd_process", "Device (read-only)", "ptpd running now", .local) { ptpdProcess() },
+            step("native.installation", "Native integration", "Optional companion files", .local) {
+                let capture = nativeCapture(environment)
+                return result("native.installation", "Native integration", "Optional companion files", .local,
+                              capture.companionFilesPresent ? .pass : .blocked,
+                              "App effective UID: \(capture.appUID). Companion files \(capture.companionFilesPresent ? "found" : "not found") at /var/jb/usr/lib/TweakInject. File presence does not prove the module loaded or hooks ran.", checks: 1)
+            },
+            step("native.roots", "Native integration", "Filesystem roots ptpd can read", .nativeObservation) {
+                // Probed inside ptpd, because its sandbox and not the app's decides this. Until
+                // this is known, granting a filesystem scope is guesswork.
+                var roots = oct_native_root_report()
+                guard oct_native_roots_read(&roots) == OCT_OK else {
+                    return result("native.roots", "Native integration", "Filesystem roots ptpd can read",
+                                  .nativeObservation, .blocked,
+                                  "The companion has not reported which roots it can read. It publishes that once "
+                                      + "after its hooks install; connect USB with Octopus open, then run this again.",
+                                  checks: 1)
+                }
+                // Each verdict comes from C too, rather than from bit arithmetic over three masks
+                // written in Swift, for the same reason as the mapping above.
+                var lines: [String] = []
+                var anyReadable = false
+                for raw in 1..<OCT_NATIVE_ROOT_COUNT.rawValue {
+                    let root = oct_native_root(rawValue: raw)
+                    guard let path = oct_native_root_path(root) else { continue }
+                    let state = oct_native_root_state_of(&roots, root)
+                    if state == OCT_NATIVE_ROOT_READABLE { anyReadable = true }
+                    let verdict = String(cString: oct_native_root_state_name(state))
+                    lines.append("\(String(cString: path)): \(verdict)")
+                }
+                return result("native.roots", "Native integration", "Filesystem roots ptpd can read",
+                              .nativeObservation, anyReadable ? .pass : .blocked,
+                              lines.joined(separator: "; ")
+                                  + ". A readable root can be served read-only; pick it beside the exposure "
+                                  + "toggle and reconnect USB. Symlinks whose target stays inside the chosen "
+                                  + "root are followed, which is what makes /var reachable.", checks: 1)
+            },
+            step("native.startup_signal", "Native integration", "Companion startup signal", .nativeObservation) {
+                // Read through Darwin notifications, not the status file, because writing that file
+                // is one of the things that can fail inside ptpd's sandbox. The C side decides what
+                // the signal means; see oct_native_signal_describe.
+                let capture = nativeCapture(environment)
+                var signal = oct_native_signal()
+                let present = oct_native_signal_read(&signal) == OCT_OK
+                let capacity = 400
+                var text = [CChar](repeating: 0, count: capacity)
+                // capacity is a separate constant: reading text.count while passing &text in the same
+                // call is an overlapping access, which Swift's exclusivity checking rejects.
+                let verdict = oct_native_signal_describe(&signal, present, capture.observedPID, &text, capacity)
+                let detail = text.withUnsafeBufferPointer { String(cString: $0.baseAddress!) }
+                let status: DiagnosticStatus
+                if !capture.companionFilesPresent {
+                    status = .blocked
+                } else if verdict == OCT_NATIVE_VERDICT_RUNNING {
+                    status = .pass
+                } else if verdict == OCT_NATIVE_VERDICT_NO_LEASE {
+                    status = .blocked
+                } else {
+                    status = .fail
+                }
+                // The signal word is full at 64 bits, so the UUID the companion actually read comes
+                // over a second notification. Without it, a mismatch cannot say which image was
+                // inspected, which is exactly what cost a cycle on 9 November.
+                var extra = ""
+                var read = oct_native_detail()
+                if oct_native_detail_read(&read) == OCT_OK {
+                    let prefix = read.uuid_prefix
+                    let bytes = [prefix.0, prefix.1, prefix.2, prefix.3, prefix.4, prefix.5]
+                    let uuid = bytes.map { String(format: "%02X", $0) }.joined()
+                    extra = bytes.allSatisfy({ $0 == 0 })
+                        ? " No UUID was read."
+                        : " UUID read began \(uuid), expected FFD54FC705 08."
+                    extra += read.image_index == 255
+                        ? " No image matched /usr/libexec/ptpd among \(read.image_count) loaded."
+                        : " Matched image \(read.image_index) of \(read.image_count)."
+                }
+                return result("native.startup_signal", "Native integration", "Companion startup signal", .nativeObservation,
+                              status, detail + " Signal word \(String(format: "%016llx", oct_native_signal_pack(&signal)))"
+                                  + (present ? "." : " (none posted).") + extra, checks: 1)
+            },
+            step("native.observer", "Native integration", "Native observer compatibility and authorization", .nativeObservation) {
+                nativeCapture(environment).result(transactions: false)
+            },
+            step("native.usb_transactions", "Native integration", "USB callbacks and paired native responses", .nativeObservation) {
+                nativeCapture(environment).result(transactions: true)
+            },
             step("external.usb_transport", "External connection", "USB transport for Octopus", .external) {
                 usbTransport()
             },
@@ -452,15 +551,51 @@ enum Diagnostics {
 
     // MARK: - External connection
 
+    static func nativeCapture(_ environment: DiagnosticsEnvironment) -> NativeCapture {
+        environment.nativeCapture ?? NativeCapture(data: nil, problem: "No native observation was captured for this run.",
+                                                   expectedLease: "", observedPID: 0, capturedAt: 0)
+    }
+
     static func usbTransport() -> DiagnosticResult {
-        result("external.usb_transport", "External connection", "USB transport for Octopus", .external, .blocked,
-               "This build has no native USB driver registered with the transport adapter. Read-only PTP discovery "
-                   + "does not open Apple's interface or prove ownership. Private transport ABI and provider coexistence "
-                   + "still require device evidence.", checks: 0)
+        let id = "external.usb_transport", group = "External connection", title = "USB transport for Octopus"
+        // This used to return a fixed sentence about the app having no USB driver of its own, which
+        // was true and beside the point: the transport was never going to be the app's own: iOS
+        // gives no app the PTP function, so the design is to serve through Apple's ptpd. Once the
+        // companion reports its hooks installed and a host's commands arriving in native USB
+        // receive callbacks, the transport is working, and the check now says so from the counters
+        // rather than asserting the opposite from a hardcoded string.
+        var runtime = oct_native_runtime()
+        guard oct_native_runtime_read(&runtime) == OCT_OK else {
+            return result(id, group, title, .external, .blocked,
+                          "Octopus serves USB through Apple's own ptpd rather than a driver of its own, because iOS "
+                              + "gives no app the USB PTP function. The companion has not reported yet: install it, "
+                              + "enable USB Access and the observer, then connect a computer.", checks: 0)
+        }
+        let hooked = runtime.flags & UInt8(OCT_NATIVE_RUNTIME_HOOKED.rawValue) != 0
+        let serving = runtime.flags & UInt8(OCT_NATIVE_RUNTIME_SERVING.rawValue) != 0
+        let carrying = runtime.commands > 0 && runtime.responses > 0
+        let detail = "Octopus serves USB through Apple's own ptpd, which owns the PTP function on iOS. "
+            + "Hooks \(hooked ? "installed" : "not installed") in that process; storage "
+            + "\(serving ? "being served" : "not being served"); \(runtime.commands) host commands and "
+            + "\(runtime.responses) paired responses observed inside native USB receive callbacks. "
+            + "Reported by notification from ptpd."
+        if hooked && carrying {
+            // Real commands from a real host crossed the real transport. Whether a given object
+            // appears in Explorer is a separate question, answered by the checks above.
+            return result(id, group, title, .realUSB, .pass, detail, checks: 1)
+        }
+        return result(id, group, title, .external, .blocked,
+                      detail + (hooked
+                                ? " No host traffic yet: connect a computer and open the iPhone in its file browser."
+                                : " Install the companion and enable the observer, then reconnect."), checks: 0)
     }
 
     static func hostRequests(_ environment: DiagnosticsEnvironment) -> DiagnosticResult {
         let id = "external.host_requests", group = "External connection", title = "Requests from a computer"
+        let native = nativeCapture(environment).result(transactions: true)
+        if native.status == .pass {
+            return result(id, group, title, .realUSB, .pass, native.detail)
+        }
         return result(id, group, title, .external, .blocked,
                       "No verified native USB request evidence is available. Generic transaction count: \(environment.transportTransactions). "
                           + "Transport: \(environment.transportState)"
@@ -558,6 +693,9 @@ enum Diagnostics {
         try add("settings.json", try encoder.encode(environment.settings))
         try add("connectivity.txt", Data(connectivity(environment).utf8))
         try add("device-observations.json", try encoder.encode(report.results.filter { $0.id.hasPrefix("device.") }))
+        let capture = nativeCapture(environment)
+        try add("native/capture.json", try encoder.encode(capture))
+        if let data = capture.data { try add("native/status.json", data) }
         var timeline = ["Saved log observations, not proof of native USB traffic."]
 
         for file in DebugLog.files() {
@@ -635,6 +773,7 @@ enum Diagnostics {
         build.json        version, build, commit, core and system
         settings.json     Octopus's settings
         connectivity.txt  the transport's state, and how this iPhone presents itself over USB (read-only)
+        native/           the immutable native status captured at run start, its PID, timestamp and lease validation
         logs/             the debug log files
 
         If the app's temporary folder can't take the archive, it is written to Octopus's folder in
@@ -642,6 +781,9 @@ enum Diagnostics {
 
         Kinds: local runs inside the app; simulated talks to a simulated host through the real transport adapter
         and responder, never a computer; external is a real connection to something outside the iPhone.
+        native_observation describes the optional in-process observer; real_external_usb_transaction means a
+        command inside the native USB receive callback was paired with Apple's successful response write.
+        This is not proof of host receipt, Explorer visibility, file integrity or Photos coexistence.
         Paths have app container IDs replaced with <app-container>. Nothing here holds file contents.
         """
     }

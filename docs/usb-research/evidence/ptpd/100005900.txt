@@ -1,0 +1,17 @@
+===== 100005900 PTPDeviceUSBTransport::connected =====
+XREF 10005d724 DATA null
+XREF 100033080 DATA null
+100005900 nop
+100005904 ldrsw x8,0x1000599b4
+100005908 ldrb w0,[x0, x8]
+10000590c ret
+
+/* Function Stack Size: 0x10 bytes */
+
+bool PTPDeviceUSBTransport::connected(ID param_1,SEL param_2)
+
+{
+  return (bool)*(byte *)(param_1 + (long)_connected);
+}
+
+

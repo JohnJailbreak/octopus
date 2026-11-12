@@ -1,0 +1,18 @@
+===== 100004224 FUN_100004224 =====
+XREF 10005d6fe DATA null
+XREF 100026918 UNCONDITIONAL_CALL PTPFolder::initWithName:captureTimeSpec:parent:storage:
+XREF 100025854 UNCONDITIONAL_CALL PTPFile::initWithPLPTPAsset:supportedFormats:andParent:
+100004224 adrp x8,0x10005a000
+100004228 ldr w9,[x8, #0x948]
+10000422c add w0,w9,#0x1
+100004230 str w0,[x8, #0x948]
+100004234 ret
+
+void FUN_100004224(void)
+
+{
+  DAT_10005a948 = DAT_10005a948 + 1;
+  return;
+}
+
+

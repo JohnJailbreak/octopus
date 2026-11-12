@@ -33,10 +33,14 @@ struct OctopusApp: App {
 /// full-screen points, so the main screen lays itself out in that space and
 /// applies the safe-area rules itself.
 struct RootView: View {
+    @Environment(\.scenePhase) private var scenePhase
     var body: some View {
         GeometryReader { proxy in
             MainScreen(layout: Layout(size: proxy.size, insets: proxy.safeAreaInsets))
         }
         .ignoresSafeArea()
+        .onChange(of: scenePhase) { _, phase in
+            NativeIntegration.shared.setForeground(phase == .active)
+        }
     }
 }

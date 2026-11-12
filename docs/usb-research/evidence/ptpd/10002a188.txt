@@ -1,0 +1,81 @@
+===== 10002a188 PTPDataPacket::initWithOperationCode:transactionID:andData: =====
+XREF 10005db7c DATA null
+XREF 1000351ec DATA null
+XREF 100020fb4 CALL_OVERRIDE_UNCONDITIONAL PTPResponder::getStorageInfo:
+XREF 100020e84 CALL_OVERRIDE_UNCONDITIONAL PTPResponder::getStorageIDs:
+XREF 100021738 CALL_OVERRIDE_UNCONDITIONAL PTPResponder::getObjectHandles:
+XREF 100021840 CALL_OVERRIDE_UNCONDITIONAL PTPResponder::getObjectInfo:
+XREF 100022534 CALL_OVERRIDE_UNCONDITIONAL PTPResponder::getObjectCompressedSize64:
+XREF 100020c54 CALL_OVERRIDE_UNCONDITIONAL PTPResponder::getDeviceInfo:
+XREF 100022ac4 CALL_OVERRIDE_UNCONDITIONAL PTPResponder::getObjectInfoForNextObjectGroupInStorage:
+XREF 100022c20 CALL_OVERRIDE_UNCONDITIONAL PTPResponder::getUserAssignedDeviceName:
+XREF 100022320 CALL_OVERRIDE_UNCONDITIONAL PTPResponder::getObjectInfoForObjectsInStorage:
+XREF 1000249bc CALL_OVERRIDE_UNCONDITIONAL PTPResponder::getDevicePropValue:
+XREF 100025138 CALL_OVERRIDE_UNCONDITIONAL PTPResponder::getObjectPropDesc:
+XREF 1000247a0 CALL_OVERRIDE_UNCONDITIONAL PTPResponder::getDevicePropDesc:
+XREF 100024d2c CALL_OVERRIDE_UNCONDITIONAL PTPResponder::getObjectPropValue:
+XREF 100024b28 CALL_OVERRIDE_UNCONDITIONAL PTPResponder::getObjectPropsSupported:
+XREF 100024f58 CALL_OVERRIDE_UNCONDITIONAL PTPResponder::getObjectPropList:
+XREF 100021cc8 CALL_OVERRIDE_UNCONDITIONAL FUN_100021c88
+XREF 100021f00 CALL_OVERRIDE_UNCONDITIONAL FUN_100021ec0
+10002a188 pacibsp
+10002a18c sub sp,sp,#0x40
+10002a190 stp x22,x21,[sp, #0x10]
+10002a194 stp x20,x19,[sp, #0x20]
+10002a198 stp x29,x30,[sp, #0x30]
+10002a19c add x29,sp,#0x30
+10002a1a0 mov x19,x4
+10002a1a4 mov x21,x3
+10002a1a8 mov x22,x2
+10002a1ac nop
+10002a1b0 ldr x8,0x100059938
+10002a1b4 stp x0,x8,[sp]
+10002a1b8 nop
+10002a1bc ldr x1,0x100058750
+10002a1c0 mov x0,sp
+10002a1c4 bl 0x10002e9d0
+10002a1c8 mov x20,x0
+10002a1cc cbz x0,0x10002a1ec
+10002a1d0 strh w22,[x20, #0x8]
+10002a1d4 str w21,[x20, #0xc]
+10002a1d8 bl 0x10002ead0
+10002a1dc str x0,[x20, #0x10]
+10002a1e0 bl 0x100030b20
+10002a1e4 stp x0,xzr,[x20, #0x30]
+10002a1e8 stp xzr,x0,[x20, #0x40]
+10002a1ec mov x0,x20
+10002a1f0 ldp x29,x30,[sp, #0x30]
+10002a1f4 ldp x20,x19,[sp, #0x20]
+10002a1f8 ldp x22,x21,[sp, #0x10]
+10002a1fc add sp,sp,#0x40
+10002a200 retab
+
+/* WARNING: Function: _objc_retain_x19 replaced with injection: _objc_retain_fixup */
+/* Function Stack Size: 0x20 bytes */
+
+ID PTPDataPacket::initWithOperationCode_transactionID_andData_
+             (ID param_1,SEL param_2,unsigned_short param_3,unsigned_int param_4,ID param_5)
+
+{
+  ID self;
+  ID IVar1;
+  ID local_40;
+  undefined *puStack_38;
+  
+  puStack_38 = PTR_PTPDataPacket_100059938;
+  local_40 = param_1;
+  self = NSObject::init((ID)&local_40,PTR_s_init_100058750);
+  if (self != 0) {
+    *(unsigned_short *)(self + 8) = param_3;
+    *(unsigned_int *)(self + 0xc) = param_4;
+    *(ID *)(self + 0x10) = self;
+    IVar1 = NSObject::length(self);
+    *(ID *)(self + 0x30) = IVar1;
+    *(undefined8 *)(self + 0x38) = 0;
+    *(undefined8 *)(self + 0x40) = 0;
+    *(ID *)(self + 0x48) = IVar1;
+  }
+  return self;
+}
+
+

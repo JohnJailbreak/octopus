@@ -1,0 +1,25 @@
+# Keep line endings stable across the Windows engineering host, macOS CI and Linux CI.
+#
+# The repository stores text with LF. Without this, a checkout on Windows converted whole files to
+# CRLF and 105 of them showed as modified with no substantive change, which buried the real edits.
+# `* text=auto eol=lf` normalizes on commit and checks out LF everywhere, including Windows.
+#
+# Shell scripts and the Theos/Make build files must be LF or they fail: `#!/bin/bash\r` is not a
+# valid interpreter path, and make treats a trailing CR as part of a target name.
+
+* text=auto eol=lf
+
+*.sh      text eol=lf
+*.py      text eol=lf
+Makefile  text eol=lf
+*.mk      text eol=lf
+*.yml     text eol=lf
+*.plist   text eol=lf
+
+# Binary, never touched.
+*.png     binary
+*.ttf     binary
+*.car     binary
+*.deb     binary
+*.zip     binary
+*.dylib   binary

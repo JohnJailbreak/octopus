@@ -417,7 +417,7 @@ oct_status oct_compat_lifecycle(oct_compat_report *report) { return run(report, 
 oct_status oct_compat_reference_digest(const char *folder, const char *name, uint64_t *size, char hex[65])
 {
     if (!name || !hex) return OCT_E_INVALID_ARGUMENT;
-    oct_synthetic_options options = { 0, false };
+    oct_synthetic_options options = { .time = 0 }; /* designated: every other field defaults */
     oct_backend backend;
     oct_store *store = NULL;
     oct_status status = oct_synthetic_backend_create(&options, &backend);

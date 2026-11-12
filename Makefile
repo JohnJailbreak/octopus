@@ -30,7 +30,7 @@ endif
 PLAIN     := $(patsubst Octopus/%.c,build/plain/%.o,$(CORE))
 SANITIZED := $(patsubst Octopus/%.c,build/san/%.o,$(CORE))
 
-.PHONY: tsan all test sanitize fuzz analyze check clean
+.PHONY: tsan all test sanitize fuzz analyze check clean test-native-signal
 
 all: test
 
@@ -86,3 +86,37 @@ clean:
 test-usb: $(PLAIN) $(HEADERS) Octopus/Tests/CoreTests/test_usb.c Octopus/Tests/CoreTests/usb_main.c
 	$(CC) $(STD) $(CFLAGS) $(WARN) $(PLAIN) Octopus/Tests/CoreTests/test_usb.c Octopus/Tests/CoreTests/usb_main.c $(LDLIBS) -o build/usb-tests
 	TZ=UTC0 ./build/usb-tests
+
+# Deterministic provenance/correlation checks, with no Apple private API dependency.
+.PHONY: test-native
+test-native: build/native-tests
+	./build/native-tests
+
+build/native-tests: Octopus/Core/oct_native.c Octopus/Core/oct_native.h Octopus/Tests/CoreTests/test_native.c
+	@mkdir -p build
+	$(CC) $(STD) $(CFLAGS) $(STRICT) -DOCT_NATIVE_TEST_MAIN Octopus/Core/oct_native.c Octopus/Tests/CoreTests/test_native.c -o $@
+
+# Exercise real private-directory files and canonical lease parsing.
+.PHONY: test-native-io
+test-native-io: build/native-io-tests
+	./build/native-io-tests
+
+# The startup signal's Darwin branch, built against a stand-in notify.h with Apple's prototypes.
+test-native-signal: Octopus/Core/oct_native_io.c Octopus/Core/oct_native_io.h Octopus/Tests/CoreTests/signal_main.c \
+                    Octopus/Tests/CoreTests/fakes/notify.h Octopus/Tests/CoreTests/fakes/fake_notify.c
+	@mkdir -p build
+	$(CC) $(STD) $(WARN) -Wconversion -Wsign-conversion -O1 -g -DOCT_NATIVE_FAKE_NOTIFY -IOctopus/Tests/CoreTests/fakes \
+		Octopus/Core/oct_native_io.c Octopus/Core/oct_store.c Octopus/Core/oct_log.c \
+		Octopus/Tests/CoreTests/fakes/fake_notify.c Octopus/Tests/CoreTests/signal_main.c -lpthread -o build/native-signal-tests
+	./build/native-signal-tests
+
+build/native-io-tests: Octopus/Core/oct_native_io.c Octopus/Core/oct_native_io.h Octopus/Tests/CoreTests/test_native_io.c
+	@mkdir -p build
+	$(CC) $(STD) $(CFLAGS) $(STRICT) -DOCT_NATIVE_IO_TEST_MAIN Octopus/Core/oct_native_io.c Octopus/Tests/CoreTests/test_native_io.c -o $@
+
+# Pure canonical lease decoder: complements, never replaces, the filesystem suite.
+.PHONY: test-native-lease
+test-native-lease: Octopus/Core/oct_native_io.c Octopus/Core/oct_native_io.h Octopus/Tests/CoreTests/test_native_io.c
+	@mkdir -p build
+	$(CC) $(STD) $(CFLAGS) $(STRICT) -DOCT_NATIVE_LEASE_TEST_MAIN Octopus/Core/oct_native_io.c Octopus/Tests/CoreTests/test_native_io.c -o build/native-lease-tests
+	./build/native-lease-tests

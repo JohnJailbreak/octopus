@@ -53,7 +53,8 @@ final class ServiceControllerTests: XCTestCase {
         let controller = ServiceController(core: CoreService(), pacing: .immediate)
         XCTAssertEqual(controller.state, .disabled)
         XCTAssertEqual(controller.primaryTitle, "Enable USB Access")
-        XCTAssertNil(controller.headerWarning)
+        XCTAssertNil(controller.headerWarning(nativeHeard: false))
+        XCTAssertNil(controller.headerWarning(nativeHeard: true))
         controller.enable()
         XCTAssertTrue(controller.isBusy)
         XCTAssertTrue(controller.sheet.isPresented)
@@ -66,7 +67,12 @@ final class ServiceControllerTests: XCTestCase {
         XCTAssertEqual(controller.sheet.title, "Done")
         XCTAssertEqual(controller.sheet.lines.last?.status, .summary)
         XCTAssertEqual(controller.primaryTitle, "Disable USB Access")
-        XCTAssertNotNil(controller.headerWarning) // no USB transport is reported, not hidden
+        // Ready with no transport of the app's own: before the companion in ptpd has been heard
+        // from, say how to start USB; once it has, there is nothing to warn about, because that is
+        // the transport. The second assertion is what the stale "portable USB adapter is
+        // unavailable" banner, shown while a host was connected, got wrong.
+        XCTAssertNotNil(controller.headerWarning(nativeHeard: false))
+        XCTAssertNil(controller.headerWarning(nativeHeard: true))
         XCTAssertEqual(controller.tree.count, 6)
         XCTAssertEqual(controller.storage?.name, "Octopus")
         controller.toggle()

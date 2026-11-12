@@ -1,0 +1,15 @@
+===== 1000205d8 PTPOperationRequestPacket::transactionID =====
+XREF 10005da4d DATA null
+XREF 10003483c DATA null
+1000205d8 ldr w0,[x0, #0x14]
+1000205dc ret
+
+/* Function Stack Size: 0x10 bytes */
+
+unsigned_int PTPOperationRequestPacket::transactionID(ID param_1,SEL param_2)
+
+{
+  return *(unsigned_int *)(param_1 + 0x14);
+}
+
+

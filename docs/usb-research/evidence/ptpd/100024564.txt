@@ -1,0 +1,17 @@
+===== 100024564 PTPResponder::transportDeactivated =====
+XREF 10005dac4 DATA null
+XREF 100034b88 DATA null
+100024564 b 0x100031960
+
+/* Function Stack Size: 0x10 bytes */
+
+ID __objc_msgSend_stub PTPResponder::transportDeactivated(ID self,...)
+
+{
+  ID IVar1;
+  
+  IVar1 = (*(code *)PTR__objc_msgSend_1000442f0)(self,PTR_s_removeVirtualCamera_100058ee0);
+  return IVar1;
+}
+
+

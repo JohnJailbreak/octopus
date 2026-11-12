@@ -69,7 +69,7 @@ int main(int argc, char **argv)
         if (i % 4000 == 0) {
             oct_responder_destroy(responder);
             oct_store_close(store);
-            oct_synthetic_options options = { 1794009600, true };
+            oct_synthetic_options options = { .time = 1794009600, .scratch = true };
             oct_backend backend;
             if (oct_synthetic_backend_create(&options, &backend) != OCT_OK || oct_store_open(NULL, backend, &store) != OCT_OK ||
                 oct_store_index_all(store) != OCT_OK || oct_responder_create(store, NULL, &responder) != OCT_OK) {

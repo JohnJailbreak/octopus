@@ -159,10 +159,25 @@ struct InfoRow: View {
 
 struct ConnectionWindow: View {
     @EnvironmentObject private var service: ServiceController
+    /// The real transport: Apple's ptpd with the companion inside it. The portable adapter below is
+    /// the app's own responder, which has no USB driver and never will on iOS.
+    @ObservedObject private var native = NativeTransport.shared
 
     private func stageRow(_ stage: ConnectionStage, current: Bool) -> some View {
         StateRow(title: stage.title, current: current, seen: service.observedStages.contains(stage),
                  supported: !stage.needsTransport || service.status.transportAvailable)
+    }
+
+    /// A USB transport row, from the native transport once it has been heard from, and from the
+    /// portable adapter otherwise. Supported means this phone can reach the state at all, which it
+    /// can once the companion has reported.
+    private func transportRow(_ stage: ConnectionStage) -> some View {
+        let current = native.everHeard
+            ? native.stage == stage
+            : ConnectionStage(transport: service.status.transportState) == stage
+        return StateRow(title: stage.title, current: current,
+                        seen: native.seen.contains(stage) || service.observedStages.contains(stage),
+                        supported: !stage.needsTransport || native.everHeard || service.status.transportAvailable)
     }
 
     var body: some View {
@@ -171,14 +186,21 @@ struct ConnectionWindow: View {
             Section {
                 InfoRow(title: "Service", value: service.state.title)
                 InfoRow(title: "USB transport",
-                        value: status.transportAvailable ? status.transportName : "Not in this build",
-                        tint: status.transportAvailable ? Theme.chevron : Theme.failure)
-                InfoRow(title: "Transport", value: ConnectionStage(transport: status.transportState).title,
-                        tint: status.transportState == .error ? Theme.failure : Theme.chevron)
+                        value: native.live ? "Apple ptpd" : (native.everHeard ? "Apple ptpd, not connected"
+                                                                               : "Companion not reporting"),
+                        tint: native.live ? Theme.chevron : Theme.failure)
+                InfoRow(title: "Transport",
+                        value: native.everHeard ? native.summary
+                                                : ConnectionStage(transport: status.transportState).title,
+                        tint: native.live ? Theme.chevron
+                                          : (status.transportState == .error ? Theme.failure : Theme.chevron))
                 InfoRow(title: "Host",
-                        value: status.transportState == .hostConnected || status.transportState == .sessionActive
-                            ? "Connected" : "Not connected")
-                InfoRow(title: "Session", value: status.sessionOpen ? "Open (ID \(status.sessionID))" : "None")
+                        value: native.commands > 0 ? "Connected, \(native.commands) commands"
+                                                   : (native.live ? "Waiting" : "Not connected"))
+                InfoRow(title: "Session",
+                        value: native.stage == .sessionActive
+                            ? "Active, \(native.responses) responses"
+                            : (status.sessionOpen ? "Open (ID \(status.sessionID))" : "None"))
             } header: {
                 SectionHeader("Status")
             }
@@ -201,12 +223,12 @@ struct ConnectionWindow: View {
             }
             Section {
                 ForEach(ConnectionStage.transport, id: \.self) { stage in
-                    stageRow(stage, current: ConnectionStage(transport: status.transportState) == stage)
+                    transportRow(stage)
                 }
             } header: {
                 SectionHeader("USB transport")
             } footer: {
-                SectionFooter("Octopus marks only the states it has observed: Current, or Seen since launch. The transport states need a USB driver. This build has the tested transport adapter but no driver yet, so the transport stays unavailable.")
+                SectionFooter("Octopus marks only the states it has observed: Current, or Seen since launch. iOS gives no app the USB PTP function, so Octopus serves through Apple's own ptpd, with the companion inside it. These states come from that companion: it reports about once a second while a computer is connected, and a transport silent for five seconds reads as disconnected rather than as the last session it described.")
             }
             Section {
                 InfoRow(title: "Protocol", value: "PTP 1.0, MTP 1.0 objects")

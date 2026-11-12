@@ -46,6 +46,10 @@ void       oct_responder_destroy(oct_responder *responder);
  * could not be parsed (a GeneralError response is still appended when the
  * command header was readable), OCT_E_STATE for a data container nobody
  * expected (nothing appended), or OCT_E_NO_MEMORY. */
+/* The PTP response code for a store status, so a caller outside the responder answers a host with
+ * the same code the responder would. Shared rather than copied: a second mapping would drift. */
+uint16_t oct_response_for_status(oct_status status);
+
 oct_status oct_responder_handle(oct_responder *responder, const uint8_t *bytes, size_t length,
                                 oct_buf *out);
 /* Ends the session as a transport reset or disconnect would. */

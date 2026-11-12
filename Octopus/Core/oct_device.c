@@ -125,3 +125,64 @@ done:
     return OCT_E_UNSUPPORTED;
 #endif
 }
+
+/* ---- Selecting one loaded image by path ------------------------------------------------- */
+
+const char *oct_image_outcome_name(oct_image_outcome outcome)
+{
+    switch (outcome) {
+    case OCT_IMAGE_FOUND: return "found";
+    case OCT_IMAGE_NO_ENUMERATION: return "no-enumeration";
+    case OCT_IMAGE_NOT_PRESENT: return "not-present";
+    case OCT_IMAGE_AMBIGUOUS: return "ambiguous";
+    case OCT_IMAGE_NO_HEADER: return "no-header";
+    case OCT_IMAGE_NOT_MACHO: return "not-mach-o";
+    case OCT_IMAGE_HEADER_TOO_LARGE: return "header-too-large";
+    case OCT_IMAGE_MALFORMED: return "malformed";
+    case OCT_IMAGE_NOT_EXECUTABLE: return "not-executable";
+    }
+    return "unknown";
+}
+
+oct_image_outcome oct_device_select_image(const oct_image_source *source, const char *path,
+                                          uint32_t *index, oct_macho_identity *identity)
+{
+    if (index) *index = UINT32_MAX;
+    if (identity) memset(identity, 0, sizeof *identity);
+    if (!source || !source->count || !source->name || !source->header || !path || !*path) {
+        return OCT_IMAGE_NO_ENUMERATION;
+    }
+    uint32_t total = source->count(source->context);
+    if (!total) return OCT_IMAGE_NO_ENUMERATION;
+
+    /* Scan the whole list rather than stopping at the first match: two images claiming the same
+     * path is a situation to report, not to resolve by picking one. */
+    uint32_t found = UINT32_MAX, matches = 0;
+    for (uint32_t i = 0; i < total; i++) {
+        const char *name = source->name(source->context, i);
+        if (name && strcmp(name, path) == 0) {
+            matches++;
+            if (found == UINT32_MAX) found = i;
+        }
+    }
+    if (!matches) return OCT_IMAGE_NOT_PRESENT;
+    if (index) *index = found;
+    if (matches > 1) return OCT_IMAGE_AMBIGUOUS;
+
+    const uint8_t *header = (const uint8_t *)source->header(source->context, found);
+    if (!header) return OCT_IMAGE_NO_HEADER;
+    /* Read the fixed 32-byte header first; only it is known to be present. */
+    if (word(header) != 0xfeedfacfu) return OCT_IMAGE_NOT_MACHO;
+    uint32_t sizeofcmds = word(header + 20);
+    if (sizeofcmds > OCT_IMAGE_MAX_HEADER_BYTES) return OCT_IMAGE_HEADER_TOO_LARGE;
+    oct_macho_identity parsed;
+    if (oct_device_parse_identity(header, 32 + (size_t)sizeofcmds, &parsed) != OCT_OK) {
+        /* Nothing trustworthy was produced, but the caller still learns it was this image. */
+        return OCT_IMAGE_MALFORMED;
+    }
+    if (identity) *identity = parsed;
+    /* An injected dylib at the executable's path would be MH_DYLIB; only MH_EXECUTE is the
+     * process's own program. */
+    if (parsed.file_type != 2) return OCT_IMAGE_NOT_EXECUTABLE;
+    return OCT_IMAGE_FOUND;
+}

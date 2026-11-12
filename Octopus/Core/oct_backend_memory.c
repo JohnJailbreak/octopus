@@ -295,7 +295,7 @@ static void mem_destroy(void *ctx)
 
 static const oct_backend_ops memory_ops = {
     "memory", mem_describe, mem_list, mem_stat, mem_read, mem_create,
-    mem_write, mem_truncate, mem_remove, mem_rename, mem_destroy,
+    mem_write, mem_truncate, mem_remove, mem_rename, mem_destroy, NULL,
 };
 
 oct_status oct_memory_backend_create(uint64_t capacity, oct_backend *out)
@@ -397,6 +397,34 @@ oct_status oct_synthetic_backend_create(const oct_synthetic_options *options, oc
     if (status == OCT_OK) status = oct_memory_backend_add(out, 0, "Documents", true, NULL, 0, false, time, &documents);
     if (status == OCT_OK) status = oct_memory_backend_add(out, documents, "example.txt", false, example_text, sizeof example_text - 1, false, time, NULL);
     if (status == OCT_OK) status = oct_memory_backend_add(out, documents, "sample.bin", false, sample, sizeof sample, false, time, NULL);
+    /*
+     * Two probes that differ from each other in exactly one way, to settle why a host showed
+     * sample.bin and hid every .txt object on 10 November. The datasets for those objects were
+     * dumped and compared field by field: with the provider reporting text as 0x3000 they differ
+     * from sample.bin's only in name and size, and the host still hid them, so the format is ruled
+     * out. probe.dat carries the same bytes as example.txt under a different extension; probe.txt
+     * carries sample.bin's length under a text one. Whichever appears names the cause.
+     */
+    if (status == OCT_OK && options && options->probes) {
+        /*
+         * One object per extension, every one carrying the same bytes, so a host's listing maps
+         * exactly which extensions it will display. The first pair settled the earlier question:
+         * probe.dat appeared and probe.txt did not, with identical content and identical reported
+         * format, so the extension decides it and neither the size nor the format code does.
+         *
+         * Which matters well beyond this tree. A real filesystem is full of .txt, .json, .plist and
+         * .log, so serving one is pointless if a host hides them; this says which are affected
+         * before any real root is exposed.
+         */
+        static const char *const probe_names[] = {
+            "probe.dat", "probe.txt", "probe.jpg", "probe.png", "probe.pdf",
+            "probe.json", "probe.log", "probe.mov", "probe.plist", "probe",
+        };
+        for (size_t i = 0; status == OCT_OK && i < sizeof probe_names / sizeof probe_names[0]; i++) {
+            status = oct_memory_backend_add(out, documents, probe_names[i], false, example_text,
+                                            sizeof example_text - 1, false, time, NULL);
+        }
+    }
     if (status == OCT_OK) status = oct_memory_backend_add(out, 0, "Information", true, NULL, 0, false, time, &information);
     if (status == OCT_OK) status = oct_memory_backend_add(out, information, "version.txt", false, version, version_length, false, time, NULL);
     if (status == OCT_OK && options && options->scratch) {

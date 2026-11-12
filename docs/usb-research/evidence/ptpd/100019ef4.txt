@@ -1,0 +1,83 @@
+===== 100019ef4 PTPOperationResponsePacket::initWithResponseCode:transactionID: =====
+XREF 10005d91f DATA null
+XREF 100033efc DATA null
+XREF 100020b70 CALL_OVERRIDE_UNCONDITIONAL PTPResponder::closeSession:
+XREF 1000209f0 CALL_OVERRIDE_UNCONDITIONAL PTPResponder::openSession:
+XREF 100020a14 CALL_OVERRIDE_UNCONDITIONAL PTPResponder::openSession:
+XREF 10002111c CALL_OVERRIDE_UNCONDITIONAL PTPResponder::getNumObjects:
+XREF 100020ff4 CALL_OVERRIDE_UNCONDITIONAL PTPResponder::getStorageInfo:
+XREF 100020ed8 CALL_OVERRIDE_UNCONDITIONAL PTPResponder::getStorageIDs:
+XREF 100021604 CALL_OVERRIDE_UNCONDITIONAL PTPResponder::getNumDownloadableObjects:
+XREF 100021774 CALL_OVERRIDE_UNCONDITIONAL PTPResponder::getObjectHandles:
+XREF 100021880 CALL_OVERRIDE_UNCONDITIONAL PTPResponder::getObjectInfo:
+XREF 10002256c CALL_OVERRIDE_UNCONDITIONAL PTPResponder::getObjectCompressedSize64:
+XREF 100020d7c CALL_OVERRIDE_UNCONDITIONAL PTPResponder::getDeviceInfo:
+XREF 100022af8 CALL_OVERRIDE_UNCONDITIONAL PTPResponder::getObjectInfoForNextObjectGroupInStorage:
+XREF 100022d60 CALL_OVERRIDE_UNCONDITIONAL PTPResponder::deleteObject:
+XREF 100022c7c CALL_OVERRIDE_UNCONDITIONAL PTPResponder::getUserAssignedDeviceName:
+XREF 100022f90 CALL_OVERRIDE_UNCONDITIONAL PTPResponder::handleSetHostMediaCapabilities:
+XREF 100021ab8 CALL_OVERRIDE_UNCONDITIONAL PTPResponder::getObject:
+XREF 1000231d8 CALL_OVERRIDE_UNCONDITIONAL PTPResponder::handleSetHostSupportedFormats:
+XREF 100022250 CALL_OVERRIDE_UNCONDITIONAL PTPResponder::getObjectInfoForObjectsInStorage:
+XREF 100023110 CALL_OVERRIDE_UNCONDITIONAL PTPResponder::handleSetHostSupportsGroups:
+XREF 100023e5c CALL_OVERRIDE_UNCONDITIONAL PTPResponder::sentData:responseCode:
+XREF 100023a54 CALL_OVERRIDE_UNCONDITIONAL PTPResponder::handleData:
+XREF 100023aa8 CALL_OVERRIDE_UNCONDITIONAL PTPResponder::handleData:
+XREF 100023338 CALL_OVERRIDE_UNCONDITIONAL PTPResponder::handleUnsupportedRequest:
+XREF 100023c34 CALL_OVERRIDE_UNCONDITIONAL PTPResponder::handleResetDevice:
+XREF 1000249fc CALL_OVERRIDE_UNCONDITIONAL PTPResponder::getDevicePropValue:
+XREF 10002516c CALL_OVERRIDE_UNCONDITIONAL PTPResponder::getObjectPropDesc:
+XREF 100024820 CALL_OVERRIDE_UNCONDITIONAL PTPResponder::getDevicePropDesc:
+XREF 100024d60 CALL_OVERRIDE_UNCONDITIONAL PTPResponder::getObjectPropValue:
+XREF 10002563c CALL_OVERRIDE_UNCONDITIONAL PTPResponder::allowKeepAwake:
+XREF 1000253f4 CALL_OVERRIDE_UNCONDITIONAL PTPResponder::setUsingMTP:
+XREF 100024b64 CALL_OVERRIDE_UNCONDITIONAL PTPResponder::getObjectPropsSupported:
+XREF 100024f8c CALL_OVERRIDE_UNCONDITIONAL PTPResponder::getObjectPropList:
+XREF 1000236f4 CALL_OVERRIDE_UNCONDITIONAL PTPResponder::handleRequest:
+XREF 100021d30 CALL_OVERRIDE_UNCONDITIONAL FUN_100021d04
+XREF 100021f68 CALL_OVERRIDE_UNCONDITIONAL FUN_100021f3c
+100019ef4 pacibsp
+100019ef8 sub sp,sp,#0x30
+100019efc stp x20,x19,[sp, #0x10]
+100019f00 stp x29,x30,[sp, #0x20]
+100019f04 add x29,sp,#0x20
+100019f08 mov x19,x3
+100019f0c mov x20,x2
+100019f10 nop
+100019f14 ldr x8,0x1000598c0
+100019f18 stp x0,x8,[sp]
+100019f1c nop
+100019f20 ldr x1,0x100058750
+100019f24 mov x0,sp
+100019f28 bl 0x10002e9d0
+100019f2c cbz x0,0x100019f3c
+100019f30 strh w20,[x0, #0xc]
+100019f34 str w19,[x0, #0x10]
+100019f38 str wzr,[x0, #0x8]
+100019f3c ldp x29,x30,[sp, #0x20]
+100019f40 ldp x20,x19,[sp, #0x10]
+100019f44 add sp,sp,#0x30
+100019f48 retab
+
+/* Function Stack Size: 0x18 bytes */
+
+ID PTPOperationResponsePacket::initWithResponseCode_transactionID_
+             (ID param_1,SEL param_2,unsigned_short param_3,unsigned_int param_4)
+
+{
+  ID IVar1;
+  ID local_30;
+  undefined *puStack_28;
+  
+  puStack_28 = PTR_PTPOperationResponsePacket_1000598c0;
+  local_30 = param_1;
+  IVar1 = NSObject::init((ID)&local_30,PTR_s_init_100058750);
+  if (IVar1 != 0) {
+    *(unsigned_short *)(IVar1 + 0xc) = param_3;
+    *(unsigned_int *)(IVar1 + 0x10) = param_4;
+    *(undefined4 *)(IVar1 + 8) = 0;
+  }
+  return IVar1;
+}
+
+

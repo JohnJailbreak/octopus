@@ -121,26 +121,22 @@ oct_status oct_name_validate(const char *name)
     return OCT_OK;
 }
 
-static bool ascii_equal_ignoring_case(const char *a, const char *b)
-{
-    for (;; a++, b++) {
-        char x = *a, y = *b;
-        if (x >= 'A' && x <= 'Z') x = (char)(x - 'A' + 'a');
-        if (y >= 'A' && y <= 'Z') y = (char)(y - 'A' + 'a');
-        if (x != y) return false;
-        if (x == '\0') return true;
-    }
-}
-
+/*
+ * Every regular file is reported as undefined, text included.
+ *
+ * A host asked for ObjectInfo on all ten probe objects and displayed every extension except .txt,
+ * which was the only one this ever gave 0x3004. The provider already mapped that down at
+ * ObjectInfo time and it stayed hidden, which fits a host filtering GetObjectHandles by format:
+ * the object is gone before any ObjectInfo runs, so mapping there is too late. Nine other
+ * extensions, .json and .log among them, are just as textual and have always displayed, as
+ * undefined. 0x3000 means a file whose format the device does not classify, which is honest for an
+ * arbitrary file, and GetDeviceInfo still advertises 0x3004 so a host that wants it is not denied
+ * it. The case-insensitive extension compare this used has gone with it; nothing else called it.
+ */
 uint16_t oct_format_for_name(const char *name, bool is_directory)
 {
-    if (is_directory) return OCT_FORMAT_ASSOCIATION;
-    const char *dot = name ? strrchr(name, '.') : NULL;
-    if (dot && dot != name &&
-        (ascii_equal_ignoring_case(dot + 1, "txt") || ascii_equal_ignoring_case(dot + 1, "text"))) {
-        return OCT_FORMAT_TEXT;
-    }
-    return OCT_FORMAT_UNDEFINED;
+    (void)name;
+    return is_directory ? OCT_FORMAT_ASSOCIATION : OCT_FORMAT_UNDEFINED;
 }
 
 void oct_copy_utf8(char *dst, size_t capacity, const char *src)
@@ -185,7 +181,13 @@ struct oct_store {
     object      root;
     char        description[OCT_LABEL_MAX + 1];
     char        volume_label[OCT_LABEL_MAX + 1];
+    uint32_t    max_objects;    /* see oct_store_options.max_objects */
 };
+
+static oct_status check_access(const oct_store *store, uint64_t node, bool recursive)
+{
+    return store->backend.ops->access ? store->backend.ops->access(store->backend.ctx, node, recursive) : OCT_OK;
+}
 
 static object *lookup(const oct_store *store, uint32_t handle)
 {
@@ -213,6 +215,10 @@ static oct_status add_object(oct_store *store, object *parent, uint64_t node,
                              const char *name, const oct_node_stat *stat, object **out)
 {
     if (store->first_handle + store->table_length >= UINT32_MAX) return OCT_E_NO_SPACE;
+    /* The ceiling on objects tracked at once. A long browse of a real filesystem interns a node
+     * for every directory the host visits and never forgets one, so without this the table grows
+     * for as long as the session lasts. */
+    if (store->live >= store->max_objects) return OCT_E_TOO_LARGE;
     if (store->table_length == store->table_capacity) {
         if (store->table_capacity > UINT32_MAX / 2u) return OCT_E_NO_MEMORY;
         uint32_t capacity = store->table_capacity ? store->table_capacity * 2u : 32u;
@@ -346,6 +352,8 @@ oct_status oct_store_open(const oct_store_options *options, oct_backend backend,
     store->backend = backend;
     store->storage_id = options && options->storage_id ? options->storage_id : OCT_DEFAULT_STORAGE_ID;
     store->first_handle = first;
+    store->max_objects = options && options->max_objects ? options->max_objects
+                                                         : OCT_STORE_DEFAULT_MAX_OBJECTS;
     store->root.handle = OCT_ROOT;
     store->root.parent = OCT_ROOT;
     store->root.node = 0;
@@ -376,7 +384,7 @@ void oct_store_close(oct_store *store)
 }
 
 uint32_t oct_store_storage_id(const oct_store *store) { return store ? store->storage_id : 0; }
-uint32_t oct_store_object_count(const oct_store *store) { return store ? store->live : 0; }
+uint32_t oct_store_object_count(const oct_store *store) { return store && check_access(store, 0, false) == OCT_OK ? store->live : 0; }
 
 const char *oct_store_backend_kind(const oct_store *store)
 {
@@ -386,6 +394,8 @@ const char *oct_store_backend_kind(const oct_store *store)
 oct_status oct_store_storage_info(oct_store *store, oct_storage_info *out)
 {
     if (!store || !out) return OCT_E_INVALID_ARGUMENT;
+    oct_status access = check_access(store, 0, false);
+    if (access != OCT_OK) return access;
     oct_backend_info info;
     oct_status status = store->backend.ops->describe(store->backend.ctx, &info);
     if (status != OCT_OK) return status;
@@ -402,6 +412,8 @@ oct_status oct_store_storage_info(oct_store *store, oct_storage_info *out)
     return OCT_OK;
 }
 
+uint32_t oct_store_max_objects(const oct_store *store) { return store ? store->max_objects : 0; }
+
 oct_status oct_store_index_all(oct_store *store)
 {
     oct_handle_list list = { 0 };
@@ -416,6 +428,8 @@ oct_status oct_store_get(oct_store *store, uint32_t handle, oct_object_info *out
     const object *o = lookup(store, handle);
     if (!o) return OCT_E_INVALID_HANDLE;
     memset(out, 0, sizeof *out);
+    oct_status access = check_access(store, o->node, false);
+    if (access != OCT_OK) return access;
     out->handle = o->handle;
     out->parent = o->parent;
     out->storage_id = store->storage_id;
@@ -435,7 +449,9 @@ oct_status oct_store_find(oct_store *store, uint32_t parent, const char *name, u
     object *dir = lookup_container(store, parent);
     if (!dir) return OCT_E_INVALID_HANDLE;
     if (!dir->is_directory) return OCT_E_NOT_DIRECTORY;
-    oct_status status = load_children(store, dir);
+    oct_status status = check_access(store, dir->node, false);
+    if (status != OCT_OK) return status;
+    status = load_children(store, dir);
     if (status != OCT_OK) return status;
     object *child = child_named(store, dir, name);
     if (!child) return OCT_E_INVALID_HANDLE;
@@ -450,11 +466,16 @@ oct_status oct_store_list(oct_store *store, uint32_t parent, bool recursive, oct
     object *dir = lookup_container(store, parent);
     if (!dir) return OCT_E_INVALID_HANDLE;
     if (!dir->is_directory) return OCT_E_NOT_DIRECTORY;
-    oct_status status = load_children(store, dir);
+    oct_status status = check_access(store, dir->node, recursive);
+    if (status != OCT_OK) return status;
+    status = load_children(store, dir);
     for (uint32_t i = 0; status == OCT_OK && i < dir->child_count; i++) {
         status = handle_list_push(out, dir->children[i]);
     }
-    /* Breadth-first expansion; the list itself is the queue. */
+    if (status == OCT_OK && out->count > store->max_objects) status = OCT_E_TOO_LARGE;
+    /* Breadth-first expansion; the list itself is the queue. The budget is checked on every
+     * directory, so a tree that is too large to enumerate fails promptly and bounded rather
+     * than growing the list until the allocator refuses. */
     for (uint32_t i = 0; recursive && status == OCT_OK && i < out->count; i++) {
         object *o = lookup(store, out->handles[i]);
         if (!o || !o->is_directory) continue;
@@ -462,6 +483,7 @@ oct_status oct_store_list(oct_store *store, uint32_t parent, bool recursive, oct
         for (uint32_t k = 0; status == OCT_OK && k < o->child_count; k++) {
             status = handle_list_push(out, o->children[k]);
         }
+        if (status == OCT_OK && out->count > store->max_objects) status = OCT_E_TOO_LARGE;
     }
     if (status != OCT_OK) out->count = 0;
     return status;
@@ -474,6 +496,8 @@ oct_status oct_store_read(oct_store *store, uint32_t handle, uint64_t offset,
     if (!store || !read || (!buffer && length)) return OCT_E_INVALID_ARGUMENT;
     const object *o = lookup(store, handle);
     if (!o) return OCT_E_INVALID_HANDLE;
+    oct_status access = check_access(store, o->node, false);
+    if (access != OCT_OK) return access;
     if (o->is_directory) return OCT_E_IS_DIRECTORY;
     if (offset > o->size) return OCT_E_OUT_OF_RANGE;
     uint64_t remaining = o->size - offset;
@@ -489,6 +513,8 @@ oct_status oct_store_create(oct_store *store, uint32_t parent, const char *name,
     object *dir = lookup_container(store, parent);
     if (!dir) return OCT_E_INVALID_PARENT;
     if (!dir->is_directory) return OCT_E_NOT_DIRECTORY;
+    oct_status access = check_access(store, dir->node, false);
+    if (access != OCT_OK) return access;
     if (!dir->writable) return OCT_E_WRITE_PROTECTED;
     oct_status status = oct_name_validate(name);
     if (status != OCT_OK) return status;
@@ -514,6 +540,8 @@ static oct_status writable_file(oct_store *store, uint32_t handle, object **out)
 {
     object *o = lookup(store, handle);
     if (!o) return OCT_E_INVALID_HANDLE;
+    oct_status access = check_access(store, o->node, false);
+    if (access != OCT_OK) return access;
     if (o->is_directory) return OCT_E_IS_DIRECTORY;
     if (!o->writable) return OCT_E_WRITE_PROTECTED;
     *out = o;
@@ -546,6 +574,8 @@ oct_status oct_store_truncate(oct_store *store, uint32_t handle, uint64_t size)
 
 static oct_status delete_object(oct_store *store, object *o, uint32_t *deleted)
 {
+    oct_status access = check_access(store, o->node, false);
+    if (access != OCT_OK) return access;
     if (!o->writable) return OCT_E_WRITE_PROTECTED;
     if (o->is_directory) {
         oct_status status = load_children(store, o);
@@ -584,6 +614,8 @@ oct_status oct_store_rename(oct_store *store, uint32_t handle, const char *name)
     if (!store) return OCT_E_INVALID_ARGUMENT;
     object *o = lookup(store, handle);
     if (!o) return OCT_E_INVALID_HANDLE;
+    oct_status access = check_access(store, o->node, false);
+    if (access != OCT_OK) return access;
     if (!o->writable) return OCT_E_WRITE_PROTECTED;
     oct_status status = oct_name_validate(name);
     if (status != OCT_OK) return status;

@@ -1,0 +1,132 @@
+===== 100023c80 PTPResponder::handleDeviceRemoval =====
+XREF 10005daac DATA null
+XREF 100034ae0 DATA null
+100023c80 pacibsp
+100023c84 sub sp,sp,#0x50
+100023c88 stp x22,x21,[sp, #0x20]
+100023c8c stp x20,x19,[sp, #0x30]
+100023c90 stp x29,x30,[sp, #0x40]
+100023c94 add x29,sp,#0x40
+100023c98 mov x19,x0
+100023c9c nop
+100023ca0 ldr x8,0x100044518
+100023ca4 ldr x8,[x8]
+100023ca8 str x8,[sp, #0x18]
+100023cac bl 0x100028978
+100023cb0 adr x20,0x100044d58
+100023cb4 nop
+100023cb8 mov x0,x20
+100023cbc bl 0x100030b20
+100023cc0 cmp x0,#0x15
+100023cc4 b.cc 0x100023cec
+100023cc8 adr x0,0x100044d58
+100023ccc nop
+100023cd0 mov x2,#0x0
+100023cd4 mov w3,#0x12
+100023cd8 bl 0x100032ac0
+100023cdc adr x2,0x100044d78
+100023ce0 nop
+100023ce4 bl 0x1000329e0
+100023ce8 mov x20,x0
+100023cec nop
+100023cf0 ldr x0,0x100059700
+100023cf4 adr x2,0x10004a938
+100023cf8 nop
+100023cfc bl 0x100032a40
+100023d00 mov x22,x0
+100023d04 nop
+100023d08 nop
+100023d0c ldr x21,0x10005a970
+100023d10 mov x0,x21
+100023d14 mov w1,#0x0
+100023d18 bl 0x10002eba0
+100023d1c cbz w0,0x100023d68
+100023d20 mov x0,x20
+100023d24 bl 0x10002ed20
+100023d28 mov w8,#0x202
+100023d2c movk w8,#0x822, LSL #16
+100023d30 str w8,[sp]
+100023d34 stur x0,[sp, #0x4]
+100023d38 mov w8,#0x842
+100023d3c strh w8,[sp, #0xc]
+100023d40 stur x22,[sp, #0xe]
+100023d44 adr x0,0x100000000
+100023d48 nop
+100023d4c adr x3,0x10003c434
+100023d50 nop
+100023d54 mov x4,sp
+100023d58 mov x1,x21
+100023d5c mov w2,#0x0
+100023d60 mov w5,#0x16
+100023d64 bl 0x10002e6d0
+100023d68 nop
+100023d6c ldr x2,0x1000594c0
+100023d70 mov x0,x19
+100023d74 mov x3,#0x0
+100023d78 mov w4,#0x0
+100023d7c bl 0x1000313e0
+100023d80 nop
+100023d84 ldr x2,0x1000594d0
+100023d88 mov x0,x19
+100023d8c mov x3,#0x0
+100023d90 mov w4,#0x0
+100023d94 bl 0x1000313e0
+100023d98 ldr x8,[sp, #0x18]
+100023d9c nop
+100023da0 ldr x9,0x100044518
+100023da4 ldr x9,[x9]
+100023da8 cmp x9,x8
+100023dac b.ne 0x100023dc4
+100023db0 ldp x29,x30,[sp, #0x40]
+100023db4 ldp x20,x19,[sp, #0x30]
+100023db8 ldp x22,x21,[sp, #0x20]
+100023dbc add sp,sp,#0x50
+100023dc0 retab
+100023dc4 bl 0x10002e690
+
+/* Function Stack Size: 0x10 bytes */
+
+void PTPResponder::handleDeviceRemoval(ID param_1,SEL param_2)
+
+{
+  undefined8 uVar1;
+  int iVar2;
+  ID IVar3;
+  cfstringStruct *self;
+  undefined4 local_50;
+  ID local_4c;
+  undefined2 local_44;
+  ID local_42;
+  long local_38;
+  
+  local_38 = *(long *)PTR____stack_chk_guard_100044518;
+  ___ICOSLogCreate();
+  self = &cf___;
+  IVar3 = objc_stub::length(0x100044d58);
+  if (0x14 < IVar3) {
+    IVar3 = objc_stub::substringWithRange_(0x100044d58,0,0x12);
+    self = (cfstringStruct *)objc_stub::stringByAppendingString_(IVar3,&cf___);
+  }
+  IVar3 = NSString::stringWithFormat_
+                    ((ID)PTR__OBJC_CLASS___NSString_100059700,&cf___>DeviceRemoved_StoppingRunLoop);
+  uVar1 = __gICOSLog;
+  iVar2 = _os_log_type_enabled(__gICOSLog,0);
+  if (iVar2 != 0) {
+    local_4c = objc_stub::UTF8String((ID)self);
+    local_50 = 0x8220202;
+    local_44 = 0x842;
+    local_42 = IVar3;
+    __os_log_impl(0x100000000,uVar1,0,"%{public}20s | %{public}@",&local_50,0x16);
+  }
+  objc_stub::performSelectorOnMainThread_withObject_waitUntilDone_(param_1,PTR_s_stop_1000594c0,0,0)
+  ;
+  objc_stub::performSelectorOnMainThread_withObject_waitUntilDone_
+            (param_1,PTR_s_stopRunLoop_1000594d0,0,0);
+  if (*(long *)PTR____stack_chk_guard_100044518 == local_38) {
+    return;
+  }
+                    /* WARNING: Subroutine does not return */
+  ___stack_chk_fail();
+}
+
+

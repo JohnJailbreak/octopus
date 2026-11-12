@@ -1,0 +1,58 @@
+===== 100007ca8 PTPDeviceUSBTransport::sendData: =====
+XREF 10005d73d DATA null
+XREF 100033104 DATA null
+100007ca8 pacibsp
+100007cac sub sp,sp,#0x40
+100007cb0 stp x29,x30,[sp, #0x30]
+100007cb4 add x29,sp,#0x30
+100007cb8 nop
+100007cbc ldrsw x8,0x1000599a4
+100007cc0 ldr x8,[x0, x8#0x0]
+100007cc4 mov x9,sp
+100007cc8 nop
+100007ccc ldr x16,0x100044508
+100007cd0 mov x17,x9
+100007cd4 movk x17,#0x6ae1, LSL #48
+100007cd8 pacda x16,x17
+100007cdc str x16,[sp]
+100007ce0 nop
+100007ce4 ldr d0,0x100042600
+100007ce8 str d0,[sp, #0x8]
+100007cec add x9,x9,#0x10
+100007cf0 adr x10,0x100044658
+100007cf4 nop
+100007cf8 adr x16,0x100007d24
+100007cfc nop
+100007d00 pacia x16,x9
+100007d04 stp x16,x10,[sp, #0x10]
+100007d08 stp x0,x2,[sp, #0x20]
+100007d0c mov x1,sp
+100007d10 mov x0,x8
+100007d14 bl 0x10002e730
+100007d18 ldp x29,x30,[sp, #0x30]
+100007d1c add sp,sp,#0x40
+100007d20 retab
+
+/* Function Stack Size: 0x18 bytes */
+
+void PTPDeviceUSBTransport::sendData_(ID param_1,SEL param_2,ID param_3)
+
+{
+  undefined *local_40;
+  undefined8 local_38;
+  code *local_30;
+  undefined *puStack_28;
+  ID local_20;
+  ID IStack_18;
+  
+  local_40 = PTR___NSConcreteStackBlock_100044508;
+  local_38 = DAT_100042600;
+  local_30 = FUN_100007d24;
+  puStack_28 = &DAT_100044658;
+  local_20 = param_1;
+  IStack_18 = param_3;
+  _dispatch_async(*(undefined8 *)(param_1 + (long)_writeDataQueue),&local_40);
+  return;
+}
+
+

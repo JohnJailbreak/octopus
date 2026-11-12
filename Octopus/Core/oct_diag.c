@@ -84,7 +84,7 @@ static void report(oct_diag_result *out, oct_diag_status status, const char *for
 
 static oct_status open_synthetic(oct_store **out)
 {
-    oct_synthetic_options options = { 0, false };
+    oct_synthetic_options options = { .time = 0 };
     oct_backend backend;
     *out = NULL;
     oct_status status = oct_synthetic_backend_create(&options, &backend);

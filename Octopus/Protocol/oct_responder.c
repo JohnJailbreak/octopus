@@ -211,8 +211,13 @@ static oct_status object_handles(oct_responder *r, const oct_container *c, oct_b
     if (status == OCT_OK) status = filter_by_format(r->store, &list, format);
     if (status != OCT_OK) {
         oct_handle_list_free(&list);
+        /* OCT_E_TOO_LARGE means the store's enumeration budget was reached, which only happens
+         * for the whole-hierarchy request (association 0) over a large backend. Telling the host
+         * that specification by depth is unsupported makes it ask per directory instead, which
+         * the store answers without a recursive walk. */
         uint16_t code = status == OCT_E_INVALID_HANDLE ? OCT_RC_INVALID_OBJECT_HANDLE
                         : status == OCT_E_NOT_DIRECTORY ? OCT_RC_INVALID_PARENT_OBJECT
+                        : status == OCT_E_TOO_LARGE     ? OCT_RC_SPECIFICATION_BY_DEPTH_UNSUPPORTED
                                                         : response_for(status);
         return respond_code(r, out, code, transaction);
     }
@@ -715,4 +720,9 @@ oct_status oct_exchange_run(oct_responder *r, uint16_t operation, uint32_t trans
     result->param_count = (length - OCT_PTP_HEADER_SIZE) / 4u;
     for (uint32_t i = 0; i < result->param_count; i++) result->params[i] = oct_read_u32(&reader);
     return OCT_OK;
+}
+
+uint16_t oct_response_for_status(oct_status status)
+{
+    return response_for(status);
 }

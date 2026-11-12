@@ -1,0 +1,125 @@
+===== 100021034 PTPResponder::getNumObjects: =====
+XREF 10005da6f DATA null
+XREF 1000349b4 DATA null
+XREF 100023658 CALL_OVERRIDE_UNCONDITIONAL PTPResponder::handleRequest:
+100021034 pacibsp
+100021038 sub sp,sp,#0x50
+10002103c stp x24,x23,[sp, #0x10]
+100021040 stp x22,x21,[sp, #0x20]
+100021044 stp x20,x19,[sp, #0x30]
+100021048 stp x29,x30,[sp, #0x40]
+10002104c add x29,sp,#0x40
+100021050 mov x21,x2
+100021054 mov x19,x0
+100021058 mov x0,x2
+10002105c bl 0x100032c20
+100021060 mov x20,x0
+100021064 ldr w8,[x19, #0x40]
+100021068 cbz w8,0x1000210f4
+10002106c ldr w8,[x19, #0x38]
+100021070 cmp w20,w8
+100021074 b.ls 0x100021108
+100021078 mov x0,x21
+10002107c bl 0x100031220
+100021080 mov x22,x0
+100021084 mov x0,x21
+100021088 bl 0x100031240
+10002108c mov x23,x0
+100021090 mov x0,x21
+100021094 bl 0x100031260
+100021098 mov x4,x0
+10002109c strh wzr,[sp, #0xe]
+1000210a0 str w20,[x19, #0x38]
+1000210a4 and w3,w23,#0xffff
+1000210a8 ldr x0,[x19, #0x10]
+1000210ac add x5,sp,#0xe
+1000210b0 mov x2,x22
+1000210b4 bl 0x100030f80
+1000210b8 mov w21,#0x0
+1000210bc ldrh w8,[sp, #0xe]
+1000210c0 mov w9,#0x2001
+1000210c4 cmp w8,w9
+1000210c8 b.ne 0x1000210d4
+1000210cc bl 0x10002f620
+1000210d0 mov x21,x0
+1000210d4 nop
+1000210d8 ldr x0,0x100059760
+1000210dc bl 0x10002e920
+1000210e0 ldrh w2,[sp, #0xe]
+1000210e4 mov x3,x20
+1000210e8 mov x4,x21
+1000210ec bl 0x100030740
+1000210f0 b 0x100021120
+1000210f4 nop
+1000210f8 ldr x0,0x100059760
+1000210fc bl 0x10002e920
+100021100 mov w2,#0x2003
+100021104 b 0x100021118
+100021108 nop
+10002110c ldr x0,0x100059760
+100021110 bl 0x10002e920
+100021114 mov w2,#0x2004
+100021118 mov x3,x20
+10002111c bl 0x100030720
+100021120 mov x20,x0
+100021124 ldr x0,[x19, #0x8]
+100021128 mov x2,x20
+10002112c bl 0x100031b60
+100021130 bl 0x10002ea50
+100021134 ldp x29,x30,[sp, #0x40]
+100021138 ldp x20,x19,[sp, #0x30]
+10002113c ldp x22,x21,[sp, #0x20]
+100021140 ldp x24,x23,[sp, #0x10]
+100021144 add sp,sp,#0x50
+100021148 retab
+
+/* WARNING: Function: _objc_release_x20 replaced with injection: _objc_release_fixup */
+/* Function Stack Size: 0x18 bytes */
+
+void PTPResponder::getNumObjects_(ID param_1,SEL param_2,ID param_3)
+
+{
+  ID IVar1;
+  ID IVar2;
+  ID IVar3;
+  unsigned_short uVar4;
+  unsigned_int uVar5;
+  unsigned_int uVar6;
+  unsigned_short local_42;
+  
+  IVar1 = objc_stub::transactionID(param_3);
+  uVar5 = (unsigned_int)IVar1;
+  if (*(int *)(param_1 + 0x40) == 0) {
+    IVar1 = _objc_alloc(PTR_PTPOperationResponsePacket_100059760);
+    uVar4 = 0x2003;
+  }
+  else {
+    if (*(uint *)(param_1 + 0x38) < uVar5) {
+      IVar1 = objc_stub::parameter1(param_3);
+      IVar2 = objc_stub::parameter2(param_3);
+      IVar3 = objc_stub::parameter3(param_3);
+      local_42 = 0;
+      *(unsigned_int *)(param_1 + 0x38) = uVar5;
+      IVar1 = objc_stub::objectHandlesInStorage_forObjectFormatCode_inAssociation_responseCode_
+                        (*(ID *)(param_1 + 0x10),IVar1,(ulong)((uint)IVar2 & 0xffff),IVar3,&local_42
+                        );
+      uVar6 = 0;
+      if (local_42 == 0x2001) {
+        IVar1 = objc_stub::count(IVar1);
+        uVar6 = (unsigned_int)IVar1;
+      }
+      IVar1 = _objc_alloc(PTR_PTPOperationResponsePacket_100059760);
+      IVar1 = PTPOperationResponsePacket::initWithResponseCode_transactionID_parameter1_
+                        (IVar1,local_42,uVar5,uVar6);
+      goto LAB_100021120;
+    }
+    IVar1 = _objc_alloc(PTR_PTPOperationResponsePacket_100059760);
+    uVar4 = 0x2004;
+  }
+  IVar1 = PTPOperationResponsePacket::initWithResponseCode_transactionID_(IVar1,uVar4,uVar5);
+LAB_100021120:
+  objc_stub::sendResponse_(*(ID *)(param_1 + 8),IVar1);
+  return;
+}
+
+
