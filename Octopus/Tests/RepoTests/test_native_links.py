@@ -130,7 +130,9 @@ def objc_compiled_by(script: str) -> list:
 
 
 def strip_comments(text: str) -> str:
-    text = re.sub(r"/\*.*?\*/", " ", text, flags=re.S)
+    # A block comment becomes the line breaks it contained, so line numbers in messages still point
+    # at the real line rather than one shifted up by every comment above it.
+    text = re.sub(r"/\*.*?\*/", lambda m: " " + "\n" * m.group(0).count("\n"), text, flags=re.S)
     return re.sub(r"//[^\n]*", " ", text)
 
 
@@ -327,6 +329,40 @@ class CameraOnlyChecks(unittest.TestCase):
                     f"use providerServing() for a receiver that is not the camera.")
         self.assertNotIn("appendObject", callers)
         self.assertNotIn("incomingObjectInfo", callers)
+
+
+class UseBeforeDeclaration(unittest.TestCase):
+    """C99 rejects calling a function with no declaration in scope, so a static helper used above its
+    own definition, with no prototype before the use, fails to compile. providerServing was defined
+    below the first hook that called it and failed exactly so on CI. The earlier checks here covered
+    only OCT* functions shared between files, not a file's own static helpers, which is how it got
+    through. Every static function in the native Objective-C is checked: its first call must follow
+    its definition or a prototype."""
+
+    def test_static_functions_are_declared_before_use(self):
+        for path in sorted(NATIVE.glob("*.m")) + sorted((NATIVE / "Tests").glob("*.m")):
+            text = strip_comments(path.read_text())
+            # A static function's definition or prototype: return type, name, parameters, then a body
+            # or a semicolon. Calls through a variable or a cast never match this.
+            declared = {}
+            for m in re.finditer(r"^static\s+(?:inline\s+)?[A-Za-z_][\w\s\*]*?\b(\w+)\s*\([^;{)]*\)\s*([{;])",
+                                 text, re.M):
+                declared.setdefault(m.group(1), m.start())
+            for name, first_declared in declared.items():
+                # The first call that is not the declaration itself: the name followed by "(", not
+                # preceded by a word character or a dot, which would make it a member or another name.
+                for call in re.finditer(r"(?<![\w.>])" + re.escape(name) + r"\s*\(", text):
+                    if call.start() == first_declared or text[:call.start()].rstrip().endswith(("static BOOL", "static bool")):
+                        continue
+                    line_start = text.rfind("\n", 0, call.start()) + 1
+                    if re.match(r"\s*static\b", text[line_start:call.start()]):
+                        continue   # this is a declaration line, not a call
+                    with self.subTest(file=path.name, function=name):
+                        self.assertGreater(call.start(), first_declared,
+                            f"{path.name} calls {name}() at line {text.count(chr(10), 0, call.start()) + 1}, "
+                            f"before its first declaration at line {text.count(chr(10), 0, first_declared) + 1}. "
+                            f"C99 rejects that: move the definition up or add a prototype.")
+                    break
 
 
 if __name__ == "__main__":

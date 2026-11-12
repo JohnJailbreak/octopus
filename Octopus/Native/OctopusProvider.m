@@ -261,6 +261,21 @@ static void deleteObject(id self, SEL cmd, uint32_t handle, unsigned short *code
 }
 
 /*
+ * Whether the provider is serving, asked without a camera. available() runs the camera's own
+ * allStorageIDs and objectForObjectHandle: on its argument, so it may only ever be given the
+ * camera. The upload hooks are called on a PTPStorage or a PTPFolder, and passing one of those
+ * there ran camera code against an object of another class: in the tests the check failed and the
+ * upload went to Apple's receiver, and on a phone it would have read a storage's memory as a
+ * camera's, inside the process that serves Photos.
+ *
+ * The collision checks available() makes are not needed here. They decide whether the camera
+ * reports our storage at all; a host that was never shown it cannot upload into it.
+ */
+static BOOL providerServing(void) {
+    return atomic_load_explicit(&installed, memory_order_acquire) && OCTNativeProviderEnabled();
+}
+
+/*
  * The ObjectInfo a host sends before the object itself. PTP splits an upload in two: SendObjectInfo
  * carries the name, storage and parent, SendObject carries the bytes and neither the name nor the
  * storage. Apple builds this dataset from the host's bytes, so the same bytes are parsed here to
@@ -294,20 +309,6 @@ static id incomingObjectInfo(id self, SEL cmd, id data, int contentType) {
  * Only an association that is ours is handled here; anything else is Apple's, forwarded untouched,
  * so importing a photo into the library still works exactly as before.
  */
-/*
- * Whether the provider is serving, asked without a camera. available() runs the camera's own
- * allStorageIDs and objectForObjectHandle: on its argument, so it may only ever be given the
- * camera. The upload hooks are called on a PTPStorage or a PTPFolder, and passing one of those
- * there ran camera code against an object of another class: in the tests the check failed and the
- * upload went to Apple's receiver, and on a phone it would have read a storage's memory as a
- * camera's, inside the process that serves Photos.
- *
- * The collision checks available() makes are not needed here. They decide whether the camera
- * reports our storage at all; a host that was never shown it cannot upload into it.
- */
-static BOOL providerServing(void) {
-    return atomic_load_explicit(&installed, memory_order_acquire) && OCTNativeProviderEnabled();
-}
 
 static unsigned long long appendObject(id self, SEL cmd, id data, unsigned short format,
                                        unsigned int association, unsigned int contentType, IMP original) {
