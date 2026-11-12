@@ -365,25 +365,86 @@ class UseBeforeDeclaration(unittest.TestCase):
                     break
 
 
-class ScopeFollowsInstall(unittest.TestCase):
-    """pollOnce applied the granted scope before it installed the provider, and the scope call
-    refuses while the provider is not installed, so the first pass after ptpd started served the
-    sample tree and reached the granted root only a second later. A host reconnecting after the
-    responder restart asked for the device's capabilities in that second and was told the store was
-    read-only, so it never offered to add a file; then the store reopened under it and handles it
-    held came back nameless. The scope must be applied again once the install succeeds."""
+class ScopeAtInstall(unittest.TestCase):
+    """The provider must open its store on the granted root once, as it installs.
 
-    def test_scope_is_applied_after_the_provider_installs(self):
+    It first applied the scope before installing, where the call refuses because the provider is not
+    yet installed, so the first pass served the sample tree and a host reconnecting in that second
+    was told the store accepted no changes. Then it applied the scope again after installing, which
+    opened the store twice inside ptpd's constructor, before ptpd's own startup had run: that ptpd
+    served no host at all, 0 commands and not one hook called, while Windows talked to another. One
+    open, on the right root, is both correct and the least work at the costliest moment."""
+
+    def test_install_receives_the_granted_scope(self):
         text = strip_comments((NATIVE / "OctopusObserver.m").read_text())
-        start = text.index("static void pollOnce(")
-        body = text[start:]
-        install = body.index("OCTProviderInstall(")
-        later = body[install:]
-        self.assertTrue("OCTProviderSetScope(grantedScope" in later,
-            "pollOnce installs the provider without applying the granted scope afterwards, so the "
-            "first pass serves the sample tree while a host reads the device's capabilities.")
-        # And the scope it applies is the one this pass read from the lease, recorded before.
-        self.assertLess(body.index("grantedScope="), install)
+        body = text[text.index("static void pollOnce("):]
+        self.assertIn("OCTProviderInstall(grantedScope", body,
+            "pollOnce installs the provider without telling it which root to serve, so the store "
+            "opens on the sample tree and has to be moved afterwards.")
+        # The scope comes from this pass's lease, recorded before the install.
+        self.assertLess(body.index("grantedScope="), body.index("OCTProviderInstall(grantedScope"))
+
+    def test_the_store_is_not_opened_twice_at_install(self):
+        text = strip_comments((NATIVE / "OctopusObserver.m").read_text())
+        body = text[text.index("static void pollOnce("):]
+        after = body[body.index("OCTProviderInstall(grantedScope"):]
+        # Everything up to the end of that branch: a second scope call here would reopen the store.
+        branch = after[:after.index("publish();")] if "publish();" in after else after
+        self.assertNotIn("OCTProviderSetScope", branch,
+            "the provider is moved to another root straight after installing, which opens the store "
+            "twice inside ptpd's constructor.")
+
+    def test_install_opens_the_scope_it_is_given(self):
+        provider = strip_comments((NATIVE / "OctopusProvider.m").read_text())
+        install = provider[provider.index("BOOL OCTProviderInstall("):]
+        install = install[:install.index("\nBOOL ") if "\nBOOL " in install[10:] else len(install)]
+        self.assertIn("openStoreLocked(", install)
+        self.assertIn("scope", install.split("openStoreLocked(")[1][:120],
+            "install opens a store without using the scope it was given.")
+
+
+class MatchingSignatures(unittest.TestCase):
+    """Every declaration, definition, stub and call of an OCT* entry point must agree on its
+    arguments. Changing OCTProviderInstall to take a scope left its two headers, the observer's
+    stub and two calls in the provider tests on the old one argument, which only a compiler the
+    macOS jobs run would have caught."""
+
+    def test_entry_points_agree_on_their_arguments(self):
+        sources = sorted(NATIVE.glob("*.m")) + sorted(NATIVE.glob("*.h")) + sorted((NATIVE / "Tests").glob("*.m"))
+        counts = {}
+        for path in sources:
+            text = strip_comments(path.read_text())
+            for m in re.finditer(r"\bBOOL\s+(OCTProvider\w+|OCTRuntime\w+)\s*\(([^)]*)\)", text):
+                name, arguments = m.group(1), m.group(2).strip()
+                if arguments == "void" or not arguments:
+                    count = 0
+                else:
+                    count = len([a for a in arguments.split(",") if a.strip()])
+                counts.setdefault(name, {}).setdefault(count, []).append(path.name)
+        self.assertTrue(counts, "found no OCT* entry points; the scan is broken")
+        for name, by_count in counts.items():
+            with self.subTest(entry_point=name):
+                self.assertEqual(len(by_count), 1,
+                    f"{name} is declared with differing argument counts: "
+                    + "; ".join(f"{n} in {sorted(set(where))}" for n, where in sorted(by_count.items())))
+
+    def test_calls_pass_as_many_arguments_as_declared(self):
+        declared = {}
+        for path in sorted(NATIVE.glob("*.h")):
+            for m in re.finditer(r"\bBOOL\s+(OCTProvider\w+)\s*\(([^)]*)\)\s*;", strip_comments(path.read_text())):
+                declared[m.group(1)] = len([a for a in m.group(2).split(",") if a.strip()])
+        self.assertTrue(declared, "found no declarations to compare calls against")
+        for path in sorted(NATIVE.glob("*.m")) + sorted((NATIVE / "Tests").glob("*.m")):
+            text = strip_comments(path.read_text())
+            for name, expected in declared.items():
+                for call in re.finditer(r"(?<![\w.])" + name + r"\s*\(([^;{]*?)\)\s*[;),&]", text):
+                    arguments = call.group(1)
+                    if re.match(r"\s*(?:BOOL|void|oct_\w+)\b", arguments):
+                        continue   # a declaration or definition, not a call
+                    passed = len([a for a in re.split(r",(?![^(]*\))", arguments) if a.strip()])
+                    with self.subTest(file=path.name, call=name):
+                        self.assertEqual(passed, expected,
+                            f"{path.name} calls {name} with {passed} arguments; it takes {expected}.")
 
 
 if __name__ == "__main__":

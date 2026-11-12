@@ -8,7 +8,8 @@ BOOL OCTRuntimeHook(const char *className, const char *selector, const char *enc
 bool OCTNativeProviderEnabled(void);
 uint64_t OCTNativeAuthorizationEpoch(void);
 void OCTNativeProviderEvent(const char *event, uint32_t handle, int32_t result);
-BOOL OCTProviderInstall(NSString **reason);
+/* `scope` is the root to serve from the first request; see the definition. */
+BOOL OCTProviderInstall(oct_native_lease_mode scope, NSString **reason);
 BOOL OCTProviderValidate(NSString **reason);
 /* Declared here with the other provider entry points because this is the header the observer
  * imports; declaring it only in OctopusProvider.h left the observer calling an undeclared function.

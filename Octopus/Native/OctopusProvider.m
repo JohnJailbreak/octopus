@@ -717,14 +717,22 @@ static void installOptionalHooks(void) {
     }
 }
 
-BOOL OCTProviderInstall(NSString **reason) {
+/*
+ * `scope` is the root to serve from the first request. It used to install on the sample tree and be
+ * moved afterwards, which opened the store twice inside ptpd's constructor, before its own startup
+ * had run: on 0.4.59 that ptpd then served no host at all, 0 commands and not one hook called,
+ * while Windows kept talking to another. Opening once, on the granted root, is both correct and
+ * half the work at the one moment where work is most costly.
+ */
+BOOL OCTProviderInstall(oct_native_lease_mode scope, NSString **reason) {
     if (atomic_load_explicit(&installed,memory_order_acquire)) return YES;
     if (!OCTProviderValidate(reason)) return NO;
     originalLookup=method_getImplementation(class_getInstanceMethod(objc_getClass("PTPVirtualCamera"),sel_registerName("objectForObjectHandle:")));
     /* Probes on: this build is asking a host which of name and size decides whether it displays
      * an object. See oct_synthetic_options.probes. */
     pthread_mutex_lock(&coreLock);
-    BOOL opened=openStoreLocked(OCT_NATIVE_LEASE_EXPOSE_SYNTHETIC,reason);
+    /* A scope that names no filesystem, including none at all, serves the sample tree. */
+    BOOL opened=openStoreLocked(oct_native_lease_root(scope)?scope:OCT_NATIVE_LEASE_EXPOSE_SYNTHETIC,reason);
     pthread_mutex_unlock(&coreLock);
     if(!opened) return NO;
     for(size_t i=0;i<sizeof(hooks)/sizeof(hooks[0]);i++) {

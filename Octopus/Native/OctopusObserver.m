@@ -487,19 +487,9 @@ static void pollOnce(BOOL match)
                  * the next GetStorageIDs, which is what makes a reconnect show the volume.
                  */
                 if(valid){
-                    attemptedProvider=true;BOOL ok=OCTProviderInstall(&problem);
+                    attemptedProvider=true;BOOL ok=OCTProviderInstall(grantedScope,&problem);
                     providerState=ok?@"Installed (synthetic, experimental)":(problem?:@"Provider installation failed");
                     atomic_store(&providerReady,ok);
-                    /* Onto the granted root at once, in this same pass. On the first poll that is
-                     * still inside the constructor, before ptpd's main has run, so the capabilities,
-                     * the storage list and every handle come from the final store from the very
-                     * first request, and nothing reopens under a host mid-session. */
-                    if(ok&&grantedScope!=OCT_NATIVE_LEASE_NONE){
-                        NSString *scopeProblem=nil;
-                        if(!OCTProviderSetScope(grantedScope,&scopeProblem)&&scopeProblem){
-                            os_log_error(startup_log(),"scope not served at install: %{public}s",scopeProblem.UTF8String);
-                        }
-                    }
                 }
             }
             pthread_mutex_lock(&lock);oct_native_authorize(&journal,authorized());pthread_mutex_unlock(&lock);

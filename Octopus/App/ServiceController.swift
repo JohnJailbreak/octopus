@@ -643,38 +643,24 @@ final class ServiceController: ObservableObject {
                 : (false, "Couldn't grant access: \(native.detail)")
         })
 
-        // 3. The restart, which is what makes an already-connected computer read the drives again.
-        let restart = native.lastRestart
-        note(await nativeStep("Restarting Apple's responder") {
-            switch restart {
-            case .restarted(let pid):
-                return (true, "Restarted Apple's responder (was \(pid)) so the computer reads its drives again")
-            case .signalled(let pid):
-                return (true, "Asked Apple's responder (\(pid)) to restart")
-            case .notRunning:
-                return (true, "No computer connected yet: / appears when one is")
-            case .deferred:
-                return (true, "A transfer is in progress: restarting when it finishes")
-            case .refused(let error):
-                return (false, "Couldn't restart Apple's responder (errno \(error)): unplug and reconnect")
-            case .simulator:
-                return (true, "No responder in the Simulator")
-            case .notRequested:
-                return (false, "Not restarted: there was no grant to serve")
-            }
+        // 3. Whether a computer is connected. The responder is no longer restarted: ending it does
+        // not take the phone off the USB bus, so the computer never reconnected and the restart only
+        // broke its session. The companion instead tells a connected computer about the drive with
+        // PTP's StoreAdded event, over the session it already has.
+        let connected = NativeTransport.shared.live
+        note(await nativeStep("Checking for a connected computer") {
+            connected
+                ? (true, "A computer is connected: the companion announces the drive to it")
+                : (true, "No computer connected yet: / appears when one is")
         })
 
         // 4. The companion serving, which only a connected computer can show.
-        var connected = false
-        switch restart {
-        case .restarted, .signalled, .deferred: connected = true
-        default: connected = NativeTransport.shared.live
-        }
         if connected {
             note(await nativeStep("Waiting for the companion to serve /") {
                 let transport = NativeTransport.shared
-                // A restarted ptpd has to start, load the companion and post its first heartbeat;
-                // eight seconds is generous for that and short enough to wait for in a sheet.
+                // The computer has to receive the StoreAdded event and ask for the new drive's
+                // storage information; eight seconds is generous for that and short enough to wait
+                // for in a sheet.
                 for _ in 0..<16 {
                     if transport.stage == .sessionActive { break }
                     try? await Task.sleep(nanoseconds: 500_000_000)
@@ -687,7 +673,7 @@ final class ServiceController: ObservableObject {
                 case .hostConnected:
                     return (false, "Computer connected, but / isn't being served: run Diagnostics")
                 default:
-                    return (false, "Apple's responder hasn't come back after the restart: unplug and reconnect")
+                    return (false, "The computer hasn't asked for the drive: unplug and reconnect once")
                 }
             })
         }

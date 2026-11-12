@@ -62,7 +62,10 @@ final class NativeIntegration: ObservableObject {
     /// Then it restarts Apple's responder, because a host reads the storage list once per session:
     /// without that, the volume appears only after unplugging and reconnecting.
     func serveFilesystem() {
-        restartWhenGranted = true
+        // No restart. On 0.4.59 the ptpd started after one received no command at all: ending the
+        // responder does not take the phone off the USB bus, so the computer never reconnects, and
+        // the restart only broke the session it already had. The companion now tells a connected
+        // computer about the drive itself, with PTP's StoreAdded event over that same session.
         lastRestart = .notRequested
         observe = true
         scope = OCT_NATIVE_ROOT_SYSTEM
@@ -233,13 +236,7 @@ final class NativeIntegration: ObservableObject {
             word.generation = generation
             posted = oct_native_lease_publish(&word)
             if posted == OCT_OK || result == OCT_OK { grantPublished = true }
-            // The grant is out, so a fresh ptpd will find it as its companion starts. Now is the
-            // moment to end the current session, and not before: see restartWhenGranted.
-            if restartWhenGranted, posted == OCT_OK, leasedMode == 2 {
-                // Kept when the restart is put off for a transfer, so the next renewal tries again
-                // rather than leaving the volume to appear only after a reconnect.
-                if restartResponder(reason: "serving \(scopeDescription)") { restartWhenGranted = false }
-            }
+
         }
         let channel = posted == OCT_OK ? "notification"
                     : (result == OCT_OK ? "file" : "neither channel")

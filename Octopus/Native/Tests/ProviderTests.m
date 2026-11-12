@@ -176,8 +176,9 @@ int main(void) { @autoreleasepool {
     /* The reason is printed, because a bare assertion here says only that something did not match,
      * and the last time it failed that was the whole of the evidence. */
     if(!OCTProviderValidate(&reason)){fprintf(stderr,"validate: %s\n",reason.UTF8String);abort();}
-    if(!OCTProviderInstall(&reason)){fprintf(stderr,"install: %s\n",reason.UTF8String);abort();}
-    if(!OCTProviderInstall(&reason)){fprintf(stderr,"reinstall: %s\n",reason.UTF8String);abort();}
+    /* The sample tree, which is what a grant naming no filesystem serves. */
+    if(!OCTProviderInstall(OCT_NATIVE_LEASE_EXPOSE_SYNTHETIC,&reason)){fprintf(stderr,"install: %s\n",reason.UTF8String);abort();}
+    if(!OCTProviderInstall(OCT_NATIVE_LEASE_EXPOSE_SYNTHETIC,&reason)){fprintf(stderr,"reinstall: %s\n",reason.UTF8String);abort();}
     PTPVirtualCamera *camera=[PTPVirtualCamera new];
     assert([[camera allStorageIDs] isEqual:@[@0x10001]]);
     assert(object_getClass([camera deviceInfoDataset])==[PTPDeviceInfoDataset class]); /* untouched while unauthorized */

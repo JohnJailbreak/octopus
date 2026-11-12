@@ -12,7 +12,11 @@ extern void OCTObserverTestSnapshot(oct_native_snapshot *out);
 extern uint64_t OCTObserverTestNow(void);
 extern unsigned OCTObserverTestStorageFlags(void);
 
-BOOL OCTProviderInstall(NSString **reason) { if(reason)*reason=@"Observer-only fixture";return YES; }
+BOOL OCTProviderInstall(oct_native_lease_mode scope, NSString **reason) {
+    (void)scope;   /* the observer build does not link the provider; see OCTProviderSetScope below */
+    if(reason)*reason=@"Observer-only fixture";
+    return YES;
+}
 BOOL OCTProviderValidate(NSString **reason) { if(reason)*reason=@"Observer-only fixture";return YES; }
 /* The observer selects a scope once a lease grants exposure. This build does not link the provider,
  * so this stands in for it, as the two stubs above do; the scope is accepted and not acted on. */

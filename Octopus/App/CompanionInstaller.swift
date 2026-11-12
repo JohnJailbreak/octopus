@@ -127,7 +127,7 @@ final class CompanionInstaller: ObservableObject {
         case .installing:
             return "Installing the companion."
         case .installed(let version):
-            return "Companion \(version) installed and loading into Apple's responder."
+            return "Companion \(version) installed. Unplug and reconnect once for it to load."
         case .failed(let reason):
             return reason
         }
@@ -168,10 +168,9 @@ final class CompanionInstaller: ObservableObject {
                      "Helper exit \(outcome.status)\(outcome.errors.last.map { ": \($0)" } ?? "")")
         if outcome.status == 0 {
             state = .installed(CompanionPackage.appVersion)
-            // A newly installed companion only loads into a ptpd that starts after it, so end the
-            // current one rather than asking for a reconnect. If nothing is connected this does
-            // nothing, and the next connection loads it.
-            NativeIntegration.shared.restartResponder(reason: "loading the companion just installed")
+            // A newly installed companion loads into the next ptpd, which starts when a computer is
+            // next connected. Ending the current one does not help: the phone stays on the bus and
+            // the computer does not reconnect, as 0.4.59 showed, so it would only break the session.
             return
         }
         // The helper's own message says more than a number, so it is preferred when there is one.

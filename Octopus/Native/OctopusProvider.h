@@ -10,4 +10,5 @@ BOOL OCTProviderValidate(NSString **reason);
  * roots in oct_native_lease_root. Safe to call repeatedly; a root that cannot be opened falls back
  * to the synthetic tree so a host keeps seeing a working storage. */
 BOOL OCTProviderSetScope(oct_native_lease_mode scope, NSString **reason);
-BOOL OCTProviderInstall(NSString **reason);
+/* `scope` is the root to serve from the first request; see the definition. */
+BOOL OCTProviderInstall(oct_native_lease_mode scope, NSString **reason);
