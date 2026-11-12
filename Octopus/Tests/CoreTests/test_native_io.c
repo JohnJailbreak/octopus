@@ -963,6 +963,83 @@ static void test_transport_stage(void)
     }
 }
 
+/* The write path in the hook report: bits 48-55 of the word, which were unused. Every flag survives
+ * the round trip, the existing fields are untouched by it, and the check byte covers it, so a word
+ * altered in transit is refused rather than misreported. */
+static void test_hook_report_writes(void)
+{
+    oct_native_hook_report report = { .fired = OCT_NATIVE_HOOK_DEVICE_INFO | OCT_NATIVE_HOOK_HANDLES,
+                                      .formats_added = true, .device_info = 1, .handles = 2,
+                                      .object_info = 52, .get_object = 3,
+                                      .writes = OCT_NATIVE_WRITE_DELETE_HOOKED | OCT_NATIVE_WRITE_UPLOAD_HOOKED |
+                                                OCT_NATIVE_WRITE_ADVERTISED };
+    uint64_t word = oct_native_hooks_pack(&report);
+    oct_native_hook_report out;
+    CHECK(oct_native_hooks_unpack(word, &out));
+    CHECK_EQ(out.writes, report.writes);
+    /* The fields that were already there read back exactly as before. */
+    CHECK_EQ(out.fired, report.fired);
+    CHECK(out.formats_added);
+    CHECK_EQ(out.device_info, 1u);
+    CHECK_EQ(out.handles, 2u);
+    CHECK_EQ(out.object_info, 52u);
+    CHECK_EQ(out.get_object, 3u);
+
+    /* Every one of the eight flags, alone and all together. */
+    for (unsigned bit = 0; bit < 8; bit++) {
+        oct_native_hook_report one = { .writes = (uint8_t)(1u << bit) };
+        CHECK(oct_native_hooks_unpack(oct_native_hooks_pack(&one), &out));
+        CHECK_EQ(out.writes, (uint8_t)(1u << bit));
+        CHECK(strcmp(oct_native_write_name(1u << bit), "unknown") != 0);
+    }
+    oct_native_hook_report all = { .writes = 0xFF };
+    CHECK(oct_native_hooks_unpack(oct_native_hooks_pack(&all), &out));
+    CHECK_EQ(out.writes, 0xFFu);
+
+    /* A report from before these bits existed reads as no write activity, not as garbage. */
+    oct_native_hook_report older = report;
+    older.writes = 0;
+    CHECK(oct_native_hooks_unpack(oct_native_hooks_pack(&older), &out));
+    CHECK_EQ(out.writes, 0u);
+
+    /* The check byte covers the new bits: flipping one without resealing is refused. */
+    CHECK(!oct_native_hooks_unpack(word ^ (1ull << 50), &out));
+    CHECK(!oct_native_hooks_unpack(word ^ (1ull << 55), &out));
+}
+
+/* The verdict names the first step of the write path that did not happen, in the order they occur. */
+static void test_write_verdict(void)
+{
+    char text[256];
+    const uint8_t hooks = OCT_NATIVE_WRITE_DELETE_HOOKED | OCT_NATIVE_WRITE_UPLOAD_HOOKED;
+    oct_native_write_verdict(0, text, sizeof text);
+    CHECK(strstr(text, "No write hooks") != NULL);
+    /* The 0.4.58 case: hooks in place, store still read-only when the host asked. */
+    oct_native_write_verdict(hooks, text, sizeof text);
+    CHECK(strstr(text, "read-only when the computer read") != NULL);
+    oct_native_write_verdict(hooks | OCT_NATIVE_WRITE_STORE_WRITABLE, text, sizeof text);
+    CHECK(strstr(text, "no write operation reached") != NULL);
+    oct_native_write_verdict(hooks | OCT_NATIVE_WRITE_STORE_WRITABLE | OCT_NATIVE_WRITE_ADVERTISED, text, sizeof text);
+    CHECK(strstr(text, "none reached Octopus") != NULL);
+    /* Delete hooked, uploads not: says so rather than blaming timing. */
+    oct_native_write_verdict(OCT_NATIVE_WRITE_DELETE_HOOKED | OCT_NATIVE_WRITE_STORE_WRITABLE |
+                             OCT_NATIVE_WRITE_ADVERTISED, text, sizeof text);
+    CHECK(strstr(text, "uploads are not hooked") != NULL);
+    /* Further along, the furthest step reached decides, whatever else is set. */
+    oct_native_write_verdict(hooks | OCT_NATIVE_WRITE_NAMED, text, sizeof text);
+    CHECK(strstr(text, "bytes never reached") != NULL);
+    oct_native_write_verdict(hooks | OCT_NATIVE_WRITE_NAMED | OCT_NATIVE_WRITE_RECEIVED, text, sizeof text);
+    CHECK(strstr(text, "were not written") != NULL);
+    oct_native_write_verdict(0xFF, text, sizeof text);
+    CHECK(strstr(text, "received and written") != NULL);
+    CHECK(strstr(text, "A delete was served") != NULL);
+    /* Bounded and terminated however small the buffer. */
+    char tiny[8];
+    oct_native_write_verdict(0, tiny, sizeof tiny);
+    CHECK_EQ(strlen(tiny), 7u);
+    oct_native_write_verdict(0, NULL, 16);   /* tolerated */
+}
+
 void run_native_io_tests(void)
 {
     test_detailed_failures();
@@ -977,6 +1054,8 @@ void run_native_io_tests(void)
     test_transport_stage();
     test_runtime_word();
     test_hook_report();
+    test_hook_report_writes();
+    test_write_verdict();
     test_root_probe();
     test_root_table_and_report();
     char directory[512], path[1024];

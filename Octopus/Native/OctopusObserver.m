@@ -115,6 +115,22 @@ static void recordHook(const char *event){
     for(size_t i=0;i<sizeof map/sizeof map[0];i++){
         if(!strcmp(event,map[i].event)){hookReport.fired|=(uint16_t)map[i].bit;break;}
     }
+    /* The write path. Each step's event sets its bit, so an export shows how far an upload or a
+     * delete got rather than only that it did not happen. */
+    struct { const char *event; unsigned bit; } writes[] = {
+        {"provider-delete-hooked",OCT_NATIVE_WRITE_DELETE_HOOKED},
+        {"provider-upload-hooked",OCT_NATIVE_WRITE_UPLOAD_HOOKED},
+        {"provider-device-info-writable",OCT_NATIVE_WRITE_STORE_WRITABLE},
+        {"provider-advertised",OCT_NATIVE_WRITE_ADVERTISED},
+        {"provider-upload-named",OCT_NATIVE_WRITE_NAMED},
+        {"provider-upload-unnamed",OCT_NATIVE_WRITE_RECEIVED},
+        {"provider-upload-failed",OCT_NATIVE_WRITE_RECEIVED},
+        {"provider-upload",OCT_NATIVE_WRITE_RECEIVED|OCT_NATIVE_WRITE_STORED},
+        {"provider-delete",OCT_NATIVE_WRITE_DELETED},
+    };
+    for(size_t i=0;i<sizeof writes/sizeof writes[0];i++){
+        if(!strcmp(event,writes[i].event)){hookReport.writes|=(uint8_t)writes[i].bit;break;}
+    }
     /* The four that decide whether a listing appears, counted rather than just flagged. */
     if(!strcmp(event,"provider-device-info")){
         hookReport.formats_added=true;
@@ -369,6 +385,18 @@ static void publish(void){
  * it. Doing a pass before dyld returns control puts the hooks in before ptpd can open its USB
  * session at all, which is the only ordering that beats the first command rather than racing it.
  */
+/*
+ * The scope the current grant names, kept from the lease pass so the provider can be put on it the
+ * moment it installs. pollOnce applies the scope before it installs the provider, and the scope
+ * call refuses while the provider is not installed, so on the first pass after ptpd starts the
+ * store stayed on the sample tree and reached the granted root only on the next poll, a second
+ * later. A host reconnecting after the responder is restarted asks for the device's capabilities in
+ * that second: it was told the store accepted no changes, so it never offered to add a file, and
+ * then the store reopened under it, reassigning handles it already held, which showed as a folder
+ * with no name in place of /var.
+ */
+static oct_native_lease_mode grantedScope = OCT_NATIVE_LEASE_NONE;
+
 static void pollOnce(BOOL match)
 {
     @autoreleasepool {
@@ -403,6 +431,7 @@ static void pollOnce(BOOL match)
                  * of the fixed roots in oct_native_lease_root. */
                 wanted=effective==OCT_NATIVE_LEASE_OBSERVE?1u:
                        (effective==OCT_NATIVE_LEASE_NONE?0u:2u);
+                grantedScope=wanted==2?effective:OCT_NATIVE_LEASE_NONE;
                 if(wanted==2){
                     NSString *scopeProblem=nil;
                     if(!OCTProviderSetScope(effective,&scopeProblem)&&scopeProblem){
@@ -461,6 +490,16 @@ static void pollOnce(BOOL match)
                     attemptedProvider=true;BOOL ok=OCTProviderInstall(&problem);
                     providerState=ok?@"Installed (synthetic, experimental)":(problem?:@"Provider installation failed");
                     atomic_store(&providerReady,ok);
+                    /* Onto the granted root at once, in this same pass. On the first poll that is
+                     * still inside the constructor, before ptpd's main has run, so the capabilities,
+                     * the storage list and every handle come from the final store from the very
+                     * first request, and nothing reopens under a host mid-session. */
+                    if(ok&&grantedScope!=OCT_NATIVE_LEASE_NONE){
+                        NSString *scopeProblem=nil;
+                        if(!OCTProviderSetScope(grantedScope,&scopeProblem)&&scopeProblem){
+                            os_log_error(startup_log(),"scope not served at install: %{public}s",scopeProblem.UTF8String);
+                        }
+                    }
                 }
             }
             pthread_mutex_lock(&lock);oct_native_authorize(&journal,authorized());pthread_mutex_unlock(&lock);

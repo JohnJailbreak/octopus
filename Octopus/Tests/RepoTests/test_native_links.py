@@ -365,5 +365,26 @@ class UseBeforeDeclaration(unittest.TestCase):
                     break
 
 
+class ScopeFollowsInstall(unittest.TestCase):
+    """pollOnce applied the granted scope before it installed the provider, and the scope call
+    refuses while the provider is not installed, so the first pass after ptpd started served the
+    sample tree and reached the granted root only a second later. A host reconnecting after the
+    responder restart asked for the device's capabilities in that second and was told the store was
+    read-only, so it never offered to add a file; then the store reopened under it and handles it
+    held came back nameless. The scope must be applied again once the install succeeds."""
+
+    def test_scope_is_applied_after_the_provider_installs(self):
+        text = strip_comments((NATIVE / "OctopusObserver.m").read_text())
+        start = text.index("static void pollOnce(")
+        body = text[start:]
+        install = body.index("OCTProviderInstall(")
+        later = body[install:]
+        self.assertTrue("OCTProviderSetScope(grantedScope" in later,
+            "pollOnce installs the provider without applying the granted scope afterwards, so the "
+            "first pass serves the sample tree while a host reads the device's capabilities.")
+        # And the scope it applies is the one this pass read from the lease, recorded before.
+        self.assertLess(body.index("grantedScope="), install)
+
+
 if __name__ == "__main__":
     unittest.main()

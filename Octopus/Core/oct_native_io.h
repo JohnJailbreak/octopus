@@ -325,8 +325,25 @@ enum {
     OCT_NATIVE_HOOK_PROPS_SUPPORTED = 1u << 9, /* objectPropertiesSupportedForObjectFormatCode: */
 };
 
+/* The write path, end to end, so one diagnostics export says where adding or deleting a file
+ * stopped. Until these existed, the events that answer it went only to a status file the sandbox
+ * refuses, and an upload that never appeared in Explorer left nothing to read. In bits 48-55 of the
+ * word, which were unused and are already covered by its check byte, so older decoders that do not
+ * read them are unaffected. */
+enum {
+    OCT_NATIVE_WRITE_DELETE_HOOKED  = 1u << 0, /* deleteObjectWithObjectHandle: is hooked */
+    OCT_NATIVE_WRITE_UPLOAD_HOOKED  = 1u << 1, /* the incoming ObjectInfo and appendObjectData: */
+    OCT_NATIVE_WRITE_STORE_WRITABLE = 1u << 2, /* the store accepted changes when DeviceInfo answered */
+    OCT_NATIVE_WRITE_ADVERTISED     = 1u << 3, /* write operations went into OperationsSupported */
+    OCT_NATIVE_WRITE_NAMED          = 1u << 4, /* a host sent an ObjectInfo for our storage */
+    OCT_NATIVE_WRITE_RECEIVED       = 1u << 5, /* an object's bytes arrived for our storage */
+    OCT_NATIVE_WRITE_STORED         = 1u << 6, /* and were written */
+    OCT_NATIVE_WRITE_DELETED        = 1u << 7, /* a host deleted one of our objects */
+};
+
 typedef struct oct_native_hook_report {
     uint16_t fired;         /* the OCT_NATIVE_HOOK_* bits above, ten of them */
+    uint8_t  writes;        /* the OCT_NATIVE_WRITE_* bits */
     bool     formats_added; /* the text format was appended to a host's format list */
     uint8_t  device_info;   /* calls, saturating at 255 */
     uint8_t  handles;
@@ -335,6 +352,11 @@ typedef struct oct_native_hook_report {
 } oct_native_hook_report;
 
 const char *oct_native_hook_name(unsigned bit);
+const char *oct_native_write_name(unsigned bit);
+/* One sentence naming where the write path stopped, from the OCT_NATIVE_WRITE_* bits, in the order
+ * the steps happen: hooks, the store's writability when a host asked, what was advertised, then an
+ * upload's name, its bytes, and their storage. Written into `out`, always terminated. */
+void        oct_native_write_verdict(uint8_t writes, char *out, size_t capacity);
 uint64_t   oct_native_hooks_pack(const oct_native_hook_report *report);
 bool       oct_native_hooks_unpack(uint64_t word, oct_native_hook_report *out);
 oct_status oct_native_hooks_publish(const oct_native_hook_report *report);

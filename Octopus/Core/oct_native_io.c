@@ -479,6 +479,50 @@ bool oct_native_runtime_unpack(uint64_t word, oct_native_runtime *out)
     return true;
 }
 
+const char *oct_native_write_name(unsigned bit)
+{
+    switch (bit) {
+    case OCT_NATIVE_WRITE_DELETE_HOOKED: return "delete hooked";
+    case OCT_NATIVE_WRITE_UPLOAD_HOOKED: return "upload hooked";
+    case OCT_NATIVE_WRITE_STORE_WRITABLE: return "store writable at DeviceInfo";
+    case OCT_NATIVE_WRITE_ADVERTISED: return "write operations advertised";
+    case OCT_NATIVE_WRITE_NAMED: return "upload named";
+    case OCT_NATIVE_WRITE_RECEIVED: return "upload received";
+    case OCT_NATIVE_WRITE_STORED: return "upload written";
+    case OCT_NATIVE_WRITE_DELETED: return "object deleted";
+    }
+    return "unknown";
+}
+
+void oct_native_write_verdict(uint8_t writes, char *out, size_t capacity)
+{
+    if (!out || capacity == 0) return;
+    const char *verdict;
+    bool deleteHooked = writes & OCT_NATIVE_WRITE_DELETE_HOOKED;
+    bool uploadHooked = writes & OCT_NATIVE_WRITE_UPLOAD_HOOKED;
+    if (writes & OCT_NATIVE_WRITE_STORED) {
+        verdict = "An upload was received and written.";
+    } else if (writes & OCT_NATIVE_WRITE_RECEIVED) {
+        verdict = "An upload's bytes arrived but were not written: the store refused them.";
+    } else if (writes & OCT_NATIVE_WRITE_NAMED) {
+        verdict = "A computer named an upload, but its bytes never reached Octopus.";
+    } else if (!deleteHooked && !uploadHooked) {
+        verdict = "No write hooks installed: this ptpd lacks the methods they need.";
+    } else if (!(writes & OCT_NATIVE_WRITE_STORE_WRITABLE)) {
+        /* The timing fault: the computer asked before the store was on the granted root. */
+        verdict = "The store was read-only when the computer read the device's capabilities, so it "
+                  "was never offered writes. Reconnect USB.";
+    } else if (!(writes & OCT_NATIVE_WRITE_ADVERTISED)) {
+        verdict = "The store was writable, but no write operation reached the computer's list.";
+    } else if (!uploadHooked) {
+        verdict = "Delete was offered; uploads are not hooked in this ptpd.";
+    } else {
+        verdict = "Uploads were offered, but none reached Octopus: try adding a file.";
+    }
+    snprintf(out, capacity, "%s%s", verdict,
+             (writes & OCT_NATIVE_WRITE_DELETED) ? " A delete was served." : "");
+}
+
 const char *oct_native_hook_name(unsigned bit)
 {
     switch (bit) {
@@ -505,7 +549,8 @@ uint64_t oct_native_hooks_pack(const oct_native_hook_report *report)
                   | (uint64_t)report->device_info << 16
                   | (uint64_t)report->handles << 24
                   | (uint64_t)report->object_info << 32
-                  | (uint64_t)report->get_object << 40;
+                  | (uint64_t)report->get_object << 40
+                  | (uint64_t)report->writes << 48;
     return word | (uint64_t)lease_check(word) << 56;
 }
 
@@ -521,6 +566,7 @@ bool oct_native_hooks_unpack(uint64_t word, oct_native_hook_report *out)
     out->handles = (uint8_t)(word >> 24);
     out->object_info = (uint8_t)(word >> 32);
     out->get_object = (uint8_t)(word >> 40);
+    out->writes = (uint8_t)(word >> 48);
     return true;
 }
 

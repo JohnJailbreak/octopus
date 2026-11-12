@@ -333,6 +333,15 @@ struct NativeCapture: Codable, Sendable {
                     + " Never called: \(missing.isEmpty ? "none" : missing.joined(separator: ", "))."
                     + " Text format added to a host's format list: \(hooks.formats_added ? "yes" : "no")."
                     + " Counts: deviceInfo \(hooks.device_info), handles \(hooks.handles), objectInfo \(hooks.object_info), reads \(hooks.get_object)."
+                // The write path, which until now an export could not show: its events went only to
+                // a status file the sandbox refuses. The C side decides what the bits mean.
+                let capacity = 256
+                var verdict = [CChar](repeating: 0, count: capacity)
+                // capacity is a separate constant: reading verdict.count while passing &verdict in
+                // the same call is an overlapping access, which Swift's exclusivity checking rejects.
+                oct_native_write_verdict(hooks.writes, &verdict, capacity)
+                let writeText = verdict.withUnsafeBufferPointer { String(cString: $0.baseAddress!) }
+                hookText += " Writes: \(writeText)"
             }
             let live = transactions
                 ? "\(runtime.commands) commands inside native USB receive callbacks; \(runtime.responses) paired response writes; \(runtime.provider_events) provider events. Reported by notification, not the status file.\(hookText) Host receipt, Explorer visibility and the downloaded SHA-256 still need Windows verification."

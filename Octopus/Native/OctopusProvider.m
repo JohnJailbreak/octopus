@@ -209,10 +209,16 @@ static id deviceInfo(id self, SEL cmd) {
                                                 copy.mutableBytes,copy.length,&length);
     if (result!=1) return base;
     copy.length=length;
-    /* When the served store accepts changes, advertise DeleteObject as well: a host reads
-     * OperationsSupported to decide what to offer, and will not offer to delete without it. The
-     * two appends are separate calls because each grows the dataset by two bytes. */
-    if (storeWritable && atomic_load_explicit(&deleteHooked,memory_order_acquire)) {
+    /* When the served store accepts changes, advertise the operations that change it: a host
+     * reads OperationsSupported to decide what to offer, and offers nothing it does not see there.
+     * Each operation is gated on its own hook below. This used to sit inside a condition on the
+     * delete hook alone, written before uploads existed, so a missing delete hook would also have
+     * hidden uploads whose hooks were in place. */
+    if (storeWritable) {
+        /* Recorded separately from what was advertised, because the two failing differ: a store not
+         * yet writable when a host asked is a timing fault, an operation missing from the list with
+         * the store writable is a hook that did not install. */
+        OCTNativeProviderEvent("provider-device-info-writable",0,OCT_RC_OK);
         /* Each append grows the dataset by two bytes, so each is its own call on the result of the
          * last. An operation is advertised only when the hook that serves it is in place: a host
          * offered one that cannot be served fails part-way through a copy instead of not offering. */
