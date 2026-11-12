@@ -26,6 +26,17 @@ static bool storeWritable;
  * storeWritable are both true: offering an operation the provider cannot serve would leave a host
  * deleting into Apple's implementation, which knows nothing of our handles. */
 static atomic_bool deleteHooked;
+/* Whether the upload receiver is hooked. Apple routes an incoming object to the storage or folder
+ * it belongs in, through appendObjectData:..., which is the only method in ptpd that takes one.
+ * SendObjectInfo and SendObject are advertised only when this is in place and the store accepts
+ * changes: a host offered an upload it cannot complete would fail mid-copy instead of not offering. */
+static atomic_bool uploadHooked;
+static IMP originalAppendStorage, originalAppendFolder;
+/* The name and parent a host sent in SendObjectInfo, kept until the data arrives in SendObject.
+ * PTP splits an upload across two operations and only the first carries the name. */
+static pthread_mutex_t pendingLock = PTHREAD_MUTEX_INITIALIZER;
+static char pendingName[OCT_NAME_MAX + 1];
+static uint32_t pendingParent;
 
 /* Dynamic class lookup avoids linking against private classes exported by the
  * executable. These are only the exact signatures verified in this image. */
@@ -202,13 +213,25 @@ static id deviceInfo(id self, SEL cmd) {
      * OperationsSupported to decide what to offer, and will not offer to delete without it. The
      * two appends are separate calls because each grows the dataset by two bytes. */
     if (storeWritable && atomic_load_explicit(&deleteHooked,memory_order_acquire)) {
-        NSMutableData *withDelete=[NSMutableData dataWithLength:copy.length+2];
-        size_t grown=0;
-        if (oct_native_device_info_add_operation(copy.bytes,copy.length,OCT_OP_DELETE_OBJECT,
-                                                 withDelete.mutableBytes,withDelete.length,&grown)==1) {
-            withDelete.length=grown;
-            copy=withDelete;
-            OCTNativeProviderEvent("provider-advertised-delete",OCT_OP_DELETE_OBJECT,OCT_RC_OK);
+        /* Each append grows the dataset by two bytes, so each is its own call on the result of the
+         * last. An operation is advertised only when the hook that serves it is in place: a host
+         * offered one that cannot be served fails part-way through a copy instead of not offering. */
+        uint16_t operations[3];
+        unsigned count=0;
+        if (atomic_load_explicit(&deleteHooked,memory_order_acquire)) operations[count++]=OCT_OP_DELETE_OBJECT;
+        if (atomic_load_explicit(&uploadHooked,memory_order_acquire)) {
+            operations[count++]=OCT_OP_SEND_OBJECT_INFO;
+            operations[count++]=OCT_OP_SEND_OBJECT;
+        }
+        for (unsigned i=0;i<count;i++) {
+            NSMutableData *grownData=[NSMutableData dataWithLength:copy.length+2];
+            size_t grown=0;
+            if (oct_native_device_info_add_operation(copy.bytes,copy.length,operations[i],
+                                                     grownData.mutableBytes,grownData.length,&grown)==1) {
+                grownData.length=grown;
+                copy=grownData;
+                OCTNativeProviderEvent("provider-advertised",operations[i],OCT_RC_OK);
+            }
         }
     }
     OCTNativeDataset *dataset=[OCTNativeDataset new];dataset.content=copy;dataset.original=base;
@@ -235,6 +258,91 @@ static void deleteObject(id self, SEL cmd, uint32_t handle, unsigned short *code
     uint16_t response=oct_response_for_status(status);
     if (code) *code=(unsigned short)response;
     OCTNativeProviderEvent("provider-delete",handle,response);
+}
+
+/*
+ * The ObjectInfo a host sends before the object itself. PTP splits an upload in two: SendObjectInfo
+ * carries the name, storage and parent, SendObject carries the bytes and neither the name nor the
+ * storage. Apple builds this dataset from the host's bytes, so the same bytes are parsed here to
+ * keep the name until the data arrives.
+ *
+ * Only an upload into our storage is remembered; one into Apple's is left entirely alone.
+ */
+static IMP originalIncomingInfo;
+static id incomingObjectInfo(id self, SEL cmd, id data, int contentType) {
+    id dataset = ((id (*)(id,SEL,id,int))originalIncomingInfo)(self, cmd, data, contentType);
+    if (!dataset || !data) return dataset;
+    oct_object_info_request parsed;
+    if (oct_dataset_parse_object_info([data bytes], [data length], &parsed) != OCT_OK) return dataset;
+    if (parsed.storage_id != OCT_NATIVE_STORAGE_ID) return dataset;
+    /* A parent of zero means the storage's root in PTP, which for us is the root handle. */
+    uint32_t parent = parsed.parent == 0 ? OCT_NATIVE_FIRST_HANDLE : parsed.parent;
+    pthread_mutex_lock(&pendingLock);
+    memcpy(pendingName, parsed.name, sizeof pendingName);
+    pendingName[sizeof pendingName - 1] = '\0';
+    pendingParent = parent;
+    pthread_mutex_unlock(&pendingLock);
+    OCTNativeProviderEvent("provider-upload-named", parent, parsed.format);
+    return dataset;
+}
+
+/*
+ * An object arriving from a host. Apple calls this on the storage or folder the object belongs in,
+ * with the bytes, the format, the parent handle and a content type; the 64-bit result is the
+ * handle of what was created, or zero when nothing was.
+ *
+ * Only an association that is ours is handled here; anything else is Apple's, forwarded untouched,
+ * so importing a photo into the library still works exactly as before.
+ */
+static unsigned long long appendObject(id self, SEL cmd, id data, unsigned short format,
+                                       unsigned int association, int contentType, IMP original) {
+    if (!isSynthetic(association) || !available(self)) {
+        return ((unsigned long long (*)(id,SEL,id,unsigned short,unsigned int,int))original)
+            (self, cmd, data, format, association, contentType);
+    }
+    /* The name came in SendObjectInfo, which Apple has already accepted by the time the data
+     * arrives. Without one there is nothing to call the file, so the upload is refused rather than
+     * written under a name of our invention. */
+    char name[OCT_NAME_MAX + 1];
+    pthread_mutex_lock(&pendingLock);
+    bool named = pendingName[0] != '\0' && pendingParent == association;
+    if (named) { memcpy(name, pendingName, sizeof name); pendingName[0] = '\0'; }
+    pthread_mutex_unlock(&pendingLock);
+    if (!named) {
+        OCTNativeProviderEvent("provider-upload-unnamed", association, OCT_RC_INVALID_PARENT_OBJECT);
+        return 0;
+    }
+
+    const void *bytes = [data bytes];
+    NSUInteger length = [data length];
+    uint32_t handle = 0;
+    pthread_mutex_lock(&coreLock);
+    oct_status status = store ? oct_store_create(store, association, name, false, &handle)
+                              : OCT_E_STATE;
+    if (status == OCT_OK && length > 0) {
+        status = oct_store_write(store, handle, 0, bytes, (size_t)length);
+        if (status != OCT_OK) {
+            /* A file created and then not written is worse than no file: remove it rather than
+             * leave an empty one a host believes it has uploaded. */
+            uint32_t removed = 0;
+            (void)oct_store_delete(store, handle, &removed);
+            handle = 0;
+        }
+    }
+    pthread_mutex_unlock(&coreLock);
+    OCTNativeProviderEvent(status == OCT_OK ? "provider-upload" : "provider-upload-failed",
+                           handle, oct_response_for_status(status));
+    return status == OCT_OK ? (unsigned long long)handle : 0;
+}
+
+static unsigned long long appendOnStorage(id self, SEL cmd, id data, unsigned short format,
+                                          unsigned int association, int contentType) {
+    return appendObject(self, cmd, data, format, association, contentType, originalAppendStorage);
+}
+
+static unsigned long long appendOnFolder(id self, SEL cmd, id data, unsigned short format,
+                                         unsigned int association, int contentType) {
+    return appendObject(self, cmd, data, format, association, contentType, originalAppendFolder);
 }
 
 static id storageInfo(id self, SEL cmd, uint32_t storageID) {
@@ -558,6 +666,23 @@ BOOL OCTProviderSetScope(oct_native_lease_mode scope, NSString **reason)
  */
 static void installOptionalHooks(void) {
     NSString *why=nil;
+    /* The upload path, in three parts: the name arrives with the ObjectInfo, and the bytes arrive at
+     * the storage or the folder they belong in. All three must be in place, or a host would be
+     * offered an upload that fails part-way; the advertisement below depends on it. */
+    BOOL named = OCTRuntimeHook("PTPObjectInfoDataset","initWithData:contentType:","@28@0:8@16i24",
+                                (IMP)incomingObjectInfo,&originalIncomingInfo,&why);
+    BOOL onStorage = OCTRuntimeHook("PTPStorage",
+                                    "appendObjectData:forObjectFormatCode:inAssociation:withContentType:",
+                                    "Q36@0:8@16S24I28I32",(IMP)appendOnStorage,&originalAppendStorage,&why);
+    BOOL onFolder = OCTRuntimeHook("PTPFolder",
+                                   "appendObjectData:forObjectFormatCode:inAssociation:withContentType:",
+                                   "Q36@0:8@16S24I28I32",(IMP)appendOnFolder,&originalAppendFolder,&why);
+    if (named && (onStorage || onFolder)) {
+        atomic_store_explicit(&uploadHooked,true,memory_order_release);
+        OCTNativeProviderEvent("provider-upload-hooked",onStorage && onFolder ? 2u : 1u,OCT_RC_OK);
+    } else {
+        OCTNativeProviderEvent("provider-upload-unavailable",0,OCT_RC_OPERATION_NOT_SUPPORTED);
+    }
     /* Recorded from the device: v28@0:8I16^S20, void with a uint32 handle and a response-code
      * pointer. OCTRuntimeHook checks that encoding before installing, so a method of a different
      * shape is left alone rather than called with the wrong arguments. */

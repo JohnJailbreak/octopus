@@ -37,11 +37,19 @@ void OCTNativeProviderEvent(const char *event,uint32_t handle,int32_t result) {
 @end
 @interface PTPObjectInfoDataset : NSObject
 - (instancetype)initWithData:(id)data;
+/* Apple's parser for an ObjectInfo arriving from a host, recorded as @28@0:8@16i24. The provider
+ * hooks it to keep the filename, which SendObject does not carry. */
+- (instancetype)initWithData:(id)data contentType:(int32_t)type;
 - (void)setObjectHandle:(uint32_t)handle;
 - (id)content:(int32_t)type;
 @end
 @implementation PTPObjectInfoDataset { NSData *_body; uint32_t _objectHandle; }
 - (instancetype)initWithData:(id)data { if ((self=[super init])) _body=data; return self; }
+- (instancetype)initWithData:(id)data contentType:(int32_t)type {
+    (void)type;
+    if ((self=[super init])) _body=data;
+    return self;
+}
 - (void)setObjectHandle:(uint32_t)handle { _objectHandle=handle; }
 - (id)content:(int32_t)type {
     (void)type;
@@ -73,6 +81,38 @@ void OCTNativeProviderEvent(const char *event,uint32_t handle,int32_t result) {
 @end
 /* The last handle Apple's own delete was asked about, or zero. */
 static uint32_t lastAppleDelete;
+/* The association Apple's own upload receiver was asked about, or zero: an upload into Apple's own
+ * storage must reach Apple's implementation, not ours. */
+static uint32_t lastAppleAppend;
+
+/* The storage and folder an incoming object is appended to. Apple calls one of these with the
+ * bytes, the format, the parent and a content type, returning the new object's handle.
+ * Recorded as Q36@0:8@16S24I28I32. */
+@interface PTPStorage : NSObject
+- (unsigned long long)appendObjectData:(id)data forObjectFormatCode:(unsigned short)format
+                         inAssociation:(unsigned int)association withContentType:(int)type;
+@end
+@implementation PTPStorage
+- (unsigned long long)appendObjectData:(id)data forObjectFormatCode:(unsigned short)format
+                         inAssociation:(unsigned int)association withContentType:(int)type {
+    (void)data; (void)format; (void)type;
+    lastAppleAppend = association;
+    return 0x1234;   /* a handle of Apple's own, distinguishable from ours */
+}
+@end
+
+@interface PTPFolder : NSObject
+- (unsigned long long)appendObjectData:(id)data forObjectFormatCode:(unsigned short)format
+                         inAssociation:(unsigned int)association withContentType:(int)type;
+@end
+@implementation PTPFolder
+- (unsigned long long)appendObjectData:(id)data forObjectFormatCode:(unsigned short)format
+                         inAssociation:(unsigned int)association withContentType:(int)type {
+    (void)data; (void)format; (void)type;
+    lastAppleAppend = association;
+    return 0x5678;
+}
+@end
 
 @implementation PTPVirtualCamera
 - (id)deviceInfoDataset { return [PTPDeviceInfoDataset new]; }
@@ -189,6 +229,29 @@ int main(void) { @autoreleasepool {
     uint16_t relistCode=0;
     NSArray *relisted=[camera objectHandlesInStorage:UINT32_MAX forObjectFormatCode:0 inAssociation:docs responseCode:&relistCode];
     assert(relistCode==OCT_RC_OK&&findNamed(camera,relisted,@"example.txt")==example); /* not deleted */
+    /* Uploads. An object bound for Apple's own storage reaches Apple's receiver untouched; one
+     * bound for ours never does. The sample tree accepts no changes, so ours is refused rather
+     * than written, which is the correct answer for a read-only store and proves the routing. */
+    PTPStorage *appleStorage=[PTPStorage new];
+    PTPFolder *appleFolder=[PTPFolder new];
+    NSData *payload=[@"uploaded" dataUsingEncoding:NSUTF8StringEncoding];
+    lastAppleAppend=0;
+    unsigned long long theirs=[appleStorage appendObjectData:payload forObjectFormatCode:OCT_FORMAT_UNDEFINED
+                                               inAssociation:42 withContentType:0];
+    assert(lastAppleAppend==42&&theirs==0x1234);            /* forwarded */
+    lastAppleAppend=0;
+    unsigned long long refused=[appleStorage appendObjectData:payload forObjectFormatCode:OCT_FORMAT_UNDEFINED
+                                                inAssociation:docs withContentType:0];
+    assert(lastAppleAppend==0);                             /* ours: never forwarded */
+    assert(refused==0);                                     /* and refused: the sample tree is read-only */
+    lastAppleAppend=0;
+    unsigned long long viaFolder=[appleFolder appendObjectData:payload forObjectFormatCode:OCT_FORMAT_UNDEFINED
+                                                 inAssociation:42 withContentType:0];
+    assert(lastAppleAppend==42&&viaFolder==0x5678);         /* the folder path forwards too */
+    /* And the object count is unchanged: nothing was created by any of that. */
+    NSArray *afterUpload=[camera objectHandlesInStorage:UINT32_MAX forObjectFormatCode:0 inAssociation:docs responseCode:&code];
+    assert(code==OCT_RC_OK&&afterUpload.count==children.count);
+
     id source=[camera dataSourceForObjectHandle:example responseCode:&code size:&size];
     assert(code==OCT_RC_OK&&size==76&&[source length]==76);
     uint8_t bytes[76],partial[19];
