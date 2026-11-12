@@ -146,6 +146,79 @@ class HelperTests(unittest.TestCase):
         self.assertFalse(tipa.exists())
 
 
+    # The companion the app carries
+
+    def octopus(self, deb=True, bundle_id='com.parv.octopus'):
+        """An installed Octopus.app, optionally carrying the companion package."""
+        folder = self.container('octopus', bundle_id, helper=False)
+        (folder / 'Octopus.app').mkdir()
+        if deb:
+            (folder / 'Octopus.app/OctopusNative.deb').write_bytes(b'!<arch>\ndebian-binary')
+        return folder
+
+    def dpkg(self):
+        path = self.root / 'var/jb/usr/bin/dpkg'
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b'')
+        (self.root / 'var/tmp').mkdir(parents=True, exist_ok=True)
+
+    def leftovers(self):
+        # Only what the companion command makes: its root-owned copy of the package. The fallback
+        # download folder the harness creates under var/tmp is not a leftover.
+        folder = self.root / 'var/tmp'
+        if not folder.exists():
+            return []
+        return sorted(p.name for p in folder.iterdir() if p.name.startswith('octopus-companion.'))
+
+    def test_companion_installs_the_carried_package_with_dpkg(self):
+        self.octopus(); self.dpkg()
+        code, lines = self.run_helper('companion')
+        self.assertEqual(code, 0, lines)
+        text = '\n'.join(lines)
+        self.assertIn('dpkg', text)
+        self.assertIn('-i', text)
+        self.assertIn('with its own environment', text)   # the jailbreak's PATH, for install scripts
+        self.assertEqual(self.leftovers(), [])            # the root-owned copy is removed afterwards
+
+    def test_companion_without_a_carried_package(self):
+        self.octopus(deb=False); self.dpkg()
+        code, lines = self.run_helper('companion')
+        self.assertEqual(code, 4)
+        self.assertIn('carries no companion', ' '.join(self.errors(lines)))
+
+    def test_companion_without_octopus_installed(self):
+        self.dpkg()
+        self.assertEqual(self.run_helper('companion')[0], 4)
+
+    def test_only_octopus_s_own_bundle_is_trusted(self):
+        # Another app carrying a file of the same name is not Octopus, so its package is never installed.
+        self.octopus(bundle_id='com.example.impostor'); self.dpkg()
+        self.assertEqual(self.run_helper('companion')[0], 4)
+
+    def test_companion_without_dpkg(self):
+        self.octopus()
+        (self.root / 'var/tmp').mkdir(parents=True, exist_ok=True)
+        code, lines = self.run_helper('companion')
+        self.assertEqual(code, 9)
+        self.assertIn('rootless jailbreak', ' '.join(self.errors(lines)))
+        self.assertEqual(self.leftovers(), [])
+
+    def test_a_failing_dpkg_is_reported_and_cleans_up(self):
+        self.octopus(); self.dpkg()
+        code, lines = self.run_helper('companion', OCTOPUS_TEST_FAIL='dpkg')
+        self.assertEqual(code, 8)
+        self.assertIn('dpkg failed', ' '.join(self.errors(lines)))
+        self.assertEqual(self.leftovers(), [])
+
+    def test_a_dpkg_that_cannot_start_says_why(self):
+        # After a reboot the jailbreak's programs do not run until it is run again.
+        self.octopus(); self.dpkg()
+        code, lines = self.run_helper('companion', OCTOPUS_TEST_NOSTART='dpkg')
+        self.assertEqual(code, 8)
+        self.assertIn('jailbreak active', ' '.join(self.errors(lines)))
+        self.assertEqual(self.leftovers(), [])
+
+
 class SpawnTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

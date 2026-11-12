@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The sonnet prerelease pipeline in .github/workflows/build.yml.
+"""The release pipeline in .github/workflows/build.yml.
 
 Two kinds of test. Structural: who may publish, when, and with which permissions, so the stable
 main pipeline cannot be changed by accident. Behavioural: the prerelease job's own shell scripts,
@@ -10,7 +10,8 @@ import hashlib, json, os, pathlib, subprocess, tempfile, textwrap, unittest
 import yaml
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
-WORKFLOW = yaml.safe_load((ROOT / ".github/workflows/build.yml").read_text())
+WORKFLOW_TEXT = (ROOT / ".github/workflows/build.yml").read_text()
+WORKFLOW = yaml.safe_load(WORKFLOW_TEXT)
 JOBS = WORKFLOW["jobs"]
 TRIGGERS = WORKFLOW.get(True, WORKFLOW.get("on"))
 SHA = "0123456789abcdef0123456789abcdef01234567"
@@ -51,43 +52,49 @@ esac
 
 class Structure(unittest.TestCase):
     def test_triggers(self):
-        self.assertEqual(TRIGGERS["push"]["branches"], ["main", "sonnet"])
+        # main only: sonnet is gone, and with it the prerelease job. Everything publishes from main.
+        self.assertEqual(TRIGGERS["push"]["branches"], ["main"])
         self.assertEqual(TRIGGERS["push"]["tags"], ["v*"])
         self.assertIn("pull_request", TRIGGERS)
 
     def test_least_privilege(self):
         self.assertEqual(WORKFLOW["permissions"], {"contents": "read"})
         writers = {n for n, j in JOBS.items() if (j.get("permissions") or {}).get("contents") == "write"}
-        self.assertEqual(writers, {"release", "prerelease"})
+        self.assertEqual(writers, {"release"})   # one job may write releases, and only one
 
-    def test_stable_release_is_unchanged_and_never_runs_for_sonnet(self):
-        self.assertEqual(JOBS["release"]["needs"], ["core", "app"])
-        self.assertNotIn("sonnet", JOBS["release"]["if"])
-        self.assertIn("refs/heads/main", JOBS["release"]["if"])
+    def test_release_gating(self):
+        job = JOBS["release"]
+        # The companion is required. A release carrying the app alone meant the DEB had to be found
+        # elsewhere, and the two drifted apart; a mismatched pair cost two debugging sessions.
+        self.assertEqual(job["needs"], ["core", "app", "native"])
+        self.assertIn("refs/heads/main", job["if"])
+        self.assertIn("refs/tags/v", job["if"])
+        self.assertIn("pull_request", job["if"])                    # excluded, checked below
+        self.assertIn("github.event_name != 'pull_request'", job["if"])
+        self.assertNotIn("sonnet", job["if"])
 
-    def test_prerelease_gating(self):
-        job = JOBS["prerelease"]
-        self.assertEqual(job["needs"], ["core", "app", "native"])   # a failed native job blocks it
-        # A push to sonnet publishes, and so does a manual run on sonnet: that is the owner pressing
-        # the button, and during a GitHub outage it was the only way to retry a build. A pull
-        # request never publishes, because its code need not be the owner's.
-        self.assertIn("github.event_name == 'push'", job["if"])
-        self.assertIn("github.event_name == 'workflow_dispatch'", job["if"])
-        self.assertNotIn("pull_request", job["if"])
-        self.assertIn("github.ref == 'refs/heads/sonnet'", job["if"])
-        self.assertIn("github.sha", job["concurrency"]["group"])    # only retries of one commit queue
-        self.assertFalse(job["concurrency"]["cancel-in-progress"])
+    def test_the_prerelease_job_is_gone(self):
+        # sonnet is deleted, so nothing may publish from it or mark a build as a prerelease.
+        self.assertNotIn("prerelease", JOBS)
+        self.assertNotIn("sonnet", WORKFLOW_TEXT)
 
     def test_no_workflow_level_concurrency(self):
         # A workflow-wide group keeps only one pending run, which could skip a stable release on main.
         self.assertNotIn("concurrency", WORKFLOW)
 
     def test_publish_flags(self):
-        run = step("prerelease", "Publish")
-        for needle in ('--prerelease', '--latest=false', '--target "$GITHUB_SHA"', 'tag="sonnet-${VERSION}-'):
-            self.assertIn(needle, run)
-        self.assertNotIn("DELETE", run)          # never deletes anything, drafts included
-        self.assertNotIn('"v$VERSION"', run)     # never a stable tag
+        run = step("release", "Publish")
+        self.assertIn('tag="v$VERSION"', run)            # every push to main is a release
+        self.assertIn("--verify-tag", run)
+        self.assertNotIn("--prerelease", run)            # nothing is published as a prerelease now
+        self.assertIn("Octopus.tipa", run)
+        self.assertIn("Octopus.ipa", run)
+        self.assertIn("iphoneos-arm64.deb", run)         # the companion ships with the app
+
+    def test_release_verifies_the_pair(self):
+        verify = step("release", "Verify the paired assets")
+        for needle in ("Octopus.tipa", "Octopus.ipa", "iphoneos-arm64.deb", ".sha256", ".json"):
+            self.assertIn(needle, verify)
 
     def test_failed_native_build_keeps_diagnostics(self):
         kept = [s for s in JOBS["native"]["steps"] if s.get("if") == "failure()"]
@@ -105,20 +112,24 @@ class Behaviour(unittest.TestCase):
         for d in ("tags", "releases", "tagobjects"):
             (self.state / d).mkdir(parents=True)
         (self.state / "log").write_text("")
-        self.tag = f"sonnet-{VERSION}-{SHA[:12]}"
+        self.tag = f"v{VERSION}"   # every push to main publishes v<version>
 
     def tearDown(self):
         self.tmp.cleanup()
 
     def run_step(self, name):
+        # The release job reads GITHUB_REF to tell a tag push from a push to main.
         env = dict(os.environ, VERSION=VERSION, GITHUB_SHA=SHA, GH_REPO="owner/octopus",
+                   GITHUB_REF="refs/heads/main", GITHUB_REF_NAME="main",
+                   GITHUB_STEP_SUMMARY=str(self.dir / "step-summary.md"),
                    FAKE_GH_STATE=str(self.state), PATH=f"{self.dir / 'bin'}:{os.environ['PATH']}")
-        return subprocess.run(["bash", "-c", step("prerelease", name)], cwd=self.dir, env=env,
+        return subprocess.run(["bash", "-c", step("release", name)], cwd=self.dir, env=env,
                                capture_output=True, text=True, timeout=60)
 
     def assets(self, version=VERSION, corrupt=False):
-        app, native = self.dir / "release/app", self.dir / "release/native"
-        app.mkdir(parents=True); native.mkdir(parents=True)
+        # The release job downloads the app into release/ and the companion into release/native/.
+        app, native = self.dir / "release", self.dir / "release/native"
+        native.mkdir(parents=True)
         (app / "Octopus.tipa").write_bytes(b"tipa"); (app / "Octopus.ipa").write_bytes(b"tipa")
         sums = "".join(f"{hashlib.sha256(b'tipa').hexdigest()}  {n}\n" for n in ("Octopus.tipa", "Octopus.ipa"))
         (app / "SHA256SUMS").write_text(sums)
@@ -132,7 +143,7 @@ class Behaviour(unittest.TestCase):
         self.assets()
         r = self.run_step("Verify the paired assets")
         self.assertEqual(r.returncode, 0, r.stderr)
-        names = [l.split()[1] for l in (self.dir / "publish/SHA256SUMS").read_text().splitlines()]
+        names = [l.split()[1] for l in (self.dir / "release/SHA256SUMS").read_text().splitlines()]
         self.assertEqual(names, ["Octopus.tipa", "Octopus.ipa", DEB])
 
     def test_verify_rejects_a_missing_deb(self):
@@ -149,30 +160,32 @@ class Behaviour(unittest.TestCase):
 
     def publish(self):
         (self.dir / "publish").mkdir(exist_ok=True)
-        (self.dir / "prerelease-notes.md").write_text("notes\n")
+        (self.dir / "release-notes.md").write_text("notes\n")
         return self.run_step("Publish")
 
-    def test_first_publish_creates_a_prerelease_at_this_commit(self):
+    def test_first_publish_creates_a_release_at_this_commit(self):
         r = self.publish()
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         created = (self.state / "releases" / self.tag / "created").read_text().strip()
-        self.assertEqual(created, f"target={SHA} prerelease=true latest=false")
+        # A push to main releases at that commit and marks it latest. Nothing is a prerelease now:
+        # sonnet is gone, so main is where everything is published from.
+        self.assertEqual(created, f"target={SHA} prerelease=false latest=unset")
 
     def test_a_retry_for_the_same_commit_refreshes_rather_than_duplicates(self):
         self.assertEqual(self.publish().returncode, 0)
         r = self.publish()
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         events = (self.state / "releases" / self.tag / "events").read_text().split("\n")
+        # Created once, then the second run refreshes the same release rather than making another.
         self.assertEqual([e.split()[0] for e in events if e], ["create", "upload", "edit"])
-        self.assertIn("--prerelease --latest=false", (self.state / "releases" / self.tag / "events").read_text())
+        self.assertIn("--draft=false", (self.state / "releases" / self.tag / "events").read_text())
 
-    def test_a_tag_at_another_commit_is_never_moved(self):
-        (self.state / "tags" / self.tag).write_text(OTHER + "\n")
-        r = self.publish()
-        self.assertNotEqual(r.returncode, 0)
-        self.assertIn("not moving it", r.stdout + r.stderr)
+    def test_an_existing_release_is_refreshed_without_deleting_anything(self):
+        self.assertEqual(self.publish().returncode, 0)
+        self.assertEqual(self.publish().returncode, 0)
         log = (self.state / "log").read_text()
-        self.assertNotIn("release create", log); self.assertNotIn("release upload", log)
+        # Drafts left by Actions are cleaned up, but nothing published is ever deleted.
+        self.assertNotIn("release delete", log)
 
     def test_an_annotated_tag_is_resolved_to_its_commit(self):
         (self.state / "tags" / self.tag).write_text("tagobject1\ntag\n")
@@ -182,14 +195,6 @@ class Behaviour(unittest.TestCase):
         r = self.publish()
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertIn("upload", (self.state / "releases" / self.tag / "events").read_text())
-
-    def test_a_stable_release_under_the_tag_is_never_touched(self):
-        (self.state / "tags" / self.tag).write_text(SHA + "\n")
-        (self.state / "releases" / self.tag).mkdir()
-        (self.state / "releases" / self.tag / "prerelease").write_text("false\n")
-        r = self.publish()
-        self.assertNotEqual(r.returncode, 0)
-        self.assertFalse((self.state / "releases" / self.tag / "events").exists())
 
 
 if __name__ == "__main__":

@@ -22,6 +22,7 @@
 
 #define _DEFAULT_SOURCE
 #include <dirent.h>
+#include <fcntl.h>
 #include <errno.h>
 #include <limits.h>
 #include <signal.h>
@@ -48,6 +49,12 @@
 #define OCT_TROLLSTORE_HELPER "TrollStore.app/trollstorehelper"
 #define OCT_BUNDLE_CONTAINERS "/private/var/containers/Bundle/Application"
 #define OCT_CONTAINER_METADATA ".com.apple.mobile_container_manager.metadata.plist"
+// Where Dopamine's rootless jailbreak puts dpkg. Without it there is no jailbreak to install into.
+#define OCT_DPKG "/var/jb/usr/bin/dpkg"
+// The companion's package, carried inside the app so the two can never be different versions.
+#define OCT_APP_ID "com.parv.octopus"
+#define OCT_CARRIED_DEB "Octopus.app/OctopusNative.deb"
+#define OCT_DEB_TEMP "/var/tmp/octopus-companion.XXXXXX"
 
 // Where Octopus saves a downloaded update, in the order it tries them (Updater.downloadFolders). A file is accepted
 // only directly inside one of these, after resolving links in its path.
@@ -180,8 +187,9 @@ static int read_container_id(const char *dir, char *out, size_t length) {
 }
 #endif
 
-// The installer inside TrollStore.app, found through the bundle container whose metadata names TrollStore.
-static int find_trollstore_helper(char *out) {
+// A file inside an installed app's bundle, found through the bundle container whose metadata names
+// that app. Used for TrollStore's installer and for the companion package Octopus carries.
+static int find_in_bundle(const char *bundle_id, const char *relative, char *out) {
     char base[PATH_MAX];
     out[0] = '\0';
     if (!device_path(base, OCT_BUNDLE_CONTAINERS)) return 0;
@@ -192,12 +200,82 @@ static int find_trollstore_helper(char *out) {
         if (entry->d_name[0] == '.') continue;
         char dir[PATH_MAX], id[256] = "";
         if (!pathf(dir, "%s/%s", base, entry->d_name) || !is_dir(dir)) continue;
-        if (!read_container_id(dir, id, sizeof id) || strcmp(id, OCT_TROLLSTORE_ID) != 0) continue;
-        if (pathf(out, "%s/%s", dir, OCT_TROLLSTORE_HELPER) && is_regular(out)) break;
+        if (!read_container_id(dir, id, sizeof id) || strcmp(id, bundle_id) != 0) continue;
+        if (pathf(out, "%s/%s", dir, relative) && is_regular(out)) break;
         out[0] = '\0';
     }
     closedir(containers);
     return out[0] != '\0';
+}
+
+static int find_trollstore_helper(char *out) {
+    return find_in_bundle(OCT_TROLLSTORE_ID, OCT_TROLLSTORE_HELPER, out);
+}
+
+// Copies a file into an already-open descriptor, so the caller owns where it lands.
+static int copy_file(const char *from, int into) {
+    int source = open(from, O_RDONLY | O_CLOEXEC);
+    if (source < 0) return 0;
+    char buffer[65536];
+    for (;;) {
+        ssize_t got = read(source, buffer, sizeof buffer);
+        if (got == 0) break;
+        if (got < 0) {
+            if (errno == EINTR) continue;
+            close(source);
+            return 0;
+        }
+        ssize_t written = 0;
+        while (written < got) {
+            ssize_t now = write(into, buffer + written, (size_t)(got - written));
+            if (now <= 0) {
+                if (now < 0 && errno == EINTR) continue;
+                close(source);
+                return 0;
+            }
+            written += now;
+        }
+    }
+    close(source);
+    return 1;
+}
+
+// Declared here because install_package below runs dpkg through it, and its definition sits with
+// the other process plumbing further down.
+static int run_and_wait_env(const char *path, char *const argv[], char *const envp[]);
+
+// --------------------------------------------------------------------- installing the companion
+
+// dpkg and a package's own install scripts call launchctl, killall, chown and mkdir by name, so
+// they need a PATH that includes the jailbreak's bin directories.
+static char *const k_dpkg_env[] = {
+    (char *)"PATH=/var/jb/usr/bin:/var/jb/usr/sbin:/var/jb/bin:/var/jb/sbin:/usr/bin:/bin:/usr/sbin:/sbin",
+    NULL,
+};
+
+// Installs a .deb with the jailbreak's dpkg. The file is copied somewhere root owns first, because
+// dpkg reads it as root and the app's container is not root's to read reliably.
+static int install_package(const char *path) {
+    char dpkg[PATH_MAX];
+    if (!device_path(dpkg, OCT_DPKG) || access(dpkg, F_OK) != 0) {
+        emit("ERR\tdpkg wasn't found at " OCT_DPKG ". Octopus's companion needs a rootless jailbreak.");
+        return 9;
+    }
+    emit("LOG\tInstalling the companion with dpkg");
+    char *argv[] = { (char *)"dpkg", (char *)"-i", (char *)path, NULL };
+    int code = run_and_wait_env(dpkg, argv, k_dpkg_env);
+    if (code == -1) {
+        // The jailbreak's programs only run while it is active: after a reboot, until it is run again.
+        emit("ERR\tdpkg couldn't start (%s). Is the jailbreak active? Run it again, then try once more.",
+             strerror(errno));
+        return 8;
+    }
+    if (code != 0) {
+        emit("ERR\tdpkg failed (exit %d). The companion was not installed.", code);
+        return 8;
+    }
+    emit("LOG\tThe companion is installed. Reconnect USB for it to load into Apple's responder.");
+    return 0;
 }
 
 // ---------------------------------------------------------------- running TrollStore's installer
@@ -205,8 +283,12 @@ static int find_trollstore_helper(char *out) {
 // Runs a program in its own session and waits for it; its output goes where this helper's goes. -1 if it couldn't
 // start (errno says why).
 static int run_and_wait(const char *path, char *const argv[]) {
+    return run_and_wait_env(path, argv, NULL);
+}
+
+static int run_and_wait_env(const char *path, char *const argv[], char *const envp[]) {
 #ifdef OCT_HELPER_TEST
-    emit("LOG\t(test) would run %s in its own session", path);
+    emit("LOG\t(test) would run %s in its own session%s", path, envp ? " with its own environment" : "");
     for (int i = 1; argv[i]; i++) emit("LOG\t(test)   %s", argv[i]);
     const char *name = strrchr(path, '/');
     name = name ? name + 1 : path;
@@ -224,7 +306,7 @@ static int run_and_wait(const char *path, char *const argv[]) {
     posix_spawnattr_setflags(&attr, POSIX_SPAWN_SETSID);
 #endif
     pid_t pid;
-    int rc = posix_spawn(&pid, path, NULL, &attr, argv, environ);
+    int rc = posix_spawn(&pid, path, NULL, &attr, argv, envp ? envp : environ);
     posix_spawnattr_destroy(&attr);
     if (rc != 0) {
         errno = rc;
@@ -279,7 +361,7 @@ int main(int argc, char **argv) {
     }
 #endif
     if (argc < 2) {
-        emit("ERR\tusage: octopushelper install-update --tipa <path> | version");
+        emit("ERR\tusage: octopushelper install-update --tipa <path> | companion | version");
         return 2;
     }
     const char *tipa = NULL;
@@ -294,6 +376,38 @@ int main(int argc, char **argv) {
     if (strcmp(argv[1], "version") == 0) {
         emit("LOG\toctopushelper %s", OCT_HELPER_VERSION);
         return 0;
+    }
+    if (strcmp(argv[1], "companion") == 0) {
+        // The package rides inside the app, so its version always matches the app's: that is the
+        // whole point, since an app and a companion from different builds have cost two debugging
+        // sessions. The installed app's bundle is found the same way TrollStore's is.
+        char bundle[PATH_MAX];
+        if (!find_in_bundle(OCT_APP_ID, OCT_CARRIED_DEB, bundle)) {
+            emit("ERR\tThis build of Octopus carries no companion package.");
+            return 4;
+        }
+        // Through device_path like every other location here, so the tests' relocated root
+        // applies to it too instead of writing into the real /var/tmp.
+        char temp[PATH_MAX];
+        if (!device_path(temp, OCT_DEB_TEMP)) {
+            emit("ERR\tCouldn't name a temporary file for the package");
+            return 10;
+        }
+        int fd = mkstemp(temp);
+        if (fd < 0) {
+            emit("ERR\tCouldn't make a temporary file for the package (%s)", strerror(errno));
+            return 10;
+        }
+        int copied = copy_file(bundle, fd);
+        close(fd);
+        if (!copied) {
+            unlink(temp);
+            emit("ERR\tCouldn't copy the package out of the app (%s)", strerror(errno));
+            return 10;
+        }
+        int code = install_package(temp);
+        unlink(temp);
+        return code;
     }
     if (strcmp(argv[1], "install-update") == 0) {
         if (!tipa) {

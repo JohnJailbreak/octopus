@@ -266,9 +266,26 @@ enum Diagnostics {
             step("device.ptpd_process", "Device (read-only)", "ptpd running now", .local) { ptpdProcess() },
             step("native.installation", "Native integration", "Optional companion files", .local) {
                 let capture = nativeCapture(environment)
+                // Whether the companion is the one this app carries. A mismatched pair behaves like a
+                // bug in whatever changed between the two builds, so it is reported as a failure
+                // rather than as a detail.
+                let carried = CompanionPackage.carriedPath != nil
+                let appVersion = CompanionPackage.appVersion
+                let installed = CompanionPackage.installedVersion()
+                let pairing: String
+                var matched = true
+                if let installed {
+                    matched = !carried || installed == appVersion
+                    pairing = installed == appVersion
+                        ? "Companion \(installed) matches this app."
+                        : "Companion \(installed) is installed but this app is \(appVersion); install the one this app carries."
+                } else {
+                    pairing = carried ? "No companion is installed; this app carries \(appVersion), ready to install."
+                                      : "No companion is installed, and this build carries none."
+                }
                 return result("native.installation", "Native integration", "Optional companion files", .local,
-                              capture.companionFilesPresent ? .pass : .blocked,
-                              "App effective UID: \(capture.appUID). Companion files \(capture.companionFilesPresent ? "found" : "not found") at /var/jb/usr/lib/TweakInject. File presence does not prove the module loaded or hooks ran.", checks: 1)
+                              !matched ? .fail : (capture.companionFilesPresent ? .pass : .blocked),
+                              "App effective UID: \(capture.appUID). Companion files \(capture.companionFilesPresent ? "found" : "not found") at /var/jb/usr/lib/TweakInject. \(pairing) File presence does not prove the module loaded or hooks ran.", checks: 1)
             },
             step("native.roots", "Native integration", "Filesystem roots ptpd can read", .nativeObservation) {
                 // Probed inside ptpd, because its sandbox and not the app's decides this. Until

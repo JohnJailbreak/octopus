@@ -41,6 +41,9 @@ struct MainScreen: View {
     /// Observed so the header warning clears the moment the companion is heard from, rather than
     /// only when the service itself next changes.
     @ObservedObject private var native = NativeTransport.shared
+    /// The companion this app carries, offered in Update Available's place when it is missing or
+    /// out of step, as Speaka offers its tweak.
+    @ObservedObject private var companion = CompanionInstaller.shared
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage(Preferences.updateNotifications) private var updateNotifications = false
     @State private var window: AppWindow? = nil
@@ -81,6 +84,7 @@ struct MainScreen: View {
         }
         .frame(width: layout.size.width, height: layout.size.height)
         .onAppear {
+            companion.refresh()
             updater.check()
             updater.watch(updateNotifications)
             UpdateNotifications.syncPermission()
@@ -89,6 +93,8 @@ struct MainScreen: View {
         .onChange(of: scenePhase) { _, phase in
             DebugLog.log(.debug, "app", "phase", "\(phase)")
             if phase == .active {
+                // Installing from Sileo or SSH while Octopus is in the background changes the answer.
+                companion.refresh()
                 // At once, so the Update Available a notification promised is there when Octopus opens.
                 updater.checkOnActivation()
                 UpdateNotifications.syncPermission()
@@ -121,6 +127,13 @@ struct MainScreen: View {
                 .position(x: layout.size.width / 2, y: layout.menuTop + layout.menuHeight / 2)
             if updater.isAvailable && !sheetOpen {
                 UpdateLinkButton(title: "Update Available", symbol: "arrow.down.circle") { openWindow(.update) }
+                    .frame(height: layout.updateLinkHeight)
+                    .position(x: layout.size.width / 2, y: layout.updateLinkTop + layout.updateLinkHeight / 2)
+                    .transition(.offset(y: 25).combined(with: .opacity))
+            } else if let action = companion.action, !sheetOpen {
+                // An app update takes the slot first: installing it brings a matching companion with
+                // it, so offering both would ask for the same thing twice.
+                UpdateLinkButton(title: action, symbol: "shippingbox") { companion.install() }
                     .frame(height: layout.updateLinkHeight)
                     .position(x: layout.size.width / 2, y: layout.updateLinkTop + layout.updateLinkHeight / 2)
                     .transition(.offset(y: 25).combined(with: .opacity))

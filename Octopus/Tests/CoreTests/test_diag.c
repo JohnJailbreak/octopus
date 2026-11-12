@@ -393,12 +393,18 @@ static void test_restart_responder(void)
     CHECK(mkdtemp(executable) != NULL);
     char path[256];
     snprintf(path, sizeof path, "%s/ptpd", executable);
-    /* A program that simply waits, copied so that its executable name is exactly ptpd. */
-    FILE *source = fopen("/bin/sleep", "rb");
+    /* A copy of this test binary, named ptpd, re-executed in its wait mode. Copying a system
+     * program instead does not work: /bin/sleep is a coreutils multi-call binary on some machines
+     * and refuses to run under another name, which passed here and failed on CI. */
+    char self[512];
+    ssize_t self_length = readlink("/proc/self/exe", self, sizeof self - 1);
+    if (self_length <= 0) { rmdir(executable); return; } /* no /proc: nothing to exercise */
+    self[self_length] = '\0';
+    FILE *source = fopen(self, "rb");
     FILE *target = source ? fopen(path, "wb") : NULL;
     bool copied = source && target;
     if (copied) {
-        char buffer[8192];
+        char buffer[65536];
         size_t chunk;
         while ((chunk = fread(buffer, 1, sizeof buffer, source)) > 0) {
             if (fwrite(buffer, 1, chunk, target) != chunk) { copied = false; break; }
@@ -406,14 +412,15 @@ static void test_restart_responder(void)
     }
     if (source) fclose(source);
     if (target) fclose(target);
-    if (!copied || chmod(path, 0755) != 0) return; /* no /bin/sleep here: nothing to exercise */
+    CHECK(copied);
+    if (!copied || chmod(path, 0755) != 0) { unlink(path); rmdir(executable); return; }
 
     pid_t outer = fork();
     CHECK(outer >= 0);
     if (outer == 0) {
         pid_t inner = fork();
         if (inner == 0) {
-            char *argv[] = { (char *)"ptpd", (char *)"30", NULL };
+            char *argv[] = { (char *)"ptpd", (char *)"--wait-to-be-signalled", NULL };
             execv(path, argv);
             _exit(127);
         }

@@ -13,6 +13,18 @@ mkdir -p build
 xcrun --sdk iphoneos clang -arch arm64 -mios-version-min=17.0 -O2 -Wall \
   -framework CoreFoundation -o build/octopushelper Octopus/RootHelper/main.c
 cp build/octopushelper "$APP/octopushelper"
+
+# The companion's package rides inside the app, so the two can never be different versions: a
+# mismatched pair has cost two debugging sessions, and nothing in an install prevents it otherwise.
+# CI passes the package built in the same run as DEB. A local build without one makes an app that
+# carries no companion, and says so when asked to install it.
+if [ -n "${DEB:-}" ] && [ -s "$DEB" ]; then
+  cp "$DEB" "$APP/OctopusNative.deb"
+  echo "carrying the companion: $(basename "$DEB")"
+else
+  rm -f "$APP/OctopusNative.deb"
+  echo "no companion package given; this app carries none"
+fi
 rm -rf "$APP/_CodeSignature" "$APP/embedded.mobileprovision"
 
 # The entitlements TrollStore keeps: the app may start the helper as root, and the helper may run TrollStore's installer.

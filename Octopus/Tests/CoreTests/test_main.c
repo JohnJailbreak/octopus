@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 200809L /* nanosleep */
 #include "test_support.h"
 
 #include <time.h>
@@ -8,6 +9,16 @@ const char *fixture_directory = "Octopus/Tests/CoreTests/fixtures";
 
 int main(int argc, char **argv)
 {
+    /* A standing-in ptpd for the responder-restart test, which needs a real process whose
+     * executable is named ptpd. It re-executes this binary from a copy with that name, because
+     * copying a system program does not work: /bin/sleep is a coreutils multi-call binary on some
+     * machines and refuses to run under any other name, which is how this failed on CI while
+     * passing locally. Waits to be signalled and nothing else. */
+    if (argc > 1 && strcmp(argv[1], "--wait-to-be-signalled") == 0) {
+        struct timespec forever = { .tv_sec = 60, .tv_nsec = 0 };
+        nanosleep(&forever, NULL);
+        return 0;
+    }
     if (argc > 1) fixture_directory = argv[1];
     setenv("TZ", "UTC0", 1); /* PTP dates are local time; pin it for golden data */
     tzset();
