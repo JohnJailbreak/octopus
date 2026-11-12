@@ -90,11 +90,11 @@ static uint32_t lastAppleAppend;
  * Recorded as Q36@0:8@16S24I28I32. */
 @interface PTPStorage : NSObject
 - (unsigned long long)appendObjectData:(id)data forObjectFormatCode:(unsigned short)format
-                         inAssociation:(unsigned int)association withContentType:(int)type;
+                         inAssociation:(unsigned int)association withContentType:(unsigned int)type;
 @end
 @implementation PTPStorage
 - (unsigned long long)appendObjectData:(id)data forObjectFormatCode:(unsigned short)format
-                         inAssociation:(unsigned int)association withContentType:(int)type {
+                         inAssociation:(unsigned int)association withContentType:(unsigned int)type {
     (void)data; (void)format; (void)type;
     lastAppleAppend = association;
     return 0x1234;   /* a handle of Apple's own, distinguishable from ours */
@@ -103,11 +103,11 @@ static uint32_t lastAppleAppend;
 
 @interface PTPFolder : NSObject
 - (unsigned long long)appendObjectData:(id)data forObjectFormatCode:(unsigned short)format
-                         inAssociation:(unsigned int)association withContentType:(int)type;
+                         inAssociation:(unsigned int)association withContentType:(unsigned int)type;
 @end
 @implementation PTPFolder
 - (unsigned long long)appendObjectData:(id)data forObjectFormatCode:(unsigned short)format
-                         inAssociation:(unsigned int)association withContentType:(int)type {
+                         inAssociation:(unsigned int)association withContentType:(unsigned int)type {
     (void)data; (void)format; (void)type;
     lastAppleAppend = association;
     return 0x5678;

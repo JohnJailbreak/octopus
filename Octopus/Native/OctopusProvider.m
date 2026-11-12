@@ -271,7 +271,7 @@ static void deleteObject(id self, SEL cmd, uint32_t handle, unsigned short *code
 static IMP originalIncomingInfo;
 static id incomingObjectInfo(id self, SEL cmd, id data, int contentType) {
     id dataset = ((id (*)(id,SEL,id,int))originalIncomingInfo)(self, cmd, data, contentType);
-    if (!dataset || !data) return dataset;
+    if (!dataset || !data || !providerServing()) return dataset;
     oct_object_info_request parsed;
     if (oct_dataset_parse_object_info([data bytes], [data length], &parsed) != OCT_OK) return dataset;
     if (parsed.storage_id != OCT_NATIVE_STORAGE_ID) return dataset;
@@ -294,10 +294,25 @@ static id incomingObjectInfo(id self, SEL cmd, id data, int contentType) {
  * Only an association that is ours is handled here; anything else is Apple's, forwarded untouched,
  * so importing a photo into the library still works exactly as before.
  */
+/*
+ * Whether the provider is serving, asked without a camera. available() runs the camera's own
+ * allStorageIDs and objectForObjectHandle: on its argument, so it may only ever be given the
+ * camera. The upload hooks are called on a PTPStorage or a PTPFolder, and passing one of those
+ * there ran camera code against an object of another class: in the tests the check failed and the
+ * upload went to Apple's receiver, and on a phone it would have read a storage's memory as a
+ * camera's, inside the process that serves Photos.
+ *
+ * The collision checks available() makes are not needed here. They decide whether the camera
+ * reports our storage at all; a host that was never shown it cannot upload into it.
+ */
+static BOOL providerServing(void) {
+    return atomic_load_explicit(&installed, memory_order_acquire) && OCTNativeProviderEnabled();
+}
+
 static unsigned long long appendObject(id self, SEL cmd, id data, unsigned short format,
-                                       unsigned int association, int contentType, IMP original) {
-    if (!isSynthetic(association) || !available(self)) {
-        return ((unsigned long long (*)(id,SEL,id,unsigned short,unsigned int,int))original)
+                                       unsigned int association, unsigned int contentType, IMP original) {
+    if (!isSynthetic(association) || !providerServing()) {
+        return ((unsigned long long (*)(id,SEL,id,unsigned short,unsigned int,unsigned int))original)
             (self, cmd, data, format, association, contentType);
     }
     /* The name came in SendObjectInfo, which Apple has already accepted by the time the data
@@ -336,12 +351,12 @@ static unsigned long long appendObject(id self, SEL cmd, id data, unsigned short
 }
 
 static unsigned long long appendOnStorage(id self, SEL cmd, id data, unsigned short format,
-                                          unsigned int association, int contentType) {
+                                          unsigned int association, unsigned int contentType) {
     return appendObject(self, cmd, data, format, association, contentType, originalAppendStorage);
 }
 
 static unsigned long long appendOnFolder(id self, SEL cmd, id data, unsigned short format,
-                                         unsigned int association, int contentType) {
+                                         unsigned int association, unsigned int contentType) {
     return appendObject(self, cmd, data, format, association, contentType, originalAppendFolder);
 }
 

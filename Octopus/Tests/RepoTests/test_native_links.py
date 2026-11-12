@@ -201,5 +201,133 @@ class ObjCLinks(unittest.TestCase):
             self.assertIn(expected, calls)
 
 
+# ---- Stand-in encodings must match what was recorded from the device ---------------------------
+#
+# The provider and observer tests run against stand-ins for Apple's classes, and OCTRuntimeHook
+# refuses to hook a method whose type encoding differs from the one recorded from ptpd. A stand-in
+# declared with the wrong type is therefore not hooked at all, and the test then exercises the
+# stand-in rather than the provider. That happened with appendObjectData:...: the device records
+# its content type as an unsigned int, I32, and the stand-in declared an int, i32, so the upload
+# hook never installed and the routing assertion failed on CI. Checked here, from the declarations.
+
+ENCODINGS = None
+
+
+def recorded_encodings():
+    global ENCODINGS
+    if ENCODINGS is None:
+        import json
+        data = json.loads((ROOT / "docs/usb-research/evidence/ptpd/method-encodings.json").read_text())
+        items = data if isinstance(data, list) else data.get("methods", [])
+        ENCODINGS = {}
+        for item in items:
+            if isinstance(item, dict) and item.get("selector"):
+                ENCODINGS.setdefault(item["selector"], set()).add(item.get("encoding"))
+    return ENCODINGS
+
+
+# Objective-C type codes and their sizes in a method encoding on arm64. Arguments narrower than an
+# int occupy an int's slot, which is why an unsigned short at 24 is followed by the next at 28.
+TYPES = {
+    "id": ("@", 8), "instancetype": ("@", 8), "NSData *": ("@", 8), "NSString *": ("@", 8),
+    "NSArray *": ("@", 8), "SEL": (":", 8), "void": ("v", 0), "BOOL": ("B", 4), "bool": ("B", 4),
+    "unsigned long long": ("Q", 8), "uint64_t": ("Q", 8), "long long": ("q", 8),
+    "unsigned int": ("I", 4), "uint32_t": ("I", 4), "int": ("i", 4), "int32_t": ("i", 4),
+    "unsigned short": ("S", 4), "uint16_t": ("S", 4), "short": ("s", 4),
+    "unsigned short *": ("^S", 8), "uint16_t *": ("^S", 8), "uint32_t *": ("^I", 8),
+    "unsigned int *": ("^I", 8), "int64_t": ("q", 8), "void *": ("^v", 8),
+}
+
+
+def encode(return_type, argument_types):
+    """The encoding clang emits for a method: return code, frame size, then each argument."""
+    code, _ = TYPES[return_type]
+    offset, parts = 16, ["@0", ":8"]     # self, then _cmd
+    for argument in argument_types:
+        arg_code, size = TYPES[argument]
+        parts.append(f"{arg_code}{offset}")
+        offset += size
+    return f"{code}{offset}" + "".join(parts)
+
+
+def stand_in_methods(path):
+    """(selector, return type, argument types) for each method a test's @interface declares."""
+    text = strip_comments(path.read_text())
+    found = []
+    for interface in re.findall(r"@interface\s+\w+[^\n]*\n(.*?)@end", text, flags=re.S):
+        for declaration in re.findall(r"^-\s*\(([^)]+)\)\s*([^;]+);", interface, flags=re.M):
+            return_type, rest = declaration[0].strip(), declaration[1]
+            pieces = re.findall(r"(\w+):\s*\(([^)]+)\)\s*\w+", rest)
+            if pieces:
+                selector = "".join(f"{name}:" for name, _ in pieces)
+                arguments = [kind.strip() for _, kind in pieces]
+            else:
+                selector, arguments = rest.strip(), []
+            found.append((selector, return_type, arguments))
+    return found
+
+
+class StandInEncodings(unittest.TestCase):
+    def test_every_stand_in_matches_the_device(self):
+        recorded = recorded_encodings()
+        for test in ("Octopus/Native/Tests/ProviderTests.m", "Octopus/Native/Tests/ObserverTests.m"):
+            for selector, return_type, arguments in stand_in_methods(ROOT / test):
+                if selector not in recorded:
+                    continue   # not one of Apple's methods, so nothing to match
+                if return_type not in TYPES or any(a not in TYPES for a in arguments):
+                    continue   # a type this table does not model; not a judgement either way
+                with self.subTest(test=test, selector=selector):
+                    ours = encode(return_type, arguments)
+                    self.assertIn(ours, recorded[selector],
+                        f"{selector} in {test} encodes as {ours}, but the device recorded "
+                        f"{sorted(recorded[selector])}. OCTRuntimeHook will not hook it, so the "
+                        f"test would exercise the stand-in instead of the provider.")
+
+    def test_the_encoder_reproduces_known_recordings(self):
+        # Canaries against the real recordings, so a fault in the encoder cannot pass silently.
+        self.assertEqual(encode("void", ["uint32_t", "unsigned short *"]), "v28@0:8I16^S20")
+        self.assertEqual(encode("unsigned long long", ["id", "unsigned short", "unsigned int", "unsigned int"]),
+                         "Q36@0:8@16S24I28I32")
+        self.assertEqual(encode("instancetype", ["id", "int32_t"]), "@28@0:8@16i24")
+        self.assertEqual(encode("id", []), "@16@0:8")
+
+
+class CameraOnlyChecks(unittest.TestCase):
+    """available() runs the camera's own allStorageIDs and objectForObjectHandle: on its argument,
+    so it may only be called with self from a hook installed on PTPVirtualCamera. The upload hooks
+    are installed on PTPStorage and PTPFolder, and calling it from them ran camera code against an
+    object of another class: in the tests the upload was misrouted to Apple's receiver, and on a
+    phone it would have read a storage's memory as a camera's inside the process serving Photos."""
+
+    def test_available_is_only_called_from_camera_hooks(self):
+        text = strip_comments((NATIVE / "OctopusProvider.m").read_text())
+        functions = [(m.start(), m.group(1))
+                     for m in re.finditer(r"^static [^\n(]*?\b(\w+)\s*\(id self", text, re.M)]
+
+        def owner(position):
+            found = None
+            for start, name in functions:
+                if start < position:
+                    found = name
+            return found
+
+        callers = {owner(m.start()) for m in re.finditer(r"\bavailable\(self\)", text)}
+        self.assertTrue(callers, "found no callers of available(); the scan is broken")
+        # The mandatory table is installed on the camera in a loop; optional hooks name their class.
+        table = text[text.index("static Hook hooks[] = {"):]
+        table = table[:table.index("};")]
+        hooked = {m.group(1): "PTPVirtualCamera" for m in re.finditer(r"\(IMP\)(\w+)", table)}
+        for m in re.finditer(r'OCTRuntimeHook\("(\w+)",[^;]*?\(IMP\)(\w+)', text, re.S):
+            hooked.setdefault(m.group(2), m.group(1))
+        # appendObject is shared by the two upload hooks, so it inherits their classes.
+        for caller in sorted(callers):
+            with self.subTest(function=caller):
+                self.assertEqual(hooked.get(caller), "PTPVirtualCamera",
+                    f"{caller} calls available(self) but is hooked on {hooked.get(caller, 'no class')}; "
+                    f"use providerServing() for a receiver that is not the camera.")
+        self.assertNotIn("appendObject", callers)
+        self.assertNotIn("incomingObjectInfo", callers)
+
+
 if __name__ == "__main__":
     unittest.main()
