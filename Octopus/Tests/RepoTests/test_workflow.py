@@ -68,7 +68,12 @@ class Structure(unittest.TestCase):
     def test_prerelease_gating(self):
         job = JOBS["prerelease"]
         self.assertEqual(job["needs"], ["core", "app", "native"])   # a failed native job blocks it
-        self.assertIn("github.event_name == 'push'", job["if"])     # never pull requests or manual runs
+        # A push to sonnet publishes, and so does a manual run on sonnet: that is the owner pressing
+        # the button, and during a GitHub outage it was the only way to retry a build. A pull
+        # request never publishes, because its code need not be the owner's.
+        self.assertIn("github.event_name == 'push'", job["if"])
+        self.assertIn("github.event_name == 'workflow_dispatch'", job["if"])
+        self.assertNotIn("pull_request", job["if"])
         self.assertIn("github.ref == 'refs/heads/sonnet'", job["if"])
         self.assertIn("github.sha", job["concurrency"]["group"])    # only retries of one commit queue
         self.assertFalse(job["concurrency"]["cancel-in-progress"])

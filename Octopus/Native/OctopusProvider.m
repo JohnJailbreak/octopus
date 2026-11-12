@@ -22,6 +22,10 @@ static IMP originalLookup;
 static IMP originalDeviceInfo, originalBulkInfo, originalDelete;
 /* Whether the store being served accepts changes, which decides what DeviceInfo advertises. */
 static bool storeWritable;
+/* Whether the delete hook actually installed. DeleteObject is advertised only when this and
+ * storeWritable are both true: offering an operation the provider cannot serve would leave a host
+ * deleting into Apple's implementation, which knows nothing of our handles. */
+static atomic_bool deleteHooked;
 
 /* Dynamic class lookup avoids linking against private classes exported by the
  * executable. These are only the exact signatures verified in this image. */
@@ -197,7 +201,7 @@ static id deviceInfo(id self, SEL cmd) {
     /* When the served store accepts changes, advertise DeleteObject as well: a host reads
      * OperationsSupported to decide what to offer, and will not offer to delete without it. The
      * two appends are separate calls because each grows the dataset by two bytes. */
-    if (storeWritable) {
+    if (storeWritable && atomic_load_explicit(&deleteHooked,memory_order_acquire)) {
         NSMutableData *withDelete=[NSMutableData dataWithLength:copy.length+2];
         size_t grown=0;
         if (oct_native_device_info_add_operation(copy.bytes,copy.length,OCT_OP_DELETE_OBJECT,
@@ -417,10 +421,6 @@ static id supportedProperties(id self, SEL cmd, uint16_t format, uint16_t *code)
 typedef struct { const char *selector; const char *encoding; IMP replacement; IMP *original; } Hook;
 static Hook hooks[] = {
     {"deviceInfoDataset","@16@0:8",(IMP)deviceInfo,&originalDeviceInfo},
-    /* Recorded from the device: v28@0:8I16^S20, void with a uint32 handle and a response-code
-     * pointer. The hook validates that encoding before installing, so a different build's method
-     * is left alone rather than called with the wrong arguments. */
-    {"deleteObjectWithObjectHandle:responseCode:","v28@0:8I16^S20",(IMP)deleteObject,&originalDelete},
     {"allStorageIDs","@16@0:8",(IMP)storageIDs,&originalIDs},
     {"storageInfoDatasetForStorageID:","@20@0:8I16",(IMP)storageInfo,&originalStorage},
     {"objectInfoDatasetForObjectHandle:","@20@0:8I16",(IMP)objectInfo,&originalInfo},
@@ -545,6 +545,27 @@ BOOL OCTProviderSetScope(oct_native_lease_mode scope, NSString **reason)
     return ok;
 }
 
+/*
+ * Hooks that add a capability rather than make the provider work at all. Each is checked and
+ * installed on its own, after the mandatory set, and a failure leaves that capability off rather
+ * than the provider. Delete was first put in the mandatory table, which made a missing or differently
+ * typed delete method on any build disable browsing and downloads along with it; the macOS tests
+ * caught that because their stand-in camera had no delete method.
+ */
+static void installOptionalHooks(void) {
+    NSString *why=nil;
+    /* Recorded from the device: v28@0:8I16^S20, void with a uint32 handle and a response-code
+     * pointer. OCTRuntimeHook checks that encoding before installing, so a method of a different
+     * shape is left alone rather than called with the wrong arguments. */
+    if(OCTRuntimeHook("PTPVirtualCamera","deleteObjectWithObjectHandle:responseCode:","v28@0:8I16^S20",
+                      (IMP)deleteObject,&originalDelete,&why)) {
+        atomic_store_explicit(&deleteHooked,true,memory_order_release);
+        OCTNativeProviderEvent("provider-delete-hooked",0,OCT_RC_OK);
+    } else {
+        OCTNativeProviderEvent("provider-delete-unavailable",0,OCT_RC_OPERATION_NOT_SUPPORTED);
+    }
+}
+
 BOOL OCTProviderInstall(NSString **reason) {
     if (atomic_load_explicit(&installed,memory_order_acquire)) return YES;
     if (!OCTProviderValidate(reason)) return NO;
@@ -564,5 +585,6 @@ BOOL OCTProviderInstall(NSString **reason) {
     }
     atomic_store_explicit(&installed,true,memory_order_release);
     OCTNativeProviderEvent("provider-installed",OCT_NATIVE_STORAGE_ID,OCT_RC_OK);
+    installOptionalHooks();
     return YES;
 }

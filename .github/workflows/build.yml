@@ -216,7 +216,7 @@ jobs:
     # Only a push to sonnet, never a pull request, a manual run or a tag, and only when the core tests, the app and
     # the native companion all built. A failed native job therefore blocks this prerelease rather than publishing
     # an app without its paired DEB; main's stable release job is unaffected either way.
-    if: github.event_name == 'push' && github.ref == 'refs/heads/sonnet'
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/sonnet'
     needs: [core, app, native]
     runs-on: ubuntu-latest
     permissions:

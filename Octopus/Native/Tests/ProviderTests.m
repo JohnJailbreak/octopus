@@ -67,9 +67,19 @@ void OCTNativeProviderEvent(const char *event,uint32_t handle,int32_t result) {
 - (id)objectPropertiesSupportedForObjectFormatCode:(uint16_t)f responseCode:(uint16_t *)r;
 - (id)deviceInfoDataset;
 - (id)objectInfoForObjectsInStorage:(uint32_t)s forObjectFormatCode:(uint16_t)f inAssociation:(uint32_t)a withContentType:(int32_t)t responseCode:(uint16_t *)r;
+/* Apple's delete, recorded from the device as v28@0:8I16^S20. Here it records the handle it was
+ * asked about, so a test can tell a forwarded call from one the provider answered itself. */
+- (void)deleteObjectWithObjectHandle:(uint32_t)handle responseCode:(unsigned short *)code;
 @end
+/* The last handle Apple's own delete was asked about, or zero. */
+static uint32_t lastAppleDelete;
+
 @implementation PTPVirtualCamera
 - (id)deviceInfoDataset { return [PTPDeviceInfoDataset new]; }
+- (void)deleteObjectWithObjectHandle:(uint32_t)handle responseCode:(unsigned short *)code {
+    lastAppleDelete=handle;
+    if(code)*code=(unsigned short)OCT_RC_OK;
+}
 - (id)objectInfoForObjectsInStorage:(uint32_t)s forObjectFormatCode:(uint16_t)f inAssociation:(uint32_t)a withContentType:(int32_t)t responseCode:(uint16_t *)r {
     (void)f;(void)a;(void)t;self.ordinaryCalls++;*r=s==0x10001?OCT_RC_OK:OCT_RC_INVALID_STORAGE_ID;
     return s==0x10001?[@"photo-bulk" dataUsingEncoding:NSUTF8StringEncoding]:nil;
@@ -123,8 +133,11 @@ int main(void) { @autoreleasepool {
     assert(!OCTRuntimeCheck("MissingCamera","allStorageIDs","@16@0:8",&reason));
     assert(!OCTRuntimeCheck("InheritedCamera","allStorageIDs","@16@0:8",&reason));
     assert(!OCTRuntimeCheck("PTPVirtualCamera","allStorageIDs","v16@0:8",&reason));
-    assert(OCTProviderValidate(&reason));
-    assert(OCTProviderInstall(&reason));assert(OCTProviderInstall(&reason));
+    /* The reason is printed, because a bare assertion here says only that something did not match,
+     * and the last time it failed that was the whole of the evidence. */
+    if(!OCTProviderValidate(&reason)){fprintf(stderr,"validate: %s\n",reason.UTF8String);abort();}
+    if(!OCTProviderInstall(&reason)){fprintf(stderr,"install: %s\n",reason.UTF8String);abort();}
+    if(!OCTProviderInstall(&reason)){fprintf(stderr,"reinstall: %s\n",reason.UTF8String);abort();}
     PTPVirtualCamera *camera=[PTPVirtualCamera new];
     assert([[camera allStorageIDs] isEqual:@[@0x10001]]);
     assert(object_getClass([camera deviceInfoDataset])==[PTPDeviceInfoDataset class]); /* untouched while unauthorized */
@@ -160,6 +173,22 @@ int main(void) { @autoreleasepool {
         assert(probeCode==OCT_RC_OK&&probeSize==76&&[probeSource length]==76);
     }
     uint32_t example=findNamed(camera,children,@"example.txt");assert(example);
+    /* Delete, through the optional hook. A handle that is not ours goes to Apple's implementation
+     * untouched, so photo deletion is unaffected. One of ours is answered by the provider and never
+     * reaches Apple's, which knows nothing of these handles; the sample tree is not writable, so the
+     * answer is a refusal, and the object is still there afterwards. */
+    unsigned short deleteCode=0xFFFF;
+    lastAppleDelete=0;
+    [camera deleteObjectWithObjectHandle:42 responseCode:&deleteCode];
+    assert(lastAppleDelete==42&&deleteCode==OCT_RC_OK);           /* Apple's: forwarded */
+    lastAppleDelete=0;deleteCode=0xFFFF;
+    [camera deleteObjectWithObjectHandle:example responseCode:&deleteCode];
+    assert(lastAppleDelete==0);                                      /* ours: never forwarded */
+    assert(deleteCode!=OCT_RC_OK&&deleteCode!=0xFFFF);               /* answered, and refused */
+    /* A fresh listing, not the array fetched earlier: re-searching that would prove nothing. */
+    uint16_t relistCode=0;
+    NSArray *relisted=[camera objectHandlesInStorage:UINT32_MAX forObjectFormatCode:0 inAssociation:docs responseCode:&relistCode];
+    assert(relistCode==OCT_RC_OK&&findNamed(camera,relisted,@"example.txt")==example); /* not deleted */
     id source=[camera dataSourceForObjectHandle:example responseCode:&code size:&size];
     assert(code==OCT_RC_OK&&size==76&&[source length]==76);
     uint8_t bytes[76],partial[19];
