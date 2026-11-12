@@ -58,6 +58,29 @@ const char *oct_diag_kind_name(oct_diag_kind kind);       /* local, simulated, e
  * none runs. OCT_E_UNSUPPORTED where the table can't be read. */
 oct_status  oct_diag_find_process(const char *name, int32_t *pid);
 
+/* ---- Restarting Apple's PTP responder ------------------------------------------------------
+ *
+ * ptpd owns the USB PTP function and is started by launchd when a computer is connected. A host
+ * reads the list of storages once per session, so a storage Octopus starts serving mid-session is
+ * not seen until the session restarts. Ending the process is how that happens without unplugging:
+ * launchd starts a fresh one, Octopus's companion loads into it, and the host re-reads the list.
+ *
+ * This only ever signals a process whose name is exactly "ptpd", and only when it is running,
+ * which on a phone means only while a computer is attached. It sends SIGTERM, never SIGKILL, so
+ * the process can finish what it is doing; a transfer in flight would be interrupted, which is why
+ * callers check that the link is quiet first.
+ *
+ * `exited` reports whether the old process is gone when the call returns. The new one is launchd's
+ * business and may not exist yet, so its absence is not an error here. */
+typedef struct oct_responder_restart {
+    int32_t  previous_pid;  /* the process that was signalled, or 0 if none was running */
+    bool     signalled;     /* SIGTERM was delivered */
+    bool     exited;        /* and the process was gone within the wait */
+    int32_t  error;         /* errno from kill when signalling failed */
+} oct_responder_restart;
+
+oct_status  oct_diag_restart_responder(oct_responder_restart *out);
+
 #ifdef __cplusplus
 }
 #endif

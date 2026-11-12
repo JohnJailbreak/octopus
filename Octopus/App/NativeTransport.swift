@@ -74,10 +74,15 @@ final class NativeTransport: ObservableObject {
         if stage != next { stage = next }
         if !seen.contains(next) { seen.insert(next) }
         let liveCommands = fresh ? Int(runtime.commands) : 0
+        busy = liveCommands > commands
         let liveResponses = fresh ? Int(runtime.responses) : 0
         if commands != liveCommands { commands = liveCommands }
         if responses != liveResponses { responses = liveResponses }
     }
+
+    /// Whether a host is mid-transfer: the command count moved since the previous poll. Restarting
+    /// the responder then would interrupt a copy, so callers wait.
+    private(set) var busy = false
 
     /// One line for the screen's status row.
     var summary: String {

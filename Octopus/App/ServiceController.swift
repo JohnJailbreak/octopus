@@ -463,6 +463,12 @@ final class ServiceController: ObservableObject {
             scratch: Preferences.bool(Preferences.scratchFolder, default: false),
             selfTest: Preferences.bool(Preferences.selfTestOnEnable, default: true))
         run(title: "Enabling") { core in core.start(configuration) }
+        // One tap is the whole request: observe, serve the filesystem, and end the current PTP
+        // session so a connected computer sees it. Previously this enabled nothing beyond the
+        // app's own responder and left three switches and a reconnect to the person.
+        //
+        // Writes stay off: a tap asking for USB access is not a grant to change files.
+        NativeIntegration.shared.serveFilesystem()
     }
 
     func disable() {

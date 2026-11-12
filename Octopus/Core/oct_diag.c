@@ -14,6 +14,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <errno.h>    /* errno, ESRCH: both platforms */
+#include <signal.h>   /* kill: both platforms, for restarting Apple's responder */
 #if defined(__APPLE__)
 #include <sys/sysctl.h>
 #include <sys/types.h>
@@ -389,4 +391,33 @@ oct_status oct_diag_find_process(const char *name, int32_t *pid)
     closedir(proc);
     return OCT_OK;
 #endif
+}
+
+oct_status oct_diag_restart_responder(oct_responder_restart *out)
+{
+    if (!out) return OCT_E_INVALID_ARGUMENT;
+    memset(out, 0, sizeof *out);
+    int32_t pid = 0;
+    oct_status status = oct_diag_find_process("ptpd", &pid);
+    if (status != OCT_OK) return status;
+    if (pid <= 0) return OCT_OK;               /* not running: nothing to restart, and no error */
+    out->previous_pid = pid;
+    if (kill((pid_t)pid, SIGTERM) != 0) {
+        out->error = errno;
+        return OCT_E_IO;
+    }
+    out->signalled = true;
+    /* Wait for it to go, in short steps rather than one long sleep, so a quick exit is noticed
+     * quickly. Signal zero asks whether the process still exists without sending anything. */
+    for (unsigned attempt = 0; attempt < 40; attempt++) {
+        if (kill((pid_t)pid, 0) != 0 && errno == ESRCH) {
+            out->exited = true;
+            break;
+        }
+        struct timespec pause = { .tv_sec = 0, .tv_nsec = 50 * 1000 * 1000 };
+        nanosleep(&pause, NULL);
+    }
+    /* Whether launchd has started the replacement is not asked here: a host reconnecting is what
+     * makes the new one appear, and that takes longer than this call should. */
+    return OCT_OK;
 }

@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 200809L   /* waitpid, nanosleep, fork */
 #include "test_support.h"
 
 #include "../../Core/oct_compat.h"
@@ -7,6 +8,8 @@
 #include "../../Core/oct_zip.h"
 
 #include <dirent.h>
+#include <sys/wait.h>
+#include <time.h>
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -365,8 +368,94 @@ static void test_log_recovery(void)
     CHECK_OK(oct_log_flush()); /* memory only: nothing to flush */
 }
 
+/*
+ * Restarting Apple's responder, which is how a storage Octopus starts serving mid-session becomes
+ * visible without unplugging: a host reads the storage list once per session, so the session has
+ * to end. Exercised against a real process whose executable is named ptpd, because the finder reads
+ * the executable name rather than argv[0].
+ *
+ * The process is started with a double fork so it is not this test's child. A child of ours becomes
+ * a zombie when it exits and kill(pid, 0) still succeeds on a zombie, which would report the
+ * process as still present for a reason that cannot arise on a phone, where ptpd belongs to launchd.
+ */
+static void test_restart_responder(void)
+{
+    oct_responder_restart report;
+    CHECK_EQ(oct_diag_restart_responder(NULL), OCT_E_INVALID_ARGUMENT);
+
+    /* Nothing running is not a failure: on a phone ptpd exists only while a computer is attached. */
+    CHECK_OK(oct_diag_restart_responder(&report));
+    CHECK_EQ(report.previous_pid, 0);
+    CHECK(!report.signalled);
+    CHECK(!report.exited);
+
+    char executable[] = "/tmp/octopus-ptpd-XXXXXX";
+    CHECK(mkdtemp(executable) != NULL);
+    char path[256];
+    snprintf(path, sizeof path, "%s/ptpd", executable);
+    /* A program that simply waits, copied so that its executable name is exactly ptpd. */
+    FILE *source = fopen("/bin/sleep", "rb");
+    FILE *target = source ? fopen(path, "wb") : NULL;
+    bool copied = source && target;
+    if (copied) {
+        char buffer[8192];
+        size_t chunk;
+        while ((chunk = fread(buffer, 1, sizeof buffer, source)) > 0) {
+            if (fwrite(buffer, 1, chunk, target) != chunk) { copied = false; break; }
+        }
+    }
+    if (source) fclose(source);
+    if (target) fclose(target);
+    if (!copied || chmod(path, 0755) != 0) return; /* no /bin/sleep here: nothing to exercise */
+
+    pid_t outer = fork();
+    CHECK(outer >= 0);
+    if (outer == 0) {
+        pid_t inner = fork();
+        if (inner == 0) {
+            char *argv[] = { (char *)"ptpd", (char *)"30", NULL };
+            execv(path, argv);
+            _exit(127);
+        }
+        _exit(0);
+    }
+    int reaped = 0;
+    waitpid(outer, &reaped, 0);
+    /* Give it a moment to appear in the process table. */
+    struct timespec settle = { .tv_sec = 1, .tv_nsec = 0 };
+    nanosleep(&settle, NULL);
+
+    CHECK_OK(oct_diag_restart_responder(&report));
+    CHECK(report.previous_pid > 0);
+    CHECK(report.signalled);
+    CHECK_EQ(report.error, 0);
+    /* `exited` means gone within the two seconds the call waits, which suits a tap on a phone but
+     * is not always enough under a sanitizer, where starting and tearing down a process takes far
+     * longer. So the signal is required and the exit is confirmed here instead, on a deadline this
+     * test can afford: the point is that SIGTERM really ends it, not how fast. */
+    int32_t lingering = report.previous_pid;
+    for (unsigned attempt = 0; attempt < 300 && lingering != 0; attempt++) {
+        struct timespec step = { .tv_sec = 0, .tv_nsec = 50 * 1000 * 1000 };
+        nanosleep(&step, NULL);
+        int32_t found = 0;
+        CHECK_OK(oct_diag_find_process("ptpd", &found));
+        lingering = found;
+    }
+    CHECK_EQ(lingering, 0); /* really terminated */
+
+    /* And a second call then finds nothing to do. */
+    oct_responder_restart after;
+    CHECK_OK(oct_diag_restart_responder(&after));
+    CHECK_EQ(after.previous_pid, 0);
+    CHECK(!after.signalled);
+
+    unlink(path);
+    rmdir(executable);
+}
+
 void run_diag_tests(void)
 {
+    test_restart_responder();
     test_sha256_and_crc32();
     test_zip();
     test_zip_destinations();

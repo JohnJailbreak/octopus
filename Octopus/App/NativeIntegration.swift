@@ -30,6 +30,54 @@ final class NativeIntegration: ObservableObject {
         synchronize()
     }
 
+    /// Everything needed to serve the filesystem, from one tap.
+    ///
+    /// Observation, exposure and the root used to be three switches plus a reconnect, which is
+    /// three decisions to reach the only arrangement anyone wanted. They are still three separate
+    /// grants underneath, and the switches remain for choosing something narrower; this sets all of
+    /// them at once. Writes are deliberately not included: changing a user's files is a different
+    /// risk from reading them, and nobody asked for it by tapping Enable USB Access.
+    ///
+    /// Then it restarts Apple's responder, because a host reads the storage list once per session:
+    /// without that, the volume appears only after unplugging and reconnecting.
+    func serveFilesystem() {
+        observe = true
+        scope = OCT_NATIVE_ROOT_SYSTEM
+        synthetic = true
+        synchronize()
+        restartResponder(reason: "serving the filesystem")
+    }
+
+    /// Ends Apple's PTP responder so the next session sees what Octopus is serving. launchd starts
+    /// a fresh one while a computer is attached, and the companion loads into it.
+    ///
+    /// Refused while a host is mid-transfer: ending the process then would interrupt a copy. If
+    /// nothing is connected there is nothing to restart, and the volume will be there on the next
+    /// connection anyway.
+    func restartResponder(reason: String) {
+        let transport = NativeTransport.shared
+        guard transport.live else {
+            DebugLog.log(.info, "native", "restart", "No responder to restart: nothing connected")
+            return
+        }
+        if transport.busy {
+            DebugLog.log(.info, "native", "restart", "Not restarting \(reason): a transfer is in flight")
+            return
+        }
+        var report = oct_responder_restart()
+        let status = oct_diag_restart_responder(&report)
+        if status == OCT_OK, report.signalled {
+            DebugLog.log(.info, "native", "restart",
+                         "Restarted Apple's responder (pid \(report.previous_pid)) for \(reason)")
+        } else if status == OCT_OK {
+            DebugLog.log(.info, "native", "restart", "No responder running")
+        } else {
+            // Most likely the app may not signal it, which no amount of retrying changes.
+            DebugLog.log(.warning, "native", "restart",
+                         "Could not restart Apple's responder: errno \(report.error). Unplug and reconnect instead.")
+        }
+    }
+
     /// The lease mode for the current selection. Exposure of a real root maps onto the scope modes,
     /// which the companion resolves through the same root table it probes, so the app never sends a
     /// path. Synthetic exposure stays mode 2.
