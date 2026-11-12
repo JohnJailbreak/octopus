@@ -88,7 +88,44 @@ static void test_operation_append(void)
     assert(output[11] == 0x02); /* operations count unchanged */
 }
 
+/* Appending an event to EventsSupported, the second array. A host acts only on events it was told
+ * to expect, so StoreAdded has to be there for an announcement of a storage change to mean
+ * anything. The operations array, the first, must not move. */
+static void test_event_append(void)
+{
+    const unsigned char input[] = {
+        0x64,0x00, 0x00,0x00,0x00,0x00, 0x64,0x00, 0x00, 0x00,0x00,
+        0x01,0x00,0x00,0x00, 0x01,0x10,                 /* operations: GetDeviceInfo */
+        0x01,0x00,0x00,0x00, 0x05,0x40,                 /* events: StoreRemoved */
+        0x00,0x00,0x00,0x00,
+        0x00,0x00,0x00,0x00,
+        0x01,0x00,0x00,0x00, 0x01,0x38,
+        0x00, 0x00, 0x00, 0x00,
+    };
+    unsigned char output[sizeof input + 8];
+    size_t produced = 0;
+    assert(oct_native_device_info_add_event(input, sizeof input, 0x4004, output,
+                                            sizeof output, &produced) == 1);
+    assert(produced == sizeof input + 2);
+    /* The events count went from one to two, with StoreAdded at the end of that array. */
+    assert(output[17] == 0x02 && output[18] == 0 && output[19] == 0 && output[20] == 0);
+    assert(output[23] == 0x04 && output[24] == 0x40);
+    /* The operations array ahead of it is untouched. */
+    assert(memcmp(output, input, 17) == 0);
+    /* And everything after the events array shifted by two, otherwise unchanged. */
+    assert(memcmp(output + 25, input + 23, sizeof input - 23) == 0);
+    /* An event already advertised is not added twice. */
+    assert(oct_native_device_info_add_event(input, sizeof input, 0x4005, output,
+                                            sizeof output, &produced) == 0);
+    /* And an operation still goes to the first array, not this one. */
+    assert(oct_native_device_info_add_operation(input, sizeof input, 0x100B, output,
+                                                sizeof output, &produced) == 1);
+    assert(output[11] == 0x02);   /* operations count grew */
+    assert(output[19] == 0x01);   /* events count did not */
+}
+
 int main(void){
+    test_event_append();
     test_operation_append();
     test_object_info_format();
     uint8_t input[256]={0},backup[256],output[258];size_t n=8,out=0;

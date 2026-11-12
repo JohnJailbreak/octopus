@@ -365,42 +365,38 @@ class UseBeforeDeclaration(unittest.TestCase):
                     break
 
 
-class ScopeAtInstall(unittest.TestCase):
-    """The provider must open its store on the granted root once, as it installs.
+class NothingHeavyInTheConstructor(unittest.TestCase):
+    """Opening a store on disk inside ptpd's constructor cost that process its entire session on
+    0.4.59: it served no host at all, 0 commands and not one hook called, while Windows talked to
+    another ptpd. The constructor now installs on the sample tree, which touches no disk, and the
+    granted root is applied from the timer a tenth of a second later. A host is told the storage
+    list changed once that is done, so nothing is lost by waiting; before the event existed, waiting
+    would have meant the volume never appearing at all."""
 
-    It first applied the scope before installing, where the call refuses because the provider is not
-    yet installed, so the first pass served the sample tree and a host reconnecting in that second
-    was told the store accepted no changes. Then it applied the scope again after installing, which
-    opened the store twice inside ptpd's constructor, before ptpd's own startup had run: that ptpd
-    served no host at all, 0 commands and not one hook called, while Windows talked to another. One
-    open, on the right root, is both correct and the least work at the costliest moment."""
+    def test_the_constructor_installs_on_the_sample_tree(self):
+        text = strip_comments((NATIVE / "OctopusObserver.m").read_text())
+        self.assertIn("OCTProviderInstall(OCT_NATIVE_LEASE_EXPOSE_SYNTHETIC", text,
+            "the provider is installed on a real root, which opens a store inside the constructor.")
+        self.assertNotIn("OCTProviderInstall(grantedScope", text)
 
-    def test_install_receives_the_granted_scope(self):
+    def test_the_granted_root_is_applied_outside_the_constructor(self):
         text = strip_comments((NATIVE / "OctopusObserver.m").read_text())
         body = text[text.index("static void pollOnce("):]
-        self.assertIn("OCTProviderInstall(grantedScope", body,
-            "pollOnce installs the provider without telling it which root to serve, so the store "
-            "opens on the sample tree and has to be moved afterwards.")
-        # The scope comes from this pass's lease, recorded before the install.
-        self.assertLess(body.index("grantedScope="), body.index("OCTProviderInstall(grantedScope"))
+        scope = body.index("OCTProviderSetScope(grantedScope")
+        guard = body.rfind("insideConstructor", 0, scope)
+        self.assertGreater(guard, 0,
+            "the granted root is applied without checking it is not the constructor's pass.")
+        # And the constructor's pass is the one that sets that flag.
+        self.assertIn("insideConstructor=true", text)
+        self.assertIn("insideConstructor=false", text)
 
-    def test_the_store_is_not_opened_twice_at_install(self):
-        text = strip_comments((NATIVE / "OctopusObserver.m").read_text())
-        body = text[text.index("static void pollOnce("):]
-        after = body[body.index("OCTProviderInstall(grantedScope"):]
-        # Everything up to the end of that branch: a second scope call here would reopen the store.
-        branch = after[:after.index("publish();")] if "publish();" in after else after
-        self.assertNotIn("OCTProviderSetScope", branch,
-            "the provider is moved to another root straight after installing, which opens the store "
-            "twice inside ptpd's constructor.")
-
-    def test_install_opens_the_scope_it_is_given(self):
+    def test_the_storage_is_announced_when_a_store_opens(self):
         provider = strip_comments((NATIVE / "OctopusProvider.m").read_text())
-        install = provider[provider.index("BOOL OCTProviderInstall("):]
-        install = install[:install.index("\nBOOL ") if "\nBOOL " in install[10:] else len(install)]
-        self.assertIn("openStoreLocked(", install)
-        self.assertIn("scope", install.split("openStoreLocked(")[1][:120],
-            "install opens a store without using the scope it was given.")
+        self.assertIn("OCTNativeAnnounceStorage(OCT_NATIVE_STORAGE_ID)", provider,
+            "a store opens without telling the host its storage list changed, so the volume is "
+            "invisible until the cable is pulled.")
+        # StoreAdded has to be advertised or a host ignores the announcement.
+        self.assertIn("OCT_EVENT_STORE_ADDED", provider)
 
 
 class MatchingSignatures(unittest.TestCase):

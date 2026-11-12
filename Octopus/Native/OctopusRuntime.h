@@ -15,3 +15,10 @@ BOOL OCTProviderValidate(NSString **reason);
  * imports; declaring it only in OctopusProvider.h left the observer calling an undeclared function.
  * The scope type comes from oct_native_io.h, included below. */
 BOOL OCTProviderSetScope(oct_native_lease_mode scope, NSString **reason);
+/* Whether the storage still needs announcing to a host: set when a store opens, cleared once a host
+ * reads the storage list. The timer retries while it is true, because an event sent before a
+ * session is up goes nowhere and there is no way to know from here when it comes up. */
+bool OCTProviderNeedsAnnounce(void);
+/* Tell the host its storage list changed, so it reads it again without the cable being pulled.
+ * Defined in the observer, which holds the transport; does nothing when no session is up. */
+bool OCTNativeAnnounceStorage(uint32_t storage);

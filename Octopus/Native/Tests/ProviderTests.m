@@ -79,6 +79,14 @@ void OCTNativeProviderEvent(const char *event,uint32_t handle,int32_t result) {
  * asked about, so a test can tell a forwarded call from one the provider answered itself. */
 - (void)deleteObjectWithObjectHandle:(uint32_t)handle responseCode:(unsigned short *)code;
 @end
+/* The observer holds the USB transport, and this build does not link it. The announcement is
+ * recorded instead, so a test can tell that opening a store asks for one. */
+static uint32_t lastAnnouncedStorage;
+bool OCTNativeAnnounceStorage(uint32_t storage) {
+    lastAnnouncedStorage = storage;
+    return false;   /* no session in a test, which is what the real one reports then too */
+}
+
 /* The last handle Apple's own delete was asked about, or zero. */
 static uint32_t lastAppleDelete;
 /* The association Apple's own upload receiver was asked about, or zero: an upload into Apple's own

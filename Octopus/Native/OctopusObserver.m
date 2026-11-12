@@ -8,6 +8,7 @@
 #include "../Core/oct_native_io.h"
 #include <stdatomic.h>
 #include <pthread.h>
+#import <objc/message.h>
 #include <sys/sysctl.h>
 #include <unistd.h>
 #include <string.h>
@@ -231,9 +232,53 @@ static void data(id self,SEL cmd,id packet){
     }
     ((void(*)(id,SEL,id))originalData)(self,cmd,packet); // async enqueue, NOT transmission success
 }
+/*
+ * The USB transport a host is talking to, and whether a session is up.
+ *
+ * A PTP device tells a host its storage list has changed by sending it an event; a host does not
+ * ask again on its own. That is why restarting ptpd left Windows showing Apple's storage alone and
+ * the new process receiving nothing: the session had gone and nothing told Windows to look again.
+ * These hooks already run on the transport, so the instance is kept here to send that event on.
+ *
+ * Weak, because the transport belongs to ptpd and may be released at any time; a strong reference
+ * would keep a dead transport alive and sending to it would be worse than not sending at all.
+ */
+static __weak id usbTransport;
+static atomic_bool sessionUp;
+
 static void connected(id self,SEL cmd,bool value){
     ((void(*)(id,SEL,bool))originalConnected)(self,cmd,value);
+    usbTransport=self;
+    atomic_store(&sessionUp,value);
     if(authorized()){pthread_mutex_lock(&lock);oct_native_connect(&journal,tokenFor(self),value);pthread_mutex_unlock(&lock);}
+}
+
+/*
+ * Tell the host its storage list changed, so it reads it again without the cable being pulled.
+ *
+ * StoreAdded names the storage in its first parameter. Sent only while a session is up, because an
+ * event sent to a transport with no host goes nowhere; and only when the transport has been seen,
+ * which happens as soon as ptpd accepts a connection.
+ *
+ * Returns whether it was handed to the transport, not whether the host acted on it.
+ */
+bool OCTNativeAnnounceStorage(uint32_t storage){
+    id transport=usbTransport;
+    if(!transport||!atomic_load(&sessionUp))return false;
+    Class packet=objc_getClass("PTPEventPacket");
+    if(!packet)return false;
+    SEL make=sel_registerName("initWithEventCode:transactionID:parameter1:");
+    if(![packet instancesRespondToSelector:make])return false;
+    SEL send=sel_registerName("sendEvent:");
+    if(![transport respondsToSelector:send])return false;
+    /* Transaction zero: an event outside any transaction, which is what a storage change is. */
+    id event=((id(*)(id,SEL,unsigned short,unsigned int,unsigned int))objc_msgSend)
+        ([packet alloc],make,(unsigned short)OCT_EVENT_STORE_ADDED,0u,storage);
+    if(!event)return false;
+    bool ok=((bool(*)(id,SEL,id))objc_msgSend)(transport,send,event);
+    OCTNativeProviderEvent(ok?"provider-announced-storage":"provider-announce-failed",storage,
+                           ok?OCT_RC_OK:OCT_RC_GENERAL_ERROR);
+    return ok;
 }
 static void stop(id self,SEL cmd){
     pthread_mutex_lock(&lock);oct_native_connect(&journal,tokenFor(self),false);pthread_mutex_unlock(&lock);
@@ -396,6 +441,11 @@ static void publish(void){
  * with no name in place of /var.
  */
 static oct_native_lease_mode grantedScope = OCT_NATIVE_LEASE_NONE;
+/* The scope the store is actually on, so it is moved once rather than every poll. */
+static oct_native_lease_mode appliedScope = OCT_NATIVE_LEASE_NONE;
+/* True only for the poll that runs from the constructor, where opening a store on disk costs ptpd
+ * its session. Everything heavy waits for the timer, a tenth of a second later. */
+static bool insideConstructor;
 
 static void pollOnce(BOOL match)
 {
@@ -487,10 +537,30 @@ static void pollOnce(BOOL match)
                  * the next GetStorageIDs, which is what makes a reconnect show the volume.
                  */
                 if(valid){
-                    attemptedProvider=true;BOOL ok=OCTProviderInstall(grantedScope,&problem);
+                    /* Installed on the sample tree, which opens nothing on disk. Moving to the
+                     * granted root happens below, from the timer, because a store opened inside
+                     * ptpd's constructor cost that process its whole session on 0.4.59: it served
+                     * no host at all while Windows talked to another ptpd. The host is told the
+                     * list changed once the move is done, so nothing is missed by waiting. */
+                    attemptedProvider=true;BOOL ok=OCTProviderInstall(OCT_NATIVE_LEASE_EXPOSE_SYNTHETIC,&problem);
                     providerState=ok?@"Installed (synthetic, experimental)":(problem?:@"Provider installation failed");
                     atomic_store(&providerReady,ok);
                 }
+            }
+            /* The granted root, and the announcement that tells a host to read the list again.
+             * Both from the timer rather than the constructor, and both repeated until a host has
+             * actually asked: an event sent before its session is up goes nowhere, and there is no
+             * way to know from here when it comes up. */
+            if(atomic_load(&providerReady)&&grantedScope!=OCT_NATIVE_LEASE_NONE&&!insideConstructor){
+                if(appliedScope!=grantedScope){
+                    NSString *scopeProblem=nil;
+                    if(OCTProviderSetScope(grantedScope,&scopeProblem)){
+                        appliedScope=grantedScope;
+                    } else if(scopeProblem){
+                        os_log_error(startup_log(),"scope not served: %{public}s",scopeProblem.UTF8String);
+                    }
+                }
+                if(OCTProviderNeedsAnnounce())OCTNativeAnnounceStorage(OCT_NATIVE_STORAGE_ID);
             }
             pthread_mutex_lock(&lock);oct_native_authorize(&journal,authorized());pthread_mutex_unlock(&lock);
             publish();
@@ -553,7 +623,9 @@ __attribute__((constructor)) static void startObserver(void){
         dispatch_source_set_timer(timer,dispatch_time(DISPATCH_TIME_NOW,0),NSEC_PER_SEC,NSEC_PER_SEC/10);
         dispatch_source_set_event_handler(timer,^{pollOnce(match);});
         /* One pass now, on this thread, before ptpd can open a USB session. */
+        insideConstructor=true;
         pollOnce(match);
+        insideConstructor=false;
         /* Before dispatch_resume: once resumed, the handler runs on its own queue and owns `startup`. */
         raise_phase(OCT_NATIVE_PHASE_TIMER);post_startup();
         dispatch_resume(timer);

@@ -31,6 +31,9 @@ static atomic_bool deleteHooked;
  * SendObjectInfo and SendObject are advertised only when this is in place and the store accepts
  * changes: a host offered an upload it cannot complete would fail mid-copy instead of not offering. */
 static atomic_bool uploadHooked;
+/* Set when a store opens and cleared once a host has asked for the storage list, so the
+ * announcement can be repeated meanwhile: an event sent before the session is up goes nowhere. */
+static atomic_bool announceWanted;
 static IMP originalAppendStorage, originalAppendFolder;
 /* The name and parent a host sent in SendObjectInfo, kept until the data arrives in SendObject.
  * PTP splits an upload across two operations and only the first carries the name. */
@@ -192,10 +195,19 @@ static BOOL available(id camera) {
     return YES;
 }
 
+/* Whether the storage still needs announcing, for the timer to retry. Cleared by storageIDs below,
+ * because a host asking for the list is proof it does not need telling. */
+bool OCTProviderNeedsAnnounce(void) {
+    return atomic_load_explicit(&announceWanted, memory_order_acquire) &&
+           atomic_load_explicit(&installed, memory_order_acquire);
+}
+
 static id storageIDs(id self, SEL cmd) {
     id base = ((id (*)(id,SEL))originalIDs)(self,cmd);
     if (!available(self) || ![base isKindOfClass:[NSArray class]]) return base;
     OCTNativeProviderEvent("provider-storage-enumeration", OCT_NATIVE_STORAGE_ID, OCT_RC_OK);
+    /* The host has read the list, so it needs no further telling. */
+    atomic_store_explicit(&announceWanted,false,memory_order_release);
     return [base arrayByAddingObject:@(OCT_NATIVE_STORAGE_ID)];
 }
 
@@ -222,6 +234,20 @@ static id deviceInfo(id self, SEL cmd) {
         /* Each append grows the dataset by two bytes, so each is its own call on the result of the
          * last. An operation is advertised only when the hook that serves it is in place: a host
          * offered one that cannot be served fails part-way through a copy instead of not offering. */
+        /* The events, in the array before the operations. A host ignores an event it was not told
+         * to expect, so StoreAdded has to be advertised for the announcement to mean anything, and
+         * ObjectAdded for a file uploaded or deleted to appear without a refresh. */
+        uint16_t events[2]={OCT_EVENT_STORE_ADDED,OCT_EVENT_OBJECT_ADDED};
+        for (unsigned i=0;i<2;i++) {
+            NSMutableData *withEvent=[NSMutableData dataWithLength:copy.length+2];
+            size_t grownBy=0;
+            if (oct_native_device_info_add_event(copy.bytes,copy.length,events[i],
+                                                 withEvent.mutableBytes,withEvent.length,&grownBy)==1) {
+                withEvent.length=grownBy;
+                copy=withEvent;
+                OCTNativeProviderEvent("provider-advertised-event",events[i],OCT_RC_OK);
+            }
+        }
         uint16_t operations[3];
         unsigned count=0;
         if (atomic_load_explicit(&deleteHooked,memory_order_acquire)) operations[count++]=OCT_OP_DELETE_OBJECT;
@@ -660,6 +686,13 @@ static BOOL openStoreLocked(oct_native_lease_mode scope, NSString **reason)
     storeScope=scope;
     storeWritable=writableScope;
     OCTNativeProviderEvent("provider-store-opened",(uint32_t)scope,OCT_RC_OK);
+    /* Tell the host the storage list changed, so it reads it again. Without this a store opened
+     * after the host's first enumeration is invisible until the cable is pulled, which is exactly
+     * what restarting ptpd failed to fix: the session went, and nothing asked Windows to look
+     * again. It does nothing when no session is up, and the announcement is retried from the timer
+     * until a host actually asks, since one sent too early is simply missed. */
+    atomic_store_explicit(&announceWanted,true,memory_order_release);
+    OCTNativeAnnounceStorage(OCT_NATIVE_STORAGE_ID);
     return YES;
 }
 

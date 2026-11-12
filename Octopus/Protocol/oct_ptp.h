@@ -50,6 +50,18 @@ enum {
     OCT_OP_GET_OBJECT_PROP_LIST = 0x9805
 };
 
+/* PTP events, which a device sends to a host outside any transaction. A host does not re-read the
+ * storage list on its own, so a storage that starts being served mid-session stays invisible until
+ * one of these says otherwise; that is why restarting ptpd alone never made the volume appear. */
+enum {
+    OCT_EVENT_OBJECT_ADDED   = 0x4002,
+    OCT_EVENT_OBJECT_REMOVED = 0x4003,
+    OCT_EVENT_STORE_ADDED    = 0x4004,
+    OCT_EVENT_STORE_REMOVED  = 0x4005,
+    OCT_EVENT_STORE_FULL     = 0x400A,
+    OCT_EVENT_STORAGE_INFO_CHANGED = 0x400C
+};
+
 enum {
     OCT_RC_OK = 0x2001,
     OCT_RC_GENERAL_ERROR = 0x2002,
