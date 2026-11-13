@@ -162,7 +162,7 @@ final class DiagnosticsTests: XCTestCase {
                      "connectivity.txt", "device-observations.json", "connection-timeline.txt"] {
             XCTAssertNotNil(entries[name], name)
         }
-        XCTAssertTrue(entries.keys.contains { $0.hasPrefix("logs/octopus-debug") })
+        XCTAssertTrue(entries.keys.contains { $0.hasPrefix("logs/debug") })
         let report = try JSONSerialization.jsonObject(with: try XCTUnwrap(entries["results.json"])) as? [String: Any]
         XCTAssertEqual(report?["schema"] as? String, "octopus-diagnostics/1")
         XCTAssertEqual((report?["summary"] as? [String: Int])?["FAIL"], 1)

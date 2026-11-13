@@ -52,7 +52,7 @@ final class DebugLogTests: XCTestCase {
         XCTAssertTrue(again.contains { $0.event == "warned" })
         XCTAssertTrue(again.contains { $0.event == "detailed" })
         XCTAssertEqual(again.filter { $0.event == "launch" }.count, 2)
-        XCTAssertEqual(DebugLog.files().map(\.lastPathComponent), ["octopus-debug.log"])
+        XCTAssertEqual(DebugLog.files().map(\.lastPathComponent), ["debug.log"])
         XCTAssertTrue(DebugLog.stats().fileOpen)
     }
 
@@ -68,7 +68,7 @@ final class DebugLogTests: XCTestCase {
         let text = try String(contentsOf: url, encoding: .utf8)
         XCTAssertTrue(text.hasPrefix("# Octopus "))
         XCTAssertTrue(text.contains("test       after exported"))
-        XCTAssertTrue(url.lastPathComponent.hasPrefix("octopus-debug-"))
+        XCTAssertTrue(url.lastPathComponent.hasPrefix("debug-"))
     }
 
     func testTheSelfTestRehearsalIsNeverTheLastFailure() {

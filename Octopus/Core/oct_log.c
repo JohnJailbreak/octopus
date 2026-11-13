@@ -57,7 +57,7 @@ static void set_error_locked(const char *what, int error)
     snprintf(g_stats.last_error, sizeof g_stats.last_error, "%s: %s", what, strerror(error));
 }
 
-/* The current file for number 0, otherwise octopus-debug.<number>.log beside it. */
+/* The current file for number 0, otherwise <name>.<number>.log beside it: debug.1.log for debug.log. */
 static bool rotated_path(char *out, size_t capacity, const char *path, unsigned number)
 {
     int n;
@@ -93,7 +93,7 @@ static void close_locked(void)
     g_stats.file_open = false;
 }
 
-/* Shifts octopus-debug.log to .1, .1 to .2 and so on, dropping the oldest, then starts a new file. When the file
+/* Shifts debug.log to .1, .1 to .2 and so on, dropping the oldest, then starts a new file. When the file
  * can't be moved, it starts over so it never grows without bound. */
 static void rotate_locked(void)
 {

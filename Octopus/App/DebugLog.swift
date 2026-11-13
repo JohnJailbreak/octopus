@@ -2,7 +2,7 @@
 //  DebugLog.swift
 //  Octopus
 //
-//  The debug log the app and the C core share (Octopus/Core/oct_log.c): octopus-debug.log, which persists
+//  The debug log the app and the C core share (Octopus/Core/oct_log.c): debug.log, which persists
 //  across launches and rotates at 512 KB, keeping three older files. The app adds its own lines (launch,
 //  requests, updates, the device report); the core logs the service, the self-test and every transaction
 //  that passes through the transport adapter. Nothing logged contains file names, file contents or
@@ -168,7 +168,7 @@ enum DebugLog {
                      reopens: raw.reopens)
     }
 
-    /// The log's files, oldest first: octopus-debug.3.log ... octopus-debug.log, those that exist.
+    /// The log's files, oldest first: debug.3.log ... debug.log, those that exist.
     static func files() -> [URL] {
         var urls: [URL] = []
         for index in stride(from: Int(keep), through: 0, by: -1) {
@@ -216,7 +216,7 @@ enum DebugLog {
         entries.last { $0.level >= .warning && $0.component != "selftest" }
     }
 
-    /// One file with every line, for the share sheet: octopus-debug-20261108-195102.log, in the first of
+    /// One file with every line, for the share sheet: debug-20261108-195102.log, in the first of
     /// Diagnostics.exportFolders that takes it. When none does, the error gives each folder's reason.
     static func exportFile(in folders: [String] = Diagnostics.exportFolders) throws -> URL {
         let formatter = DateFormatter()

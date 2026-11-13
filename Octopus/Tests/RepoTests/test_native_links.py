@@ -655,5 +655,28 @@ class DiagnosticResultsPassKindBeforeStatus(unittest.TestCase):
                         f"result(\"{call.group(1)}\") passes its status before its kind.")
 
 
+class ExportedNamesCarryNoAppName(unittest.TestCase):
+    """The export and its log were renamed so a shared file says nothing about what produced it.
+    The app tests still pinned the old names and failed three tests on CI, which only the macOS job
+    runs. No test may expect a file name that is no longer produced, and the source may produce
+    none of them. The schema name inside the report is deliberately kept and is not a file name."""
+
+    RETIRED = ("octopus-debug", "octopus-diagnostics-")
+
+    def test_no_source_or_test_produces_or_expects_a_retired_name(self):
+        places = sorted((ROOT / "Octopus/App").glob("*.swift")) + \
+                 sorted((ROOT / "Octopus/Tests/AppTests").glob("*.swift")) + \
+                 [ROOT / "Octopus/Core/oct_log.c", ROOT / "Octopus/Tests/HelperTests/zip_driver.c"]
+        for path in places:
+            code = strip_comments(path.read_text())
+            # The archive prefix list legitimately names the old prefix, to clean up old exports.
+            code = re.sub(r"legacyArchivePrefixes\s*=\s*\[[^\]]*\]", "", code)
+            for retired in self.RETIRED:
+                with self.subTest(file=path.name, name=retired):
+                    self.assertNotIn(retired, code,
+                        f"{path.name} still produces or expects {retired}, which the export no "
+                        f"longer uses.")
+
+
 if __name__ == "__main__":
     unittest.main()
