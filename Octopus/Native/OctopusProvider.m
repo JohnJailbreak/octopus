@@ -63,6 +63,21 @@ static atomic_bool freshStore;
  * leaving Windows holding the DeviceInfo it read before Octopus served, with no uploads in it. */
 static atomic_bool deviceInfoStale;
 
+/*
+ * Whether the grant allows writes, known before the store has moved onto the granted root.
+ *
+ * A host's first DeviceInfo of a session is the only one it reads: on 0.4.67 DeviceInfoChanged
+ * was sent through Apple's own event path and Windows never asked again. So that first answer
+ * has to offer writing if writing is granted, even in the moment before the store has switched
+ * from the sample tree, which is opened at install so the constructor touches no disk. An upload
+ * cannot arrive in that moment; by the time a person drags a file in, the store has switched.
+ * Set by the observer, as an atomic only, so it can be called before install.
+ */
+static atomic_bool writesGranted;
+void OCTProviderSetWritesGranted(bool granted) {
+    atomic_store_explicit(&writesGranted, granted, memory_order_release);
+}
+
 static void rememberCamera(id camera) {
     if (camera && !knownCamera) knownCamera = camera;
 }
@@ -328,10 +343,11 @@ static id deviceInfo(id self, SEL cmd) {
             }
         }
     }
-    if (storeWritable) {
+    if (storeWritable || atomic_load_explicit(&writesGranted, memory_order_acquire)) {
         /* Recorded separately from what was advertised, because the two failing differ: a store not
          * yet writable when a host asked is a timing fault, an operation missing from the list with
-         * the store writable is a hook that did not install. */
+         * the store writable is a hook that did not install. "Writable" here means writing is
+         * granted, whether or not the store has finished switching to the granted root. */
         OCTNativeProviderEvent("provider-device-info-writable",0,OCT_RC_OK);
         /* The formats a host may create. A host offers New Folder and Paste only for formats it
          * finds here: Association, 0x3001, is a folder, and Undefined, 0x3000, is any other file.

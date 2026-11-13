@@ -541,11 +541,21 @@ void oct_native_traffic_describe(const oct_native_traffic *t, char *out, size_t 
         /* The decisive case: the host never tried, so nothing on the phone could have refused it. */
         snprintf(head, sizeof head, "The computer never asked to add a file or folder: it decided "
                                     "from what the device reported not to offer it.");
+    } else if (info && t->send_info_response == 0) {
+        /* No response recorded at all: not a refusal but a request still waiting. On 0.4.67 the
+         * first upload Windows ever attempted stalled with "Copying..." and no progress, and this
+         * case was reported as an answer of 0x0000, which ptpd never sent. */
+        snprintf(head, sizeof head, "The computer asked to add something %u time%s, and ptpd has not "
+                 "answered: the request is waiting inside Apple's responder.",
+                 (unsigned)t->send_info_count, t->send_info_count == 1 ? "" : "s");
     } else if (info && t->send_info_response != 0x2001) {
         snprintf(head, sizeof head, "The computer asked to add something %u time%s, and ptpd answered "
                  "0x%04X %s before Octopus was asked.", (unsigned)t->send_info_count,
                  t->send_info_count == 1 ? "" : "s", (unsigned)t->send_info_response,
                  oct_native_response_name(t->send_info_response));
+    } else if (info && (t->seen & OCT_NATIVE_TRAFFIC_SEND_OBJECT) && t->send_object_response == 0) {
+        snprintf(head, sizeof head, "ptpd accepted the name of an upload, and the computer sent its "
+                 "data, but ptpd has not answered it.");
     } else if (info && t->send_object_response && t->send_object_response != 0x2001) {
         snprintf(head, sizeof head, "ptpd accepted the name of an upload, then answered its data "
                  "0x%04X %s.", (unsigned)t->send_object_response,
@@ -573,7 +583,8 @@ void oct_native_traffic_describe(const oct_native_traffic *t, char *out, size_t 
                         : (t->announced & OCT_NATIVE_ANNOUNCE_FAILED) ? " The drive could not be announced: no session was up"
                         : " The drive was never announced";
         used += (size_t)snprintf(tail + used, sizeof tail - used, "%s%s.", how,
-                                 (t->announced & OCT_NATIVE_ANNOUNCE_DEVICE_INFO) ? ", and DeviceInfoChanged was sent" : "");
+                                 (t->announced & OCT_NATIVE_ANNOUNCE_DEVICE_INFO)
+                                     ? ", and the USB transport accepted DeviceInfoChanged" : "");
         (void)used;
     }
     snprintf(out, capacity, "%s%s", head, tail);

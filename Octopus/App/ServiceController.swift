@@ -650,7 +650,11 @@ final class ServiceController: ObservableObject {
         let connected = NativeTransport.shared.live
         note(await nativeStep("Checking for a connected computer") {
             connected
-                ? (true, "A computer is connected: the companion tells it the drive changed")
+                // Connected already, so its session began before USB access was on, and it holds the
+                // capabilities it read then, which offer no writing. Windows reads them only when it
+                // connects: on 0.4.67 DeviceInfoChanged went out and it never asked again. So the
+                // drive appears, by announcement, but adding files needs one reconnect.
+                ? (true, "Computer connected: / appears now; unplug and reconnect once to add files")
                 : (true, "No computer connected yet: / appears when one is")
         })
 
@@ -679,7 +683,7 @@ final class ServiceController: ObservableObject {
         }
 
         if let firstFailure { return (false, "USB isn't serving /: \(firstFailure)") }
-        return (true, connected ? "Ready \u{00B7} / is on the computer" : "Ready \u{00B7} connect a computer")
+        return (true, connected ? "Ready \u{00B7} reconnect USB once to add files" : "Ready \u{00B7} connect a computer")
         #endif
     }
 

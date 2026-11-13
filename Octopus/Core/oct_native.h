@@ -66,7 +66,7 @@ enum {
 enum {
     OCT_NATIVE_ANNOUNCE_CAMERA      = 1u << 0, /* through Apple's sendEventAddStorageWithID: */
     OCT_NATIVE_ANNOUNCE_EVENT       = 1u << 1, /* through a StoreAdded event on the transport */
-    OCT_NATIVE_ANNOUNCE_DEVICE_INFO = 1u << 2, /* DeviceInfoChanged sent */
+    OCT_NATIVE_ANNOUNCE_DEVICE_INFO = 1u << 2, /* the transport confirmed it queued DeviceInfoChanged */
     OCT_NATIVE_ANNOUNCE_FAILED      = 1u << 3, /* an event could not be sent: no session or transport */
 };
 

@@ -178,6 +178,7 @@ void OCTNativeProviderEvent(const char *event,uint32_t handle,int32_t result){
         if(handle==OCT_EVENT_STORE_ADDED)announceFlags|=OCT_NATIVE_ANNOUNCE_EVENT;
         else if(handle==OCT_EVENT_DEVICE_INFO_CHANGED)announceFlags|=OCT_NATIVE_ANNOUNCE_DEVICE_INFO;
     }
+    else if(!strcmp(event,"provider-event-handed")){}   /* handed to Apple's responder, unconfirmed */
     else if(!strncmp(event,"provider-event-",15))announceFlags|=OCT_NATIVE_ANNOUNCE_FAILED;
     /* A host that read DeviceInfo before the provider was serving, and so holds Apple's own. */
     if(!strcmp(event,"provider-device-info-early"))hookReport.early_device_info=true;
@@ -349,23 +350,27 @@ bool OCTNativeSendEvent(uint16_t code,uint32_t parameter){
         OCTNativeProviderEvent("provider-event-no-packet",code,OCT_RC_GENERAL_ERROR);
         return false;
     }
-    /* Apple's responder first: it is what sends every event Apple sends, through whichever transport
-     * is current. Its sendEvent: returns nothing, v24@0:8@16, unlike the transport's B24, so it is
-     * called through its own implementation with that type rather than through a declaration that
-     * would read a return value it never sets. */
+    /* The transport first, because it answers: its sendEvent: returns whether the event was queued
+     * for the cable. On 0.4.67 the event went to Apple's responder, whose sendEvent: returns nothing,
+     * so "sent" meant only handed over, and Windows not re-reading DeviceInfo could not be told apart
+     * from the event never reaching it. Only a confirmed send counts as sent. */
+    if(transport&&up&&[transport respondsToSelector:@selector(sendEvent:)]){
+        if([transport sendEvent:event]){
+            OCTNativeProviderEvent("provider-event-sent",code,OCT_RC_OK);
+            return true;
+        }
+        OCTNativeProviderEvent("provider-event-refused",code,OCT_RC_GENERAL_ERROR);
+    }
+    /* Apple's responder as the fallback, for a transport not yet seen. Its sendEvent: returns
+     * nothing, v24@0:8@16, so it is called through its implementation with that type; and because it
+     * confirms nothing, the event is recorded as handed over, not sent, and the caller keeps trying. */
     if(responder&&[responder respondsToSelector:@selector(sendEvent:)]){
         IMP send=[responder methodForSelector:@selector(sendEvent:)];
         if(send){
             ((void(*)(id,SEL,id))send)(responder,@selector(sendEvent:),event);
-            OCTNativeProviderEvent("provider-event-sent",code,OCT_RC_OK);
-            return true;
+            OCTNativeProviderEvent("provider-event-handed",code,OCT_RC_OK);
+            return false;
         }
-    }
-    if(transport&&up&&[transport respondsToSelector:@selector(sendEvent:)]){
-        bool ok=[transport sendEvent:event];
-        OCTNativeProviderEvent(ok?"provider-event-sent":"provider-event-refused",code,
-                               ok?OCT_RC_OK:OCT_RC_GENERAL_ERROR);
-        return ok;
     }
     OCTNativeProviderEvent(up?"provider-event-no-sender":"provider-event-no-session",code,OCT_RC_GENERAL_ERROR);
     return false;
@@ -572,6 +577,10 @@ static void pollOnce(BOOL match)
                 wanted=effective==OCT_NATIVE_LEASE_OBSERVE?1u:
                        (effective==OCT_NATIVE_LEASE_NONE?0u:2u);
                 grantedScope=wanted==2?effective:OCT_NATIVE_LEASE_NONE;
+                /* Told now, in this pass, so the first DeviceInfo offers writing even before the
+                 * store has switched: it is the only DeviceInfo Windows reads in a session. */
+                OCTProviderSetWritesGranted(grantedScope!=OCT_NATIVE_LEASE_NONE&&
+                                            oct_native_lease_is_writable(grantedScope));
                 if(wanted==2){
                     NSString *scopeProblem=nil;
                     if(!OCTProviderSetScope(effective,&scopeProblem)&&scopeProblem){

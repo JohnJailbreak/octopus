@@ -1101,6 +1101,17 @@ static void test_traffic_word(void)
     data.send_object_response = 0x2001;
     oct_native_traffic_describe(&data, text, sizeof text);
     CHECK(strstr(text, "added something 1 time and ptpd accepted it") != NULL);
+    /* Asked, and no answer at all: a stalled request, not an answer of 0x0000. This is what an
+     * upload stuck at "Copying..." with no progress looks like. */
+    oct_native_traffic waiting = { .seen = OCT_NATIVE_TRAFFIC_SEND_OBJECT_INFO, .send_info_count = 1 };
+    oct_native_traffic_describe(&waiting, text, sizeof text);
+    CHECK(strstr(text, "has not answered") != NULL);
+    CHECK(strstr(text, "0x0000") == NULL);
+    /* The name accepted and the data sent, with no answer to the data. */
+    oct_native_traffic stalled = { .seen = OCT_NATIVE_TRAFFIC_SEND_OBJECT_INFO | OCT_NATIVE_TRAFFIC_SEND_OBJECT,
+                                   .send_info_count = 1, .send_info_response = 0x2001 };
+    oct_native_traffic_describe(&stalled, text, sizeof text);
+    CHECK(strstr(text, "sent its data, but ptpd has not answered") != NULL);
     /* The MTP route, which ptpd does not support. */
     oct_native_traffic mtp = { .seen = OCT_NATIVE_TRAFFIC_SEND_PROP_LIST | OCT_NATIVE_TRAFFIC_PROPS_SUPPORTED };
     oct_native_traffic_describe(&mtp, text, sizeof text);
@@ -1119,7 +1130,7 @@ static void test_traffic_word(void)
     CHECK(oct_native_traffic_unpack(oct_native_traffic_pack(&told), &out));
     CHECK_EQ(out.announced, told.announced);
     oct_native_traffic_describe(&told, text, sizeof text);
-    CHECK(strstr(text, "announced through Apple's own method, and DeviceInfoChanged was sent") != NULL);
+    CHECK(strstr(text, "announced through Apple's own method, and the USB transport accepted DeviceInfoChanged") != NULL);
     told.announced = OCT_NATIVE_ANNOUNCE_FAILED;
     oct_native_traffic_describe(&told, text, sizeof text);
     CHECK(strstr(text, "could not be announced: no session was up") != NULL);

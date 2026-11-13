@@ -19,6 +19,9 @@ BOOL OCTProviderSetScope(oct_native_lease_mode scope, NSString **reason);
  * it every poll, because an event sent before a session is up goes nowhere and there is no way to
  * know from inside when it comes up. A host reading the list stops it. */
 void OCTProviderAnnounceIfNeeded(void);
+/* Whether the grant allows writes, for the first DeviceInfo of a session to offer them before the
+ * store has switched to the granted root. An atomic store only: safe before install. */
+void OCTProviderSetWritesGranted(bool granted);
 /* Tell the host its storage list changed, so it reads it again without the cable being pulled.
  * Defined in the observer, which holds the transport; does nothing when no session is up. */
 bool OCTNativeAnnounceStorage(uint32_t storage);

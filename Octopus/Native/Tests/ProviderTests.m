@@ -363,6 +363,22 @@ int main(void) { @autoreleasepool {
     assert(!infoHas(infoBody,3,OCT_FORMAT_UNDEFINED) && !infoHas(infoBody,3,OCT_FORMAT_ASSOCIATION));
     /* The size follows: Apple's 37 bytes, two for the text format, eight for four events. */
     assert(infoBody.length==37+2+8);
+    /* A grant that allows writing offers it in DeviceInfo at once, before the store has moved off
+     * the sample tree. The first DeviceInfo of a session is the only one Windows reads: on 0.4.67
+     * DeviceInfoChanged went out and Windows never asked again. */
+    OCTProviderSetWritesGranted(true);
+    NSData *granted=[[camera deviceInfoDataset] content];
+    assert(infoHas(granted,0,OCT_OP_SEND_OBJECT_INFO) && infoHas(granted,0,OCT_OP_SEND_OBJECT));
+    assert(infoHas(granted,0,OCT_OP_DELETE_OBJECT));
+    assert(infoHas(granted,4,OCT_FORMAT_UNDEFINED) && infoHas(granted,4,OCT_FORMAT_ASSOCIATION));
+    assert(infoHas(granted,3,OCT_FORMAT_UNDEFINED) && infoHas(granted,3,OCT_FORMAT_ASSOCIATION));
+    assert(infoHas(granted,1,OCT_EVENT_DEVICE_INFO_CHANGED));          /* the events stay */
+    /* Withdrawn, and the sample tree accepts no changes, so nothing that writes is offered again. */
+    OCTProviderSetWritesGranted(false);
+    NSData *withdrawn=[[camera deviceInfoDataset] content];
+    assert(!infoHas(withdrawn,0,OCT_OP_SEND_OBJECT_INFO) && !infoHas(withdrawn,0,OCT_OP_DELETE_OBJECT));
+    assert(!infoHas(withdrawn,4,OCT_FORMAT_UNDEFINED));
+    assert(withdrawn.length==infoBody.length);
     assert([info respondsToSelector:@selector(standardVersion)]);
     assert([info standardVersion]==100);                                  /* delegated to Apple's object */
     /* Bulk object info for our storage: type 3 carries an 8-byte count, then one record each. */
