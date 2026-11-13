@@ -12,14 +12,14 @@ int main(int argc, char **argv)
     if (argc < 2 || oct_zip_create(&zip) != OCT_OK) return 64;
     int failures = 0;
     failures += oct_zip_add(zip, "results.json", "{\"ok\": true}\n", 13, 1762632000) != OCT_OK;
-    failures += oct_zip_add(zip, "logs/octopus-debug.log", "a\nb\n", 4, 1762632000) != OCT_OK;
+    failures += oct_zip_add(zip, "logs/debug.log", "a\nb\n", 4, 1762632000) != OCT_OK;
     failures += oct_zip_add(zip, "binary.bin", binary, sizeof binary, 1762632000) != OCT_OK;
     failures += oct_zip_add(zip, "empty.txt", NULL, 0, 0) != OCT_OK;
     failures += oct_zip_add(zip, "caf\xC3\xA9.txt", "utf8", 4, 1762632000) != OCT_OK;
     if (strcmp(argv[1], "--first") == 0) { /* zip_driver --first <folder>...: the first folder that works */
         char written[4096];
         oct_status status = oct_zip_write_first(zip, (const char *const *)(argv + 2), (size_t)(argc - 2),
-                                                "octopus-diagnostics.zip", written, sizeof written);
+                                                "diagnostics.zip", written, sizeof written);
         printf("%s\n%s\n", status == OCT_OK ? written : "", oct_zip_error(zip));
         failures += status != OCT_OK;
     } else {

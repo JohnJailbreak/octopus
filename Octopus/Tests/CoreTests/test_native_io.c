@@ -1242,6 +1242,65 @@ static void test_write_probe(void)
     CHECK(real.write_probed);
 }
 
+/* The optional-hook install report: which hooks installed, and why the first failure failed. On
+ * 0.4.74 both responder hooks failed to install and nothing could say so; the export could only
+ * report that no write operation had reached the host's list. */
+static void test_install_report(void)
+{
+    oct_native_install_report report = {
+        .attempted = (uint8_t)(OCT_NATIVE_INSTALLED_DELETE | OCT_NATIVE_INSTALLED_UPLOAD_REQUEST |
+                               OCT_NATIVE_INSTALLED_UPLOAD_DATA),
+        .installed = (uint8_t)OCT_NATIVE_INSTALLED_DELETE,
+        .first_failure = (uint8_t)OCT_NATIVE_INSTALLED_UPLOAD_REQUEST,
+        .reason = OCT_NATIVE_INSTALL_ENCODING,
+    };
+    oct_native_install_report out;
+    uint64_t word = oct_native_install_pack(&report);
+    CHECK(oct_native_install_unpack(word, &out));
+    CHECK_EQ(out.installed, report.installed);
+    CHECK_EQ(out.attempted, report.attempted);
+    CHECK_EQ(out.first_failure, report.first_failure);
+    CHECK_EQ(out.reason, report.reason);
+    /* The check byte covers all of it, and a word of another kind is refused. */
+    CHECK(!oct_native_install_unpack(word ^ (1ull << 5), &out));
+    CHECK(!oct_native_install_unpack(word ^ (1ull << 30), &out));
+    CHECK(!oct_native_install_unpack(0, &out));
+
+    char text[400];
+    /* The 0.4.74 case, in words: delete installed, the upload pair not, with the reason. */
+    oct_native_install_describe(&report, text, sizeof text);
+    CHECK(strstr(text, "Installed: delete") != NULL);
+    CHECK(strstr(text, "upload request") != NULL);
+    CHECK(strstr(text, "type differs") != NULL);
+    CHECK(strstr(text, "Uploads cannot be received") != NULL);
+    /* Both upload hooks in place: uploads can be received, and nothing is listed as missing. */
+    oct_native_install_report ready = {
+        .attempted = (uint8_t)(OCT_NATIVE_INSTALLED_UPLOAD_REQUEST | OCT_NATIVE_INSTALLED_UPLOAD_DATA),
+        .installed = (uint8_t)(OCT_NATIVE_INSTALLED_UPLOAD_REQUEST | OCT_NATIVE_INSTALLED_UPLOAD_DATA),
+    };
+    oct_native_install_describe(&ready, text, sizeof text);
+    CHECK(strstr(text, "Uploads can be received") != NULL);
+    CHECK(strstr(text, "Not installed") == NULL);
+    /* Nothing attempted, and a missing report, are distinct from everything failing. */
+    oct_native_install_report none = {0};
+    oct_native_install_describe(&none, text, sizeof text);
+    CHECK(strstr(text, "No optional hooks were attempted") != NULL);
+    oct_native_install_describe(NULL, text, sizeof text);
+    CHECK(strstr(text, "No optional hooks were attempted") != NULL);
+    /* Every reason has words of its own, and every bit a name. */
+    for (uint8_t reason = OCT_NATIVE_INSTALL_NO_CLASS; reason <= OCT_NATIVE_INSTALL_UNKNOWN; reason++) {
+        oct_native_install_report one = { .attempted = 0x3F, .installed = 0, .first_failure = 1, .reason = reason };
+        oct_native_install_describe(&one, text, sizeof text);
+        CHECK(strstr(text, "Not installed") != NULL);
+    }
+    for (unsigned bit = 1; bit <= (unsigned)OCT_NATIVE_INSTALLED_APPEND_FOLDER; bit <<= 1)
+        CHECK(strcmp(oct_native_installed_name(bit), "unknown") != 0);
+    /* Bounded and terminated. */
+    char tiny[10];
+    oct_native_install_describe(&report, tiny, sizeof tiny);
+    CHECK_EQ(strlen(tiny), 9u);
+}
+
 void run_native_io_tests(void)
 {
     test_detailed_failures();
@@ -1260,6 +1319,7 @@ void run_native_io_tests(void)
     test_write_verdict();
     test_traffic_word();
     test_write_probe();
+    test_install_report();
     test_root_probe();
     test_root_table_and_report();
     char directory[512], path[1024];

@@ -287,6 +287,28 @@ enum Diagnostics {
                               !matched ? .fail : (capture.companionFilesPresent ? .pass : .blocked),
                               "App effective UID: \(capture.appUID). Companion files \(capture.companionFilesPresent ? "found" : "not found") at /var/jb/usr/lib/TweakInject. \(pairing) File presence does not prove the module loaded or hooks ran.", checks: 1)
             },
+            // Which of the optional hooks installed inside ptpd. Everything that changes files depends
+            // on these, and before this step a hook that failed to install was invisible: 0.4.74 could
+            // only report that no write operation had reached the host's list.
+            step("native.hooks", "Native integration", "Optional hooks inside Apple's responder", .nativeObservation) {
+                var report = oct_native_install_report()
+                guard oct_native_install_read(&report) == OCT_OK else {
+                    return result("native.hooks", "Native integration", "Optional hooks inside Apple's responder",
+                                  .blocked, "No hook report yet. Enable USB Access, connect a computer, and "
+                                  + "let the companion load into Apple's responder.", checks: 1)
+                }
+                let capacity = 400
+                var text = [CChar](repeating: 0, count: capacity)
+                oct_native_install_describe(&report, &text, capacity)
+                let sentence = text.withUnsafeBufferPointer { String(cString: $0.baseAddress!) }
+                let pair = UInt8(OCT_NATIVE_INSTALLED_UPLOAD_REQUEST.rawValue | OCT_NATIVE_INSTALLED_UPLOAD_DATA.rawValue)
+                let uploadsReady = (report.installed & pair) == pair
+                return result("native.hooks", "Native integration", "Optional hooks inside Apple's responder",
+                              uploadsReady ? .pass : .fail,
+                              sentence + " Adding files needs both upload hooks; deleting needs the delete hook. "
+                              + "A hook that did not install usually means this ptpd differs from the one its "
+                              + "signature was recorded from.", checks: 1)
+            },
             step("native.roots", "Native integration", "Filesystem roots ptpd can read", .nativeObservation) {
                 // Probed inside ptpd, because its sandbox and not the app's decides this. Until
                 // this is known, granting a filesystem scope is guesswork.
@@ -643,6 +665,8 @@ enum Diagnostics {
     }
 
     struct Report: Codable, Sendable {
+        // The schema's name is inside the report, not on the file, so it stays: a reader needs to
+        // know what produced the fields. Only the archive's own name was changed.
         var schema = "octopus-diagnostics/1"
         let build: BuildInfo
         let started: String
@@ -671,7 +695,10 @@ enum Diagnostics {
         return folders.filter { !$0.isEmpty && seen.insert(($0 as NSString).standardizingPath).inserted }
     }
 
-    static let archivePrefix = "octopus-diagnostics-"
+    /// The export's name carries no app name, so sharing one says nothing about what produced it.
+    /// Old exports are still cleaned up: the previous prefix is recognised alongside this one.
+    static let archivePrefix = "diagnostics-"
+    static let legacyArchivePrefixes = ["octopus-diagnostics-"]
 
     static func makeReport(results: [DiagnosticResult], environment: DiagnosticsEnvironment, started: Date,
                            finished: Date) -> Report {
@@ -758,7 +785,8 @@ enum Diagnostics {
     static func removeOlderArchives(beside url: URL) {
         let folder = url.deletingLastPathComponent()
         let names = (try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? []
-        for name in names where name.hasPrefix(archivePrefix) && name.hasSuffix(".zip") && name != url.lastPathComponent {
+        let prefixes = [archivePrefix] + legacyArchivePrefixes
+        for name in names where prefixes.contains(where: name.hasPrefix) && name.hasSuffix(".zip") && name != url.lastPathComponent {
             try? FileManager.default.removeItem(at: folder.appendingPathComponent(name))
         }
     }

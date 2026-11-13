@@ -68,7 +68,7 @@ enum DebugLog {
         var reopens: UInt64 = 0
     }
 
-    static let fileName = "octopus-debug.log"
+    static let fileName = "debug.log"
     static let maxBytes = 512 * 1024
     static let keep: UInt32 = 3
     /// The most lines the Debug Log window shows; the export always has everything.
@@ -222,7 +222,7 @@ enum DebugLog {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = "yyyyMMdd-HHmmss"
-        let name = "octopus-debug-\(formatter.string(from: Date())).log"
+        let name = "debug-\(formatter.string(from: Date())).log"
         let header = "# Octopus \(AppInfo.version), \(systemDescription). Exported \(Date()).\n"
         let data = Data((header + allText()).utf8)
         var reasons: [String] = []

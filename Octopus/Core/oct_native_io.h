@@ -343,6 +343,46 @@ bool oct_native_lease_is_writable(oct_native_lease_mode mode);
  * comes. See docs/usb-research/implementation-status.md. */
 #define OCT_NATIVE_MAX_UPLOAD_BYTES 16372u
 
+/* Which optional hooks installed inside ptpd, and why the first failure failed. The hook word has
+ * no free bits, and on 0.4.74 nothing could say that the two responder hooks an upload needs had not
+ * installed: the export could only report that no write operation reached the host's list. */
+#define OCT_NATIVE_INSTALL_NAME  "com.parv.octopus.native.install"
+#define OCT_NATIVE_INSTALL_VERSION 1u
+/* Named, not anonymous: Swift imports an anonymous enum's members as plain integers with no
+ * rawValue, and the app reads these, which is the same trap oct_native_runtime_flag records. */
+typedef enum oct_native_installed_hook {
+    OCT_NATIVE_INSTALLED_DELETE         = 1u << 0, /* deleteObjectWithObjectHandle: on the camera */
+    OCT_NATIVE_INSTALLED_UPLOAD_REQUEST = 1u << 1, /* handleRequest: on the responder */
+    OCT_NATIVE_INSTALLED_UPLOAD_DATA    = 1u << 2, /* handleData: on the responder */
+    OCT_NATIVE_INSTALLED_INCOMING_INFO  = 1u << 3, /* initWithData:contentType: on the dataset */
+    OCT_NATIVE_INSTALLED_APPEND_STORAGE = 1u << 4, /* appendObjectData:... on the storage */
+    OCT_NATIVE_INSTALLED_APPEND_FOLDER  = 1u << 5, /* the same on the folder */
+} oct_native_installed_hook;
+/* Why a hook did not install, as far as the runtime could tell. */
+typedef enum oct_native_install_reason {
+    OCT_NATIVE_INSTALL_OK = 0,
+    OCT_NATIVE_INSTALL_NO_CLASS,      /* this ptpd has no such class */
+    OCT_NATIVE_INSTALL_NO_METHOD,     /* the class has no such method */
+    OCT_NATIVE_INSTALL_ENCODING,      /* the method's type encoding differs from the recorded one */
+    OCT_NATIVE_INSTALL_EXCHANGE,      /* adding or exchanging the implementation failed */
+    OCT_NATIVE_INSTALL_UNKNOWN,
+} oct_native_install_reason;
+
+typedef struct oct_native_install_report {
+    uint8_t  installed;               /* OCT_NATIVE_INSTALLED_* bits */
+    uint8_t  attempted;               /* the same bits, for hooks that were tried at all */
+    uint8_t  first_failure;           /* the bit of the first hook that failed, 0 for none */
+    uint8_t  reason;                  /* oct_native_install_reason for that failure */
+} oct_native_install_report;
+
+uint64_t   oct_native_install_pack(const oct_native_install_report *report);
+bool       oct_native_install_unpack(uint64_t word, oct_native_install_report *out);
+oct_status oct_native_install_publish(const oct_native_install_report *report);
+oct_status oct_native_install_read(oct_native_install_report *out);
+/* One sentence naming what installed and what did not, always terminated. */
+void       oct_native_install_describe(const oct_native_install_report *report, char *out, size_t capacity);
+const char *oct_native_installed_name(unsigned bit);
+
 #define OCT_NATIVE_TRAFFIC_NAME  "com.parv.octopus.native.traffic"
 #define OCT_NATIVE_TRAFFIC_VERSION 1u
 uint64_t   oct_native_traffic_pack(const oct_native_traffic *traffic);

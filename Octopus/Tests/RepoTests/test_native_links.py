@@ -319,8 +319,12 @@ class CameraOnlyChecks(unittest.TestCase):
         table = text[text.index("static Hook hooks[] = {"):]
         table = table[:table.index("};")]
         hooked = {m.group(1): "PTPVirtualCamera" for m in re.finditer(r"\(IMP\)(\w+)", table)}
-        for m in re.finditer(r'OCTRuntimeHook\("(\w+)",[^;]*?\(IMP\)(\w+)', text, re.S):
-            hooked.setdefault(m.group(2), m.group(1))
+        # Both call shapes: the plain hook, and hookRecorded, which takes the install-report bit
+        # first and the class second. A guard that knows only one shape silently stops checking.
+        for pattern in (r'OCTRuntimeHook\("(\w+)",[^;]*?\(IMP\)(\w+)',
+                        r'hookRecorded\(\s*\w+\s*,\s*"(\w+)",[^;]*?\(IMP\)(\w+)'):
+            for m in re.finditer(pattern, text, re.S):
+                hooked.setdefault(m.group(2), m.group(1))
         # appendObject is shared by the two upload hooks, so it inherits their classes.
         for caller in sorted(callers):
             with self.subTest(function=caller):
@@ -582,6 +586,7 @@ class EveryHookedClassHasAStandIn(unittest.TestCase):
         provider = strip_comments((NATIVE / "OctopusProvider.m").read_text())
         tests = strip_comments((NATIVE / "Tests/ProviderTests.m").read_text())
         hooked = set(re.findall(r'OCTRuntimeHook\("(\w+)"', provider))
+        hooked |= set(re.findall(r'hookRecorded\(\s*\w+\s*,\s*"(\w+)"', provider))
         self.assertTrue(hooked, "found no hooked classes; the scan is broken")
         declared = set(re.findall(r"@interface\s+(\w+)\s*:", tests))
         for name in sorted(hooked):
@@ -589,6 +594,30 @@ class EveryHookedClassHasAStandIn(unittest.TestCase):
                 self.assertIn(name, declared,
                     f"the provider hooks {name}, which ProviderTests.m declares no stand-in for, so "
                     f"that hook cannot install in the tests and whatever depends on it is refused.")
+
+
+class EnumsTheAppReadsAreNamed(unittest.TestCase):
+    """Swift imports an anonymous C enum's members as plain integers with no rawValue, so the app
+    cannot use them the way it uses every other flag. oct_native_runtime_flag carries a comment
+    recording that; the install-report flags were written anonymous and hit it again. Every OCT_
+    constant the Swift reads with .rawValue must come from a named enum."""
+
+    def test_every_flag_the_app_uses_comes_from_a_named_enum(self):
+        headers = "".join(strip_comments(p.read_text())
+                          for d in ("Octopus/Core", "Octopus/Protocol", "Octopus/Native")
+                          for p in sorted((ROOT / d).glob("*.h")))
+        named = set()
+        for body in re.findall(r"typedef\s+enum\s+\w*\s*\{(.*?)\}\s*\w+\s*;", headers, re.S):
+            named.update(re.findall(r"\b(OCT_[A-Z0-9_]+)\b", body))
+        used = set()
+        for path in sorted((ROOT / "Octopus/App").glob("*.swift")):
+            used.update(re.findall(r"\b(OCT_[A-Z0-9_]+)\.rawValue", strip_comments(path.read_text())))
+        self.assertTrue(used, "found no .rawValue uses; the scan is broken")
+        for name in sorted(used):
+            with self.subTest(constant=name):
+                self.assertIn(name, named,
+                    f"the app reads {name}.rawValue, but it is not a member of a named enum, so Swift "
+                    f"imports it as a plain integer with no rawValue.")
 
 
 if __name__ == "__main__":

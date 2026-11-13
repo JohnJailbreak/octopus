@@ -273,11 +273,11 @@ class ZipTests(unittest.TestCase):
 
     def test_python_reads_every_entry(self):
         with tempfile.TemporaryDirectory() as folder:
-            path = Path(folder) / 'octopus-diagnostics.zip'
+            path = Path(folder) / 'diagnostics.zip'
             self.assertEqual(subprocess.run([str(self.driver), str(path)]).returncode, 0)
             with zipfile.ZipFile(path) as archive:
                 self.assertIsNone(archive.testzip())  # every CRC matches
-                self.assertEqual(archive.namelist(), ['results.json', 'logs/octopus-debug.log', 'binary.bin',
+                self.assertEqual(archive.namelist(), ['results.json', 'logs/debug.log', 'binary.bin',
                                                       'empty.txt', 'caf\u00e9.txt'])
                 self.assertEqual(json.loads(archive.read('results.json')), {'ok': True})
                 self.assertEqual(archive.read('binary.bin'), bytes((i * 31 + 7) & 0xFF for i in range(70000)))
@@ -285,7 +285,7 @@ class ZipTests(unittest.TestCase):
                 self.assertTrue(archive.getinfo('caf\u00e9.txt').flag_bits & 0x800)  # UTF-8 name
                 self.assertEqual(archive.getinfo('empty.txt').date_time, (1980, 1, 1, 0, 0, 0))
                 self.assertEqual(archive.getinfo('results.json').date_time[:3], (2025, 11, 8))
-            self.assertEqual(sorted(p.name for p in Path(folder).iterdir()), ['octopus-diagnostics.zip'])
+            self.assertEqual(sorted(p.name for p in Path(folder).iterdir()), ['diagnostics.zip'])
 
     def test_the_archive_falls_back_when_the_preferred_folder_fails(self):
         """The iPhone's case: the app's temporary folder can't be created; the Octopus cache folder works."""
@@ -298,13 +298,13 @@ class ZipTests(unittest.TestCase):
                                  capture_output=True, text=True)
             self.assertEqual(run.returncode, 0, run.stdout)
             written, reasons = run.stdout.splitlines()[:2]
-            self.assertEqual(written, str(fallback / 'octopus-diagnostics.zip'))
+            self.assertEqual(written, str(fallback / 'diagnostics.zip'))
             self.assertIn(str(preferred), reasons)
             self.assertIn('Not a directory', reasons)
             with zipfile.ZipFile(written) as archive:
                 self.assertIsNone(archive.testzip())
                 self.assertEqual(len(archive.namelist()), 5)
-            self.assertEqual([p.name for p in fallback.iterdir()], ['octopus-diagnostics.zip'])
+            self.assertEqual([p.name for p in fallback.iterdir()], ['diagnostics.zip'])
 
     def test_every_refusal_is_reported_when_no_folder_works(self):
         with tempfile.TemporaryDirectory() as folder:

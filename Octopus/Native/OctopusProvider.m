@@ -399,12 +399,16 @@ static id deviceInfo(id self, SEL cmd) {
         for (unsigned i=0;i<count;i++) {
             NSMutableData *grownData=[NSMutableData dataWithLength:copy.length+2];
             size_t grown=0;
-            if (oct_native_device_info_add_operation(copy.bytes,copy.length,operations[i],
-                                                     grownData.mutableBytes,grownData.length,&grown)==1) {
+            int added=oct_native_device_info_add_operation(copy.bytes,copy.length,operations[i],
+                                                          grownData.mutableBytes,grownData.length,&grown);
+            if (added==1) {
                 grownData.length=grown;
                 copy=grownData;
-                OCTNativeProviderEvent("provider-advertised",operations[i],OCT_RC_OK);
             }
+            /* Zero means the host was already being told about it, which Apple does for
+             * DeleteObject: it is advertised either way, and reporting otherwise made 0.4.74 look
+             * as though nothing had been advertised at all. */
+            if (added>=0) OCTNativeProviderEvent("provider-advertised",operations[i],OCT_RC_OK);
         }
     }
     OCTNativeDataset *dataset=[OCTNativeDataset new];dataset.content=copy;dataset.original=base;
@@ -1034,6 +1038,39 @@ static void responderData(id self, SEL cmd, id packet) {
     ((void (*)(id,SEL,id))originalResponderData)(self, cmd, packet);
 }
 
+/* Every optional hook's outcome, published so an export can say which installed and why one did
+ * not. On 0.4.74 both responder hooks silently failed to install and the only visible symptom was
+ * that no write operation reached the host's list, which could as easily have been a dozen things. */
+static oct_native_install_report installReport;
+
+/* Classify a failure the way the runtime sees it, before asking for the hook, so the reason is
+ * specific rather than "it did not work". */
+static uint8_t hookFailureReason(const char *className, const char *selector, const char *encoding) {
+    Class cls = objc_getClass(className);
+    if (!cls) return OCT_NATIVE_INSTALL_NO_CLASS;
+    Method method = class_getInstanceMethod(cls, sel_registerName(selector));
+    if (!method) return OCT_NATIVE_INSTALL_NO_METHOD;
+    const char *found = method_getTypeEncoding(method);
+    if (!found || strcmp(found, encoding) != 0) return OCT_NATIVE_INSTALL_ENCODING;
+    return OCT_NATIVE_INSTALL_EXCHANGE;
+}
+
+/* Hook, and record the outcome against `bit`. */
+static BOOL hookRecorded(unsigned bit, const char *className, const char *selector,
+                         const char *encoding, IMP replacement, IMP *original, NSString **reason) {
+    installReport.attempted |= (uint8_t)bit;
+    if (OCTRuntimeHook(className, selector, encoding, replacement, original, reason)) {
+        installReport.installed |= (uint8_t)bit;
+        return YES;
+    }
+    if (installReport.first_failure == 0) {
+        installReport.first_failure = (uint8_t)bit;
+        installReport.reason = hookFailureReason(className, selector, encoding);
+    }
+    OCTNativeProviderEvent("provider-hook-failed", bit, OCT_RC_GENERAL_ERROR);
+    return NO;
+}
+
 static void installOptionalHooks(void) {
     NSString *why=nil;
     /* The upload path, in three parts: the name arrives with the ObjectInfo, and the bytes arrive at
@@ -1042,16 +1079,17 @@ static void installOptionalHooks(void) {
     /* The upload path proper: Apple's responder refuses SendObjectInfo and SendObject before any
      * storage is consulted, so these two are where an upload has to be taken over. Both are called
      * through performSelector:, so an exchanged implementation is what runs. */
-    BOOL onRequest = OCTRuntimeHook("PTPResponder","handleRequest:","@24@0:8@16",
-                                    (IMP)responderRequest,&originalResponderRequest,&why);
-    BOOL onData = OCTRuntimeHook("PTPResponder","handleData:","v24@0:8@16",
-                                 (IMP)responderData,&originalResponderData,&why);
-    BOOL named = OCTRuntimeHook("PTPObjectInfoDataset","initWithData:contentType:","@28@0:8@16i24",
-                                (IMP)incomingObjectInfo,&originalIncomingInfo,&why);
-    BOOL onStorage = OCTRuntimeHook("PTPStorage",
+    BOOL onRequest = hookRecorded(OCT_NATIVE_INSTALLED_UPLOAD_REQUEST,"PTPResponder","handleRequest:",
+                                  "@24@0:8@16",(IMP)responderRequest,&originalResponderRequest,&why);
+    BOOL onData = hookRecorded(OCT_NATIVE_INSTALLED_UPLOAD_DATA,"PTPResponder","handleData:",
+                               "v24@0:8@16",(IMP)responderData,&originalResponderData,&why);
+    BOOL named = hookRecorded(OCT_NATIVE_INSTALLED_INCOMING_INFO,"PTPObjectInfoDataset",
+                              "initWithData:contentType:","@28@0:8@16i24",
+                              (IMP)incomingObjectInfo,&originalIncomingInfo,&why);
+    BOOL onStorage = hookRecorded(OCT_NATIVE_INSTALLED_APPEND_STORAGE,"PTPStorage",
                                     "appendObjectData:forObjectFormatCode:inAssociation:withContentType:",
                                     "Q36@0:8@16S24I28I32",(IMP)appendOnStorage,&originalAppendStorage,&why);
-    BOOL onFolder = OCTRuntimeHook("PTPFolder",
+    BOOL onFolder = hookRecorded(OCT_NATIVE_INSTALLED_APPEND_FOLDER,"PTPFolder",
                                    "appendObjectData:forObjectFormatCode:inAssociation:withContentType:",
                                    "Q36@0:8@16S24I28I32",(IMP)appendOnFolder,&originalAppendFolder,&why);
     /* Both responder hooks are required: answering a request without receiving its data would
@@ -1067,13 +1105,15 @@ static void installOptionalHooks(void) {
     /* Recorded from the device: v28@0:8I16^S20, void with a uint32 handle and a response-code
      * pointer. OCTRuntimeHook checks that encoding before installing, so a method of a different
      * shape is left alone rather than called with the wrong arguments. */
-    if(OCTRuntimeHook("PTPVirtualCamera","deleteObjectWithObjectHandle:responseCode:","v28@0:8I16^S20",
+    if(hookRecorded(OCT_NATIVE_INSTALLED_DELETE,"PTPVirtualCamera","deleteObjectWithObjectHandle:responseCode:","v28@0:8I16^S20",
                       (IMP)deleteObject,&originalDelete,&why)) {
         atomic_store_explicit(&deleteHooked,true,memory_order_release);
         OCTNativeProviderEvent("provider-delete-hooked",0,OCT_RC_OK);
     } else {
         OCTNativeProviderEvent("provider-delete-unavailable",0,OCT_RC_OPERATION_NOT_SUPPORTED);
     }
+    /* Published so the export can say which hooks installed and why one did not. */
+    (void)oct_native_install_publish(&installReport);
 }
 
 /*

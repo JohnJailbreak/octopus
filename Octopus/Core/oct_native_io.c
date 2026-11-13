@@ -479,6 +479,86 @@ bool oct_native_runtime_unpack(uint64_t word, oct_native_runtime *out)
     return true;
 }
 
+uint64_t oct_native_install_pack(const oct_native_install_report *r)
+{
+    if (!r) return 0;
+    uint64_t word = (uint64_t)OCT_NATIVE_INSTALL_VERSION
+                  | (uint64_t)r->installed << 4
+                  | (uint64_t)r->attempted << 12
+                  | (uint64_t)r->first_failure << 20
+                  | (uint64_t)(r->reason & 0xFu) << 28;
+    return word | (uint64_t)lease_check(word) << 56;
+}
+
+bool oct_native_install_unpack(uint64_t word, oct_native_install_report *out)
+{
+    if (!out) return false;
+    memset(out, 0, sizeof *out);
+    if ((word & 0xFu) != OCT_NATIVE_INSTALL_VERSION) return false;
+    if ((uint8_t)(word >> 56) != lease_check(word & 0x00FFFFFFFFFFFFFFull)) return false;
+    out->installed = (uint8_t)(word >> 4);
+    out->attempted = (uint8_t)(word >> 12);
+    out->first_failure = (uint8_t)(word >> 20);
+    out->reason = (uint8_t)((word >> 28) & 0xFu);
+    return true;
+}
+
+const char *oct_native_installed_name(unsigned bit)
+{
+    switch (bit) {
+    case OCT_NATIVE_INSTALLED_DELETE: return "delete";
+    case OCT_NATIVE_INSTALLED_UPLOAD_REQUEST: return "upload request";
+    case OCT_NATIVE_INSTALLED_UPLOAD_DATA: return "upload data";
+    case OCT_NATIVE_INSTALLED_INCOMING_INFO: return "incoming ObjectInfo";
+    case OCT_NATIVE_INSTALLED_APPEND_STORAGE: return "storage append";
+    case OCT_NATIVE_INSTALLED_APPEND_FOLDER: return "folder append";
+    }
+    return "unknown";
+}
+
+static const char *install_reason_name(uint8_t reason)
+{
+    switch (reason) {
+    case OCT_NATIVE_INSTALL_NO_CLASS: return "this ptpd has no such class";
+    case OCT_NATIVE_INSTALL_NO_METHOD: return "the class has no such method";
+    case OCT_NATIVE_INSTALL_ENCODING: return "the method's type differs from the recorded one";
+    case OCT_NATIVE_INSTALL_EXCHANGE: return "the implementation could not be exchanged";
+    case OCT_NATIVE_INSTALL_UNKNOWN: return "the runtime did not say why";
+    }
+    return "no failure";
+}
+
+void oct_native_install_describe(const oct_native_install_report *r, char *out, size_t capacity)
+{
+    if (!out || capacity == 0) return;
+    if (!r || r->attempted == 0) { snprintf(out, capacity, "No optional hooks were attempted."); return; }
+    char installed[160] = "", missing[160] = "";
+    size_t i_used = 0, m_used = 0;
+    for (unsigned bit = 1; bit <= (unsigned)OCT_NATIVE_INSTALLED_APPEND_FOLDER; bit <<= 1) {
+        if (!(r->attempted & bit)) continue;
+        const char *name = oct_native_installed_name(bit);
+        if (r->installed & bit) {
+            if (i_used < sizeof installed)
+                i_used += (size_t)snprintf(installed + i_used, sizeof installed - i_used,
+                                           "%s%s", i_used ? ", " : "", name);
+        } else if (m_used < sizeof missing) {
+            m_used += (size_t)snprintf(missing + m_used, sizeof missing - m_used,
+                                       "%s%s", m_used ? ", " : "", name);
+        }
+    }
+    /* The upload pair is what matters most: without both, no upload can be taken over at all. */
+    const unsigned pair = OCT_NATIVE_INSTALLED_UPLOAD_REQUEST | OCT_NATIVE_INSTALLED_UPLOAD_DATA;
+    const char *verdict = (r->installed & pair) == pair ? " Uploads can be received."
+                        : " Uploads cannot be received without both upload hooks.";
+    if (m_used == 0) {
+        snprintf(out, capacity, "Installed: %s.%s", installed, verdict);
+    } else {
+        snprintf(out, capacity, "Installed: %s. Not installed: %s (%s).%s",
+                 i_used ? installed : "none", missing,
+                 install_reason_name(r->reason), verdict);
+    }
+}
+
 uint64_t oct_native_traffic_pack(const oct_native_traffic *t)
 {
     if (!t) return 0;
@@ -890,6 +970,23 @@ oct_status oct_native_runtime_publish(const oct_native_runtime *runtime)
     return notify_write(OCT_NATIVE_RUNTIME_NAME, &token, oct_native_runtime_pack(runtime));
 }
 
+oct_status oct_native_install_publish(const oct_native_install_report *report)
+{
+    static int token = -1;
+    if (!report) return OCT_E_INVALID_ARGUMENT;
+    return notify_write(OCT_NATIVE_INSTALL_NAME, &token, oct_native_install_pack(report));
+}
+
+oct_status oct_native_install_read(oct_native_install_report *out)
+{
+    if (!out) return OCT_E_INVALID_ARGUMENT;
+    memset(out, 0, sizeof *out);
+    uint64_t word = 0;
+    oct_status status = notify_read(OCT_NATIVE_INSTALL_NAME, &word);
+    if (status != OCT_OK) return status;
+    return oct_native_install_unpack(word, out) ? OCT_OK : OCT_E_STATE;
+}
+
 oct_status oct_native_traffic_publish(const oct_native_traffic *traffic)
 {
     static int token = -1;
@@ -990,6 +1087,16 @@ oct_status oct_native_hooks_publish(const oct_native_hook_report *report)
 oct_status oct_native_traffic_publish(const oct_native_traffic *traffic)
 {
     (void)traffic;
+    return OCT_E_UNSUPPORTED;
+}
+oct_status oct_native_install_publish(const oct_native_install_report *report)
+{
+    (void)report;
+    return OCT_E_UNSUPPORTED;
+}
+oct_status oct_native_install_read(oct_native_install_report *out)
+{
+    if (out) memset(out, 0, sizeof *out);
     return OCT_E_UNSUPPORTED;
 }
 oct_status oct_native_traffic_read(oct_native_traffic *out)
