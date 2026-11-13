@@ -155,7 +155,74 @@ static void test_capture_format_append(void)
                                                      sizeof output, &produced) == 0);
 }
 
+/* One array of a DeviceInfo dataset, found by walking everything before it, as the provider test
+ * does, so a value is checked by the array it belongs to rather than by a byte position. */
+static int info_has(const unsigned char *b, size_t n, unsigned index, unsigned value)
+{
+    size_t p = 2 + 4 + 2;
+    if (p >= n) return 0;
+    p += 1 + (size_t)b[p] * 2;
+    p += 2;
+    for (unsigned i = 0; ; i++) {
+        if (p + 4 > n) return 0;
+        size_t c = (size_t)b[p] | (size_t)b[p+1] << 8 | (size_t)b[p+2] << 16 | (size_t)b[p+3] << 24;
+        if (i == index) {
+            for (size_t k = 0; k < c && p + 4 + 2*k + 1 < n; k++)
+                if ((unsigned)(b[p + 4 + 2*k] | b[p + 5 + 2*k] << 8) == value) return 1;
+            return 0;
+        }
+        p += 4 + c * 2;
+    }
+}
+
+/* The provider's whole append sequence on the provider test's stand-in, for a read-only store and
+ * a writable one. The provider test pinned this dataset by length and byte offsets and broke when
+ * events began to be advertised for every store, which moved the formats after them; it runs only
+ * on macOS. This runs the same functions here and states what each array must hold. */
+static void test_provider_sequence(void)
+{
+    const unsigned char apple[] = {0x64,0,6,0,0,0,0x64,0, 0, 0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0,
+                                   1,0,0,0, 0x01,0x38, 0,0,0,0};
+    unsigned char a[160], b[160];
+    size_t n = sizeof apple, out = 0;
+    memcpy(a, apple, n);
+    assert(oct_native_device_info_add_format(a, n, 0x3004, b, sizeof b, &out) == 1);
+    memcpy(a, b, out); n = out;
+    const unsigned short events[] = {0x4004, 0x4005, 0x4008, 0x4002};
+    for (int i = 0; i < 4; i++) {
+        assert(oct_native_device_info_add_event(a, n, events[i], b, sizeof b, &out) == 1);
+        memcpy(a, b, out); n = out;
+    }
+    /* Read-only: Apple's 37 bytes, the text format, four events, and nothing that writes. */
+    assert(n == 37 + 2 + 8);
+    assert(info_has(a, n, 4, 0x3801) && info_has(a, n, 4, 0x3004));
+    for (int i = 0; i < 4; i++) assert(info_has(a, n, 1, events[i]));
+    assert(!info_has(a, n, 0, 0x100C) && !info_has(a, n, 0, 0x100D) && !info_has(a, n, 0, 0x100B));
+    assert(!info_has(a, n, 4, 0x3000) && !info_has(a, n, 4, 0x3001));
+    /* Writable: the three operations, and Undefined and Association in both format lists. */
+    const unsigned short ops[] = {0x100B, 0x100C, 0x100D};
+    for (int i = 0; i < 3; i++) {
+        assert(oct_native_device_info_add_operation(a, n, ops[i], b, sizeof b, &out) == 1);
+        memcpy(a, b, out); n = out;
+    }
+    for (int i = 0; i < 2; i++) {
+        unsigned short f = i ? 0x3001 : 0x3000;
+        assert(oct_native_device_info_add_format(a, n, f, b, sizeof b, &out) == 1);
+        memcpy(a, b, out); n = out;
+        assert(oct_native_device_info_add_capture_format(a, n, f, b, sizeof b, &out) == 1);
+        memcpy(a, b, out); n = out;
+    }
+    assert(n == 47 + 6 + 8);
+    for (int i = 0; i < 3; i++) assert(info_has(a, n, 0, ops[i]));
+    assert(info_has(a, n, 3, 0x3000) && info_has(a, n, 3, 0x3001));
+    assert(info_has(a, n, 4, 0x3000) && info_has(a, n, 4, 0x3001));
+    /* What was there before is still there, wherever it now sits. */
+    assert(info_has(a, n, 4, 0x3801) && info_has(a, n, 4, 0x3004));
+    for (int i = 0; i < 4; i++) assert(info_has(a, n, 1, events[i]));
+}
+
 int main(void){
+    test_provider_sequence();
     test_capture_format_append();
     test_event_append();
     test_operation_append();

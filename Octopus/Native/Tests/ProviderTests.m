@@ -96,6 +96,32 @@ bool OCTNativeSendEvent(uint16_t code, uint32_t parameter) {
     return false;
 }
 
+/* One array of a DeviceInfo dataset: its element count and where its elements start. Walks the
+ * fixed header, the vendor description string and each array before the one asked for, so nothing
+ * depends on how long anything earlier has grown. */
+static BOOL infoArray(const uint8_t *b, size_t n, unsigned index, uint32_t *count, size_t *at) {
+    size_t p = 2 + 4 + 2;                    /* StandardVersion, VendorExtensionID, its version */
+    if (p >= n) return NO;
+    p += 1 + (size_t)b[p] * 2;               /* VendorExtensionDesc: a length, then UTF-16 units */
+    p += 2;                                  /* FunctionalMode */
+    for (unsigned i = 0; ; i++) {
+        if (p + 4 > n) return NO;
+        uint32_t c = (uint32_t)b[p] | (uint32_t)b[p+1] << 8 | (uint32_t)b[p+2] << 16 | (uint32_t)b[p+3] << 24;
+        if (i == index) { *count = c; *at = p + 4; return p + 4 + (size_t)c * 2 <= n; }
+        p += 4 + (size_t)c * 2;
+    }
+}
+
+/* Whether that array lists a value. */
+static BOOL infoHas(NSData *d, unsigned index, uint16_t value) {
+    uint32_t count = 0; size_t at = 0;
+    if (!infoArray(d.bytes, d.length, index, &count, &at)) return NO;
+    const uint8_t *b = d.bytes;
+    for (uint32_t i = 0; i < count; i++)
+        if ((uint16_t)(b[at + 2*i] | b[at + 2*i + 1] << 8) == value) return YES;
+    return NO;
+}
+
 /* The last handle Apple's own delete was asked about, or zero. */
 static uint32_t lastAppleDelete;
 /* The association Apple's own upload receiver was asked about, or zero: an upload into Apple's own
@@ -209,8 +235,8 @@ int main(void) { @autoreleasepool {
     assert(sentEvents[1]==OCT_EVENT_DEVICE_INFO_CHANGED);
     /* Retries only add: no second removal, no second DeviceInfoChanged, so the drive does not flicker. */
     sentEventCount=0;
-    /* Opening the store announced it. No camera has been seen yet, so it went the observer's way,
-     * the fallback; a host that has not reached a camera hook has not enumerated either. */
+    /* The timer's announcement named our storage. No camera has been seen yet, so it went the
+     * observer's way, the fallback; a host that has not reached a camera hook has not enumerated. */
     assert(lastAnnouncedStorage==OCT_NATIVE_STORAGE_ID);
     /* And it keeps asking to be announced until a host reads the storage list. */
     lastAnnouncedStorage=0;
@@ -304,9 +330,25 @@ int main(void) { @autoreleasepool {
     id info=[camera deviceInfoDataset];
     assert(object_getClass(info)!=[PTPDeviceInfoDataset class]);         /* the provider's copy */
     NSData *infoBody=[info content];
-    assert(infoBody.length==39);
-    const uint8_t *ib=infoBody.bytes;
-    assert(ib[27]==2 && (ib[31]|ib[32]<<8)==0x3801 && (unsigned)(ib[33]|ib[34]<<8)==OCT_FORMAT_TEXT); /* JPEG kept, text added */
+    /* Read array by array, not by byte position. Everything the provider adds moves what follows,
+     * and fixed offsets broke the moment events were advertised for every store: they sit before
+     * the formats and pushed them eight bytes along. Arrays: 0 operations, 1 events, 2 device
+     * properties, 3 capture formats, 4 playback formats. */
+    assert(infoHas(infoBody,4,0x3801) && infoHas(infoBody,4,OCT_FORMAT_TEXT));   /* JPEG kept, text added */
+    /* The events a host must expect to act on an announcement, offered for this read-only store
+     * too: appearing without the cable pulled matters whether or not the drive can be written. */
+    assert(infoHas(infoBody,1,OCT_EVENT_STORE_ADDED) && infoHas(infoBody,1,OCT_EVENT_STORE_REMOVED));
+    assert(infoHas(infoBody,1,OCT_EVENT_DEVICE_INFO_CHANGED) && infoHas(infoBody,1,OCT_EVENT_OBJECT_ADDED));
+    /* And nothing that writes. The sample tree accepts no changes, so no upload or delete is offered
+     * and neither a file nor a folder is listed as creatable: a host offered one would fail part-way
+     * through a copy. Never asserted before, so a write path leaking into a read-only store would
+     * have gone unnoticed. */
+    assert(!infoHas(infoBody,0,OCT_OP_SEND_OBJECT_INFO) && !infoHas(infoBody,0,OCT_OP_SEND_OBJECT));
+    assert(!infoHas(infoBody,0,OCT_OP_DELETE_OBJECT));
+    assert(!infoHas(infoBody,4,OCT_FORMAT_UNDEFINED) && !infoHas(infoBody,4,OCT_FORMAT_ASSOCIATION));
+    assert(!infoHas(infoBody,3,OCT_FORMAT_UNDEFINED) && !infoHas(infoBody,3,OCT_FORMAT_ASSOCIATION));
+    /* The size follows: Apple's 37 bytes, two for the text format, eight for four events. */
+    assert(infoBody.length==37+2+8);
     assert([info respondsToSelector:@selector(standardVersion)]);
     assert([info standardVersion]==100);                                  /* delegated to Apple's object */
     /* Bulk object info for our storage: type 3 carries an 8-byte count, then one record each. */
