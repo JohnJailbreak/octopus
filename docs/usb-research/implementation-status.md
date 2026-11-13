@@ -257,3 +257,54 @@ So the next step is an experiment, not an implementation: record what
 `handleRequest:` receives and returns for a SendObjectInfo aimed at Apple's own
 storage, and what `handleBulkData:result:` sees during the data phase, before any
 attempt to answer one. The observer can do that with the hooks it already has.
+
+## Why an upload hangs, from Apple's own code (0.4.68)
+
+Established on hardware on 0.4.68, with USB access enabled before plugging in: Windows offered
+the drop ("+ Copy"), sent SendObjectInfo once, and stalled at "Copying..." with no progress. The
+traffic report says ptpd never answered that request, and the write report says the incoming
+ObjectInfo was never parsed (initWithData:contentType: never fired). The write probe, run inside
+ptpd, says files can be created in /var/tmp, /var/mobile/Media and DCIM, so the sandbox is not the
+obstacle. Windows also read DeviceInfo twice: DeviceInfoChanged sent through the transport, unlike
+the responder hand-off in 0.4.67, does make it re-read its capabilities.
+
+From the decompiled PTPResponder handleRequest: (0x100023384, 1304 bytes, in evidence/ptpd):
+
+- It reads the operation code and dispatches through three jump tables: 0x1001-0x1023, 0x9001-0x9010
+  and 0x9801-0x9805. Everything else goes to the default.
+- SendObjectInfo 0x100C and SendObject 0x100D share one destination with about twenty other
+  operations Apple does not implement: handleUnsupportedRequest:.
+- handleRequest: returns [NSNumber numberWithBool:]. It is NO on every path except two: Apple's
+  vendor operations 0x900B handleSetHostMediaCapabilities: and 0x900E
+  handleSetHostSupportedFormats:, which return their handler's BOOL. Both are operations with a
+  host-to-device data phase, so the returned value tells the transport whether to read one next.
+  For SendObjectInfo it is NO, so the ObjectInfo Windows sends is never read, and the unsupported
+  path does not answer while a data phase is outstanding: the host waits indefinitely.
+- PTPResponder handleStartData: (0x100023994) is 4 bytes, one instruction: an empty stub.
+  handleData: (0x100023998) is 320 bytes and is presumably where the vendor operations' data is
+  taken; its body is not yet decompiled here.
+
+The upload handler therefore follows Apple's own template for 0x900B and 0x900E:
+
+1. In handleRequest:, for SendObjectInfo whose storage parameter is Octopus's, record the pending
+   transaction (its ID, the parent in parameter 2) and return @YES without calling Apple's, so the
+   transport reads the data phase. SendObject follows an accepted SendObjectInfo the same way.
+2. In handleData:, for a packet whose transaction is pending and ours, take [packet data]; forward
+   every other packet to Apple's untouched.
+3. When the data is complete, answer through the transport's sendResponse: with a
+   PTPOperationResponsePacket: for SendObjectInfo, OK with storage, parent and the new handle; for
+   SendObject, OK once the bytes are written, or the store's refusal.
+
+Encodings recorded from the device:
+
+- PTPResponder handleRequest: @24@0:8@16; handleStartData: and handleData: v24@0:8@16;
+  handleUnsupportedRequest: v24@0:8@16; sentData:responseCode: v32@0:8@16@24;
+  sendRestartSessionEvent v16@0:8, which also gives a way to make a host restart its session.
+- PTPDeviceUSBTransport sendResponse: B24@0:8@16.
+- PTPOperationResponsePacket initWithResponseCode:transactionID:parameter1:parameter2:parameter3:
+  @36@0:8S16I20I24I28I32; initWithResponseCode:transactionID: @24@0:8S16I20.
+- PTPDataPacket data @16@0:8; bytesTransferred and bufferSize q16@0:8.
+
+Still unknown before implementing: whether handleData: is called once per data phase or once per
+chunk, which decides how a large file is assembled; and what handleStartData: is given, which may
+carry the total length. Decompiling handleData: from the device's ptpd answers both.
