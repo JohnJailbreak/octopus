@@ -77,6 +77,29 @@ static __thread uint32_t currentTransaction;
 static IMP originalBulk,originalRequest,originalResponse,originalData,originalConnected,originalStop;
 static IMP requestOp,requestTID,responseCode,responseTID,dataTID,transportConnected;
 static IMP requestParameterCount,requestParameter;
+
+/*
+ * The transport and responder a host is talking to, for sending it events. Captured in every hook
+ * that runs on them, not only setConnected:, which on 0.4.66 left the transport unknown: the drive
+ * was announced through the camera, and DeviceInfoChanged, which only these can send, silently
+ * never went. bulk, response and data run on the transport for every command, and request on
+ * Apple's responder, so whichever runs first is enough.
+ *
+ * Weak, because both are ptpd's and may be released at any time. The raw pointers only make the
+ * capture cheap: a weak store takes the runtime's lock, so it is done when the object changes, not
+ * on every command.
+ */
+static __weak id usbTransport;
+static __weak id ptpResponder;
+static void *seenTransport,*seenResponder;
+static atomic_bool sessionUp;
+
+static void captureTransport(id transport){
+    if((__bridge void *)transport!=seenTransport){seenTransport=(__bridge void *)transport;usbTransport=transport;}
+}
+static void captureResponder(id responder){
+    if((__bridge void *)responder!=seenResponder){seenResponder=(__bridge void *)responder;ptpResponder=responder;}
+}
 static void *transportPointer;
 static uint64_t transportToken;
 static NSString *compatibility=@"Not checked", *hookState=@"Not installed", *providerState=@"Not installed";
@@ -155,7 +178,9 @@ void OCTNativeProviderEvent(const char *event,uint32_t handle,int32_t result){
         if(handle==OCT_EVENT_STORE_ADDED)announceFlags|=OCT_NATIVE_ANNOUNCE_EVENT;
         else if(handle==OCT_EVENT_DEVICE_INFO_CHANGED)announceFlags|=OCT_NATIVE_ANNOUNCE_DEVICE_INFO;
     }
-    else if(!strcmp(event,"provider-event-failed"))announceFlags|=OCT_NATIVE_ANNOUNCE_FAILED;
+    else if(!strncmp(event,"provider-event-",15))announceFlags|=OCT_NATIVE_ANNOUNCE_FAILED;
+    /* A host that read DeviceInfo before the provider was serving, and so holds Apple's own. */
+    if(!strcmp(event,"provider-device-info-early"))hookReport.early_device_info=true;
     providerEvents++;lastProviderEvent=[NSString stringWithFormat:@"%s handle=%u result=%d",event,handle,result];
     if(!providerJournal)providerJournal=[NSMutableArray array];
     if(providerJournal.count==64)[providerJournal removeObjectAtIndex:0];
@@ -172,6 +197,7 @@ static uint64_t tokenFor(id transport){
 }
 static bool packetIs(id packet,const char *name){return packet&&object_getClass(packet)==objc_getClass(name);}
 static bool bulk(id self,SEL cmd,uint64_t bytes,int32_t result){
+    captureTransport(self);
     uint64_t previous=usbScope,scope=0;
     if(authorized()){
         // Read the verified native connection property only during a real bulk
@@ -187,6 +213,7 @@ static bool bulk(id self,SEL cmd,uint64_t bytes,int32_t result){
     @finally{usbScope=previous;pthread_mutex_lock(&lock);oct_native_receive_end(&journal,scope);pthread_mutex_unlock(&lock);}
 }
 static id request(id self,SEL cmd,id packet){
+    captureResponder(self);
     uint16_t previousOp=currentOperation;uint32_t previousTransaction=currentTransaction;
     currentOperation=0;currentTransaction=0;
     if(authorized()&&usbScope&&packetIs(packet,"PTPOperationRequestPacket")){
@@ -215,6 +242,7 @@ static id request(id self,SEL cmd,id packet){
     @finally{currentOperation=previousOp;currentTransaction=previousTransaction;}
 }
 static bool response(id self,SEL cmd,id packet){
+    captureTransport(self);
     bool accepted=((bool(*)(id,SEL,id))originalResponse)(self,cmd,packet);
     if(authorized()&&packetIs(packet,"PTPOperationResponsePacket")){
         uint32_t tid=((uint32_t(*)(id,SEL))responseTID)(packet,sel_registerName("transactionID"));
@@ -234,6 +262,7 @@ static bool response(id self,SEL cmd,id packet){
     return accepted;
 }
 static void data(id self,SEL cmd,id packet){
+    captureTransport(self);
     if(authorized()&&packetIs(packet,"PTPDataPacket")){
         uint32_t tid=((uint32_t(*)(id,SEL))dataTID)(packet,sel_registerName("transactionID"));
         pthread_mutex_lock(&lock);oct_native_data_submitted(&journal,tokenFor(self),tid,0);pthread_mutex_unlock(&lock);
@@ -251,7 +280,6 @@ static void data(id self,SEL cmd,id packet){
  * Weak, because the transport belongs to ptpd and may be released at any time; a strong reference
  * would keep a dead transport alive and sending to it would be worse than not sending at all.
  */
-static __weak id usbTransport;
 
 /*
  * Apple's two methods for sending an event, declared so the compiler sees them as what they are.
@@ -268,11 +296,10 @@ static __weak id usbTransport;
                        parameter1:(unsigned int)parameter;
 - (BOOL)sendEvent:(id)event;
 @end
-static atomic_bool sessionUp;
 
 static void connected(id self,SEL cmd,bool value){
     ((void(*)(id,SEL,bool))originalConnected)(self,cmd,value);
-    usbTransport=self;
+    captureTransport(self);
     atomic_store(&sessionUp,value);
     if(authorized()){pthread_mutex_lock(&lock);oct_native_connect(&journal,tokenFor(self),value);pthread_mutex_unlock(&lock);}
 }
@@ -294,20 +321,54 @@ bool OCTNativeAnnounceStorage(uint32_t storage){
  * host reads DeviceInfo once per session, so a phone plugged in before USB access was enabled had
  * already told it no uploads were possible, and only this makes it read the list again. */
 bool OCTNativeSendEvent(uint16_t code,uint32_t parameter){
-    id transport=usbTransport;
-    if(!transport||!atomic_load(&sessionUp))return false;
+    /* Every way this can fail is recorded. Each used to return false without a word, so on 0.4.66
+     * DeviceInfoChanged never went and nothing said why. */
     Class packet=objc_getClass("PTPEventPacket");
-    if(!packet)return false;
-    if(![packet instancesRespondToSelector:@selector(initWithEventCode:transactionID:parameter1:)])return false;
-    if(![transport respondsToSelector:@selector(sendEvent:)])return false;
+    if(!packet||![packet instancesRespondToSelector:@selector(initWithEventCode:transactionID:parameter1:)]){
+        OCTNativeProviderEvent("provider-event-no-class",code,OCT_RC_GENERAL_ERROR);
+        return false;
+    }
+    id transport=usbTransport;
+    id responder=ptpResponder;
+    if(!transport&&!responder){
+        OCTNativeProviderEvent("provider-event-no-transport",code,OCT_RC_GENERAL_ERROR);
+        return false;
+    }
+    /* Whether a session is up, asked of the transport itself through Apple's own getter rather than
+     * trusted from the last setConnected: seen, which may predate the hooks. */
+    bool up=transport&&transportConnected
+        ?((bool(*)(id,SEL))transportConnected)(transport,sel_registerName("connected"))
+        :atomic_load(&sessionUp);
+    if(!up&&!responder){
+        OCTNativeProviderEvent("provider-event-no-session",code,OCT_RC_SESSION_NOT_OPEN);
+        return false;
+    }
     /* Transaction zero: an event outside any transaction, which is what a storage change is. */
-    id event=[[packet alloc] initWithEventCode:(unsigned short)code
-                                 transactionID:0u parameter1:parameter];
-    if(!event)return false;
-    bool ok=[transport sendEvent:event];
-    OCTNativeProviderEvent(ok?"provider-event-sent":"provider-event-failed",code,
-                           ok?OCT_RC_OK:OCT_RC_GENERAL_ERROR);
-    return ok;
+    id event=[[packet alloc] initWithEventCode:(unsigned short)code transactionID:0u parameter1:parameter];
+    if(!event){
+        OCTNativeProviderEvent("provider-event-no-packet",code,OCT_RC_GENERAL_ERROR);
+        return false;
+    }
+    /* Apple's responder first: it is what sends every event Apple sends, through whichever transport
+     * is current. Its sendEvent: returns nothing, v24@0:8@16, unlike the transport's B24, so it is
+     * called through its own implementation with that type rather than through a declaration that
+     * would read a return value it never sets. */
+    if(responder&&[responder respondsToSelector:@selector(sendEvent:)]){
+        IMP send=[responder methodForSelector:@selector(sendEvent:)];
+        if(send){
+            ((void(*)(id,SEL,id))send)(responder,@selector(sendEvent:),event);
+            OCTNativeProviderEvent("provider-event-sent",code,OCT_RC_OK);
+            return true;
+        }
+    }
+    if(transport&&up&&[transport respondsToSelector:@selector(sendEvent:)]){
+        bool ok=[transport sendEvent:event];
+        OCTNativeProviderEvent(ok?"provider-event-sent":"provider-event-refused",code,
+                               ok?OCT_RC_OK:OCT_RC_GENERAL_ERROR);
+        return ok;
+    }
+    OCTNativeProviderEvent(up?"provider-event-no-sender":"provider-event-no-session",code,OCT_RC_GENERAL_ERROR);
+    return false;
 }
 static void stop(id self,SEL cmd){
     pthread_mutex_lock(&lock);oct_native_connect(&journal,tokenFor(self),false);pthread_mutex_unlock(&lock);

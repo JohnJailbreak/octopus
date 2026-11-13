@@ -1014,32 +1014,52 @@ static void test_write_verdict(void)
 {
     char text[256];
     const uint8_t hooks = OCT_NATIVE_WRITE_DELETE_HOOKED | OCT_NATIVE_WRITE_UPLOAD_HOOKED;
-    oct_native_write_verdict(0, text, sizeof text);
+    { oct_native_hook_report r_ = { .writes = (uint8_t)(0) }; oct_native_write_verdict(&r_, text, sizeof text); }
     CHECK(strstr(text, "No write hooks") != NULL);
     /* The 0.4.58 case: hooks in place, store still read-only when the host asked. */
-    oct_native_write_verdict(hooks, text, sizeof text);
+    { oct_native_hook_report r_ = { .writes = (uint8_t)(hooks) }; oct_native_write_verdict(&r_, text, sizeof text); }
     CHECK(strstr(text, "read-only when the computer read") != NULL);
-    oct_native_write_verdict(hooks | OCT_NATIVE_WRITE_STORE_WRITABLE, text, sizeof text);
+    { oct_native_hook_report r_ = { .writes = (uint8_t)(hooks | OCT_NATIVE_WRITE_STORE_WRITABLE) }; oct_native_write_verdict(&r_, text, sizeof text); }
     CHECK(strstr(text, "no write operation reached") != NULL);
-    oct_native_write_verdict(hooks | OCT_NATIVE_WRITE_STORE_WRITABLE | OCT_NATIVE_WRITE_ADVERTISED, text, sizeof text);
+    { oct_native_hook_report r_ = { .writes = (uint8_t)(hooks | OCT_NATIVE_WRITE_STORE_WRITABLE | OCT_NATIVE_WRITE_ADVERTISED) }; oct_native_write_verdict(&r_, text, sizeof text); }
     CHECK(strstr(text, "none reached Octopus") != NULL);
     /* Delete hooked, uploads not: says so rather than blaming timing. */
-    oct_native_write_verdict(OCT_NATIVE_WRITE_DELETE_HOOKED | OCT_NATIVE_WRITE_STORE_WRITABLE |
-                             OCT_NATIVE_WRITE_ADVERTISED, text, sizeof text);
+    { oct_native_hook_report r_ = { .writes = (uint8_t)(OCT_NATIVE_WRITE_DELETE_HOOKED | OCT_NATIVE_WRITE_STORE_WRITABLE |
+                             OCT_NATIVE_WRITE_ADVERTISED) }; oct_native_write_verdict(&r_, text, sizeof text); }
     CHECK(strstr(text, "uploads are not hooked") != NULL);
     /* Further along, the furthest step reached decides, whatever else is set. */
-    oct_native_write_verdict(hooks | OCT_NATIVE_WRITE_NAMED, text, sizeof text);
+    { oct_native_hook_report r_ = { .writes = (uint8_t)(hooks | OCT_NATIVE_WRITE_NAMED) }; oct_native_write_verdict(&r_, text, sizeof text); }
     CHECK(strstr(text, "bytes never reached") != NULL);
-    oct_native_write_verdict(hooks | OCT_NATIVE_WRITE_NAMED | OCT_NATIVE_WRITE_RECEIVED, text, sizeof text);
+    { oct_native_hook_report r_ = { .writes = (uint8_t)(hooks | OCT_NATIVE_WRITE_NAMED | OCT_NATIVE_WRITE_RECEIVED) }; oct_native_write_verdict(&r_, text, sizeof text); }
     CHECK(strstr(text, "were not written") != NULL);
-    oct_native_write_verdict(0xFF, text, sizeof text);
+    { oct_native_hook_report r_ = { .writes = (uint8_t)(0xFF) }; oct_native_write_verdict(&r_, text, sizeof text); }
     CHECK(strstr(text, "received and written") != NULL);
     CHECK(strstr(text, "A delete was served") != NULL);
+    /* The 0.4.66 case: hooks in place, the host asked for DeviceInfo before Octopus was serving.
+     * That is not a store that was read-only, and the sentence must not say it was. */
+    { oct_native_hook_report r_ = { .writes = hooks, .early_device_info = true };
+      oct_native_write_verdict(&r_, text, sizeof text); }
+    CHECK(strstr(text, "before Octopus was serving") != NULL);
+    CHECK(strstr(text, "DeviceInfoChanged") != NULL);
+    CHECK(strstr(text, "store was read-only") == NULL);
+    /* Once the store was writable when asked, the early read no longer decides it. */
+    { oct_native_hook_report r_ = { .writes = (uint8_t)(hooks | OCT_NATIVE_WRITE_STORE_WRITABLE | OCT_NATIVE_WRITE_ADVERTISED),
+                                    .early_device_info = true };
+      oct_native_write_verdict(&r_, text, sizeof text); }
+    CHECK(strstr(text, "none reached Octopus") != NULL);
+    /* The bit travels in the word, and the word without it reads as false. */
+    { oct_native_hook_report r_ = { .early_device_info = true, .writes = 0x3 }, o_;
+      CHECK(oct_native_hooks_unpack(oct_native_hooks_pack(&r_), &o_));
+      CHECK(o_.early_device_info); CHECK_EQ(o_.writes, 0x3u);
+      r_.early_device_info = false;
+      CHECK(oct_native_hooks_unpack(oct_native_hooks_pack(&r_), &o_));
+      CHECK(!o_.early_device_info);
+      CHECK(!oct_native_hooks_unpack(oct_native_hooks_pack(&r_) ^ (1ull << 15), &o_)); }
     /* Bounded and terminated however small the buffer. */
     char tiny[8];
-    oct_native_write_verdict(0, tiny, sizeof tiny);
+    { oct_native_hook_report r_ = { .writes = (uint8_t)(0) }; oct_native_write_verdict(&r_, tiny, sizeof tiny); }
     CHECK_EQ(strlen(tiny), 7u);
-    oct_native_write_verdict(0, NULL, 16);   /* tolerated */
+    oct_native_write_verdict(NULL, NULL, 16);   /* tolerated */
 }
 
 /* The traffic word and the sentence it becomes. */
@@ -1175,6 +1195,7 @@ static void test_write_probe(void)
     /* The words the report turns into, for each case. */
     oct_native_root_report report = {0};
     CHECK(strcmp(oct_native_root_write_name(&report, OCT_NATIVE_ROOT_SYSTEM), "not probed") == 0);
+    report.write_probed = true;
     report.creatable = (uint8_t)(1u << OCT_NATIVE_ROOT_TMP);
     report.read_only = (uint8_t)(1u << OCT_NATIVE_ROOT_SYSTEM);
     report.create_refused = (uint8_t)(1u << OCT_NATIVE_ROOT_DCIM);
@@ -1197,6 +1218,17 @@ static void test_write_probe(void)
     oct_native_root_report older = { .openable = 0x1E, .listable = 0x1A };
     CHECK(oct_native_roots_unpack(oct_native_roots_pack(&older), &out));
     CHECK(strcmp(oct_native_root_write_name(&out, OCT_NATIVE_ROOT_TMP), "not probed") == 0);
+    /* Probed, with nothing classified: "not permitted", not "not probed". Before the probed bit the
+     * two were indistinguishable, which is how 0.4.66 said "not probed" for every root. */
+    oct_native_root_report ran = { .write_probed = true };
+    CHECK(oct_native_roots_unpack(oct_native_roots_pack(&ran), &out));
+    CHECK(out.write_probed);
+    CHECK(strcmp(oct_native_root_write_name(&out, OCT_NATIVE_ROOT_TMP), "not permitted") == 0);
+    CHECK(!oct_native_roots_unpack(oct_native_roots_pack(&ran) ^ (1ull << 4), &out));
+    /* And probing for real sets it, whatever the roots answer. */
+    oct_native_root_report real = {0};
+    oct_native_probe_all_roots_writable(&real);
+    CHECK(real.write_probed);
 }
 
 void run_native_io_tests(void)

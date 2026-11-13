@@ -274,6 +274,9 @@ typedef struct oct_native_root_report {
     uint8_t creatable;      /* a file was created there and removed again */
     uint8_t create_refused; /* EPERM: ptpd's sandbox refused the write */
     uint8_t read_only;      /* EROFS: a read-only volume, as / is on iOS, sealed */
+    /* Whether the write probe ran at all. Without it, a probe in which every root failed with an
+     * errno the three fields do not name looked exactly like one that never ran. Bit 4. */
+    bool    write_probed;
 } oct_native_root_report;
 
 /* Whether this process may create a file in `path`: creates a hidden one with O_EXCL and removes it
@@ -375,6 +378,11 @@ enum {
 typedef struct oct_native_hook_report {
     uint16_t fired;         /* the OCT_NATIVE_HOOK_* bits above, ten of them */
     uint8_t  writes;        /* the OCT_NATIVE_WRITE_* bits */
+    /* A host read DeviceInfo before the provider was serving, so it was given Apple's own, which
+     * offers no uploads, and keeps it for the session. On 0.4.66 this was the whole story: deviceInfo
+     * counted 0 because the call came too early to be served, and the drive appeared later by
+     * announcement with the host still believing nothing could be written. Bit 15, unused until now. */
+    bool     early_device_info;
     bool     formats_added; /* the text format was appended to a host's format list */
     uint8_t  device_info;   /* calls, saturating at 255 */
     uint8_t  handles;
@@ -387,7 +395,7 @@ const char *oct_native_write_name(unsigned bit);
 /* One sentence naming where the write path stopped, from the OCT_NATIVE_WRITE_* bits, in the order
  * the steps happen: hooks, the store's writability when a host asked, what was advertised, then an
  * upload's name, its bytes, and their storage. Written into `out`, always terminated. */
-void        oct_native_write_verdict(uint8_t writes, char *out, size_t capacity);
+void        oct_native_write_verdict(const oct_native_hook_report *report, char *out, size_t capacity);
 uint64_t   oct_native_hooks_pack(const oct_native_hook_report *report);
 bool       oct_native_hooks_unpack(uint64_t word, oct_native_hook_report *out);
 oct_status oct_native_hooks_publish(const oct_native_hook_report *report);

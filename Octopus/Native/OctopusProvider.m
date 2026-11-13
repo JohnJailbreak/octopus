@@ -57,6 +57,12 @@ static __weak id knownCamera;
  * again. Later retries only add, so a host slow to answer does not see the drive flicker. */
 static atomic_bool freshStore;
 
+/* Set when a store opens, cleared only when DeviceInfoChanged has actually been handed to Apple's
+ * code, or a host has read DeviceInfo while the provider serves. It used to ride on freshStore, so
+ * the first attempt spent it: on 0.4.66 that attempt failed, silently, and was never made again,
+ * leaving Windows holding the DeviceInfo it read before Octopus served, with no uploads in it. */
+static atomic_bool deviceInfoStale;
+
 static void rememberCamera(id camera) {
     if (camera && !knownCamera) knownCamera = camera;
 }
@@ -84,8 +90,12 @@ static void announce(void) {
         if (fresh) (void)OCTNativeSendEvent(OCT_EVENT_STORE_REMOVED, OCT_NATIVE_STORAGE_ID);
         (void)OCTNativeAnnounceStorage(OCT_NATIVE_STORAGE_ID);
     }
-    /* Apple has no method for this one, so it always goes the observer's way. */
-    if (fresh) (void)OCTNativeSendEvent(OCT_EVENT_DEVICE_INFO_CHANGED, 0);
+    /* Apple's camera has no method for this one, so it always goes the observer's way, and it is
+     * repeated until it has actually gone, not only on the first announcement. */
+    if (atomic_load_explicit(&deviceInfoStale, memory_order_acquire) &&
+        OCTNativeSendEvent(OCT_EVENT_DEVICE_INFO_CHANGED, 0)) {
+        atomic_store_explicit(&deviceInfoStale, false, memory_order_release);
+    }
 }
 static IMP originalAppendStorage, originalAppendFolder;
 /* The name and parent a host sent in SendObjectInfo, kept until the data arrives in SendObject.
@@ -253,9 +263,14 @@ static BOOL available(id camera) {
  * naming it would mean depending on the provider's header, which it does not include, and on 0.4.61
  * that was a compile error. */
 void OCTProviderAnnounceIfNeeded(void) {
-    if (atomic_load_explicit(&announceWanted, memory_order_acquire) &&
-        atomic_load_explicit(&installed, memory_order_acquire)) {
+    if (!atomic_load_explicit(&installed, memory_order_acquire)) return;
+    if (atomic_load_explicit(&announceWanted, memory_order_acquire)) {
         announce();
+    } else if (atomic_load_explicit(&deviceInfoStale, memory_order_acquire)) {
+        /* The storage list has been read but DeviceInfo has not been refreshed: the case where the
+         * drive appears and nothing can be written to it. */
+        if (OCTNativeSendEvent(OCT_EVENT_DEVICE_INFO_CHANGED, 0))
+            atomic_store_explicit(&deviceInfoStale, false, memory_order_release);
     }
 }
 
@@ -272,7 +287,16 @@ static id storageIDs(id self, SEL cmd) {
 static id deviceInfo(id self, SEL cmd) {
     rememberCamera(self);
     id base=((id (*)(id,SEL))originalDeviceInfo)(self,cmd);
-    if (!available(self) || object_getClass(base)!=objc_getClass("PTPDeviceInfoDataset")) return base;
+    if (!available(self)) {
+        /* A host asking before the provider serves gets Apple's own DeviceInfo, which offers no
+         * uploads, and keeps it for the session. That is what happened on 0.4.66, where this call
+         * counted nothing at all because it came too early, so it is recorded on its own. */
+        OCTNativeProviderEvent("provider-device-info-early", 0, OCT_RC_OK);
+        return base;
+    }
+    /* A host reading DeviceInfo now gets the current list, so it needs no further telling. */
+    atomic_store_explicit(&deviceInfoStale, false, memory_order_release);
+    if (object_getClass(base)!=objc_getClass("PTPDeviceInfoDataset")) return base;
     id body=[(id<OCTNativeContent>)base content];
     if (![body isKindOfClass:[NSData class]] || [body length]>OCT_NATIVE_DEVICE_INFO_MAX-2) return base;
     NSMutableData *copy=[NSMutableData dataWithLength:[body length]+2];size_t length=0;
@@ -778,6 +802,7 @@ static BOOL openStoreLocked(oct_native_lease_mode scope, NSString **reason)
      * until a host actually asks, since one sent too early is simply missed. */
     atomic_store_explicit(&announceWanted,true,memory_order_release);
     atomic_store_explicit(&freshStore,true,memory_order_release);
+    atomic_store_explicit(&deviceInfoStale,true,memory_order_release);
     /* Not announced from here. This runs holding coreLock, and Apple's sendEventAddStorageWithID:
      * may well ask for the storage's info while building the event, which would reach storageInfo
      * above and take coreLock again on the same thread: a lock that is not recursive, so ptpd would

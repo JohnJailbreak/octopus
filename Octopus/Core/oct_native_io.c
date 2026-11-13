@@ -594,9 +594,11 @@ const char *oct_native_write_name(unsigned bit)
     return "unknown";
 }
 
-void oct_native_write_verdict(uint8_t writes, char *out, size_t capacity)
+void oct_native_write_verdict(const oct_native_hook_report *report, char *out, size_t capacity)
 {
     if (!out || capacity == 0) return;
+    uint8_t writes = report ? report->writes : 0;
+    bool early = report && report->early_device_info;
     const char *verdict;
     bool deleteHooked = writes & OCT_NATIVE_WRITE_DELETE_HOOKED;
     bool uploadHooked = writes & OCT_NATIVE_WRITE_UPLOAD_HOOKED;
@@ -608,6 +610,11 @@ void oct_native_write_verdict(uint8_t writes, char *out, size_t capacity)
         verdict = "A computer named an upload, but its bytes never reached Octopus.";
     } else if (!deleteHooked && !uploadHooked) {
         verdict = "No write hooks installed: this ptpd lacks the methods they need.";
+    } else if (early && !(writes & OCT_NATIVE_WRITE_STORE_WRITABLE)) {
+        /* Not a store that was read-only: a host that asked before Octopus was serving at all. */
+        verdict = "The computer read the device's capabilities before Octopus was serving, so it was "
+                  "told nothing can be written. DeviceInfoChanged has to make it read them again, or "
+                  "reconnect USB after enabling.";
     } else if (!(writes & OCT_NATIVE_WRITE_STORE_WRITABLE)) {
         /* The timing fault: the computer asked before the store was on the granted root. */
         verdict = "The store was read-only when the computer read the device's capabilities, so it "
@@ -650,7 +657,8 @@ uint64_t oct_native_hooks_pack(const oct_native_hook_report *report)
                   | (uint64_t)report->handles << 24
                   | (uint64_t)report->object_info << 32
                   | (uint64_t)report->get_object << 40
-                  | (uint64_t)report->writes << 48;
+                  | (uint64_t)report->writes << 48
+                  | (uint64_t)(report->early_device_info ? 1u : 0u) << 15;
     return word | (uint64_t)lease_check(word) << 56;
 }
 
@@ -667,6 +675,7 @@ bool oct_native_hooks_unpack(uint64_t word, oct_native_hook_report *out)
     out->object_info = (uint8_t)(word >> 32);
     out->get_object = (uint8_t)(word >> 40);
     out->writes = (uint8_t)(word >> 48);
+    out->early_device_info = (word >> 15) & 1u;
     return true;
 }
 
@@ -1112,6 +1121,7 @@ void oct_native_probe_all_roots_writable(oct_native_root_report *report)
 {
     if (!report) return;
     report->creatable = report->create_refused = report->read_only = 0;
+    report->write_probed = true;
     for (unsigned i = 1; i < OCT_NATIVE_ROOT_COUNT; i++) {
         const char *path = oct_native_root_path((oct_native_root)i);
         if (!path) continue;
@@ -1130,8 +1140,7 @@ const char *oct_native_root_write_name(const oct_native_root_report *report, oct
     if (report->creatable & bit) return "files can be created";
     if (report->create_refused & bit) return "writing refused by the sandbox";
     if (report->read_only & bit) return "read-only volume";
-    /* Probed at all? Some root reports something once the probe has run; none means it never did. */
-    if (!(report->creatable | report->create_refused | report->read_only)) return "not probed";
+    if (!report->write_probed) return "not probed";
     return "not permitted";
 }
 
@@ -1144,7 +1153,8 @@ uint64_t oct_native_roots_pack(const oct_native_root_report *report)
                   | (uint64_t)report->refused << 24
                   | (uint64_t)report->creatable << 32
                   | (uint64_t)report->create_refused << 40
-                  | (uint64_t)report->read_only << 48;
+                  | (uint64_t)report->read_only << 48
+                  | (uint64_t)(report->write_probed ? 1u : 0u) << 4;
     return word | (uint64_t)lease_check(word) << 56;
 }
 
@@ -1160,5 +1170,6 @@ bool oct_native_roots_unpack(uint64_t word, oct_native_root_report *out)
     out->creatable = (uint8_t)(word >> 32);
     out->create_refused = (uint8_t)(word >> 40);
     out->read_only = (uint8_t)(word >> 48);
+    out->write_probed = (word >> 4) & 1u;
     return true;
 }

@@ -327,7 +327,7 @@ struct NativeCapture: Codable, Sendable {
                 var verdict = [CChar](repeating: 0, count: capacity)
                 // capacity is a separate constant: reading verdict.count while passing &verdict in
                 // the same call is an overlapping access, which Swift's exclusivity checking rejects.
-                oct_native_write_verdict(hooks.writes, &verdict, capacity)
+                oct_native_write_verdict(&hooks, &verdict, capacity)
                 let writeText = verdict.withUnsafeBufferPointer { String(cString: $0.baseAddress!) }
                 hookText += " Writes: \(writeText)"
                 // What the computer actually sent, which separates a computer that never tried to

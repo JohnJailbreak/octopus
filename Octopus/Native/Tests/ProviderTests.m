@@ -90,10 +90,13 @@ bool OCTNativeAnnounceStorage(uint32_t storage) {
 /* Every event the provider sends, in order, for the refresh sequence to be checked. */
 static uint16_t sentEvents[16];
 static unsigned sentEventCount;
+/* Whether a send succeeds. False by default: no session in a test, which is what the real one
+ * reports then too. Set to check that a repeated event stops once it has gone. */
+static BOOL sendSucceeds;
 bool OCTNativeSendEvent(uint16_t code, uint32_t parameter) {
     (void)parameter;
     if (sentEventCount < 16) sentEvents[sentEventCount++] = code;
-    return false;
+    return sendSucceeds;
 }
 
 /* One array of a DeviceInfo dataset: its element count and where its elements start. Walks the
@@ -242,7 +245,18 @@ int main(void) { @autoreleasepool {
     lastAnnouncedStorage=0;
     OCTProviderAnnounceIfNeeded();
     assert(lastAnnouncedStorage==OCT_NATIVE_STORAGE_ID);
-    assert(sentEventCount==0);   /* a retry adds only: no removal, no DeviceInfoChanged */
+    /* A retry never removes the storage again, so the drive does not flicker. DeviceInfoChanged is
+     * repeated, because the first did not go: on 0.4.66 it was tried once, failed silently, and
+     * Windows kept the DeviceInfo it read before Octopus served, with no uploads in it. */
+    assert(sentEventCount==1 && sentEvents[0]==OCT_EVENT_DEVICE_INFO_CHANGED);
+    /* Once it goes, it stops. */
+    sendSucceeds=YES; sentEventCount=0;
+    OCTProviderAnnounceIfNeeded();
+    assert(sentEventCount==1 && sentEvents[0]==OCT_EVENT_DEVICE_INFO_CHANGED);
+    sentEventCount=0;
+    OCTProviderAnnounceIfNeeded();
+    assert(sentEventCount==0);
+    sendSucceeds=NO;
     if(!OCTProviderInstall(OCT_NATIVE_LEASE_EXPOSE_SYNTHETIC,&reason)){fprintf(stderr,"reinstall: %s\n",reason.UTF8String);abort();}
     PTPVirtualCamera *camera=[PTPVirtualCamera new];
     assert([[camera allStorageIDs] isEqual:@[@0x10001]]);
