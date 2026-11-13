@@ -626,14 +626,27 @@ static void pollOnce(BOOL match)
                  * because the answer is a property of ptpd's sandbox rather than of the moment,
                  * and published so the app can say which scopes are worth granting. Until this ran
                  * nothing had established what ptpd may read, so the scopes were untested guesses. */
-                static bool probedRoots;
+                static bool probedRoots,probedWrites;
+                static oct_native_root_report roots;
                 if(!probedRoots){
                     probedRoots=true;
-                    oct_native_root_report roots;
                     oct_native_probe_all_roots(&roots);
                     oct_native_roots_publish(&roots);
                     os_log(startup_log(),"root reachability: openable 0x%02x listable 0x%02x refused 0x%02x",
                            roots.openable,roots.listable,roots.refused);
+                }
+                /* Whether ptpd may create a file in each root, which reading says nothing about: an
+                 * upload can only land where it may, so this is what decides whether adding a file
+                 * can work at all, inside ptpd's sandbox, which is the only place that answers.
+                 * Once, when writes are granted, because the probe writes, a hidden file created
+                 * and removed again; and not from the constructor, which touches no disk. */
+                if(!probedWrites&&!insideConstructor&&grantedScope!=OCT_NATIVE_LEASE_NONE&&
+                   oct_native_lease_is_writable(grantedScope)){
+                    probedWrites=true;
+                    oct_native_probe_all_roots_writable(&roots);
+                    oct_native_roots_publish(&roots);
+                    os_log(startup_log(),"root writability: creatable 0x%02x refused 0x%02x read-only 0x%02x",
+                           roots.creatable,roots.create_refused,roots.read_only);
                 }
             }
             post_startup();

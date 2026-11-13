@@ -267,7 +267,24 @@ typedef struct oct_native_root_report {
     uint8_t openable; /* bit per oct_native_root: the directory opened */
     uint8_t listable; /* bit per oct_native_root: an entry could be read from it */
     uint8_t refused;  /* bit per oct_native_root: EPERM or EACCES, so the sandbox refused it */
+    /* Whether ptpd may create a file there, which reading says nothing about. An upload can only
+     * land where this is set, so it is the first thing to check when adding a file fails. Probed
+     * only when writes are granted, since the probe writes. Bits 32-55 of the word, which were
+     * unused and are covered by its check byte. */
+    uint8_t creatable;      /* a file was created there and removed again */
+    uint8_t create_refused; /* EPERM: ptpd's sandbox refused the write */
+    uint8_t read_only;      /* EROFS: a read-only volume, as / is on iOS, sealed */
 } oct_native_root_report;
+
+/* Whether this process may create a file in `path`: creates a hidden one with O_EXCL and removes it
+ * at once. OCT_OK when it could; otherwise the errno in *error. Never leaves a file behind unless
+ * removal itself fails, which is reported as OCT_E_IO with the removal's errno. */
+oct_status oct_native_probe_root_writable(const char *path, int *error);
+/* The same for every fixed root, filling the three write fields of `report` and leaving the rest. */
+void       oct_native_probe_all_roots_writable(oct_native_root_report *report);
+/* What the report says about writing to one root, in words: "files can be created", "refused by
+ * the sandbox", "read-only volume", "not permitted", or "not probed" when the probe never ran. */
+const char *oct_native_root_write_name(const oct_native_root_report *report, oct_native_root root);
 
 uint64_t   oct_native_roots_pack(const oct_native_root_report *report);
 bool       oct_native_roots_unpack(uint64_t word, oct_native_root_report *out);

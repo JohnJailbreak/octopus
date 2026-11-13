@@ -308,14 +308,18 @@ enum Diagnostics {
                     let state = oct_native_root_state_of(&roots, root)
                     if state == OCT_NATIVE_ROOT_READABLE { anyReadable = true }
                     let verdict = String(cString: oct_native_root_state_name(state))
-                    lines.append("\(String(cString: path)): \(verdict)")
+                    // Whether ptpd may create a file there too, which reading says nothing about:
+                    // an upload lands only where this allows, and / is a sealed read-only volume.
+                    let write = String(cString: oct_native_root_write_name(&roots, root))
+                    lines.append("\(String(cString: path)): \(verdict), \(write)")
                 }
                 return result("native.roots", "Native integration", "Filesystem roots ptpd can read",
                               .nativeObservation, anyReadable ? .pass : .blocked,
                               lines.joined(separator: "; ")
-                                  + ". A readable root can be served read-only; pick it beside the exposure "
-                                  + "toggle and reconnect USB. Symlinks whose target stays inside the chosen "
-                                  + "root are followed, which is what makes /var reachable.", checks: 1)
+                                  + ". Writing is probed from inside ptpd once writes are granted, with a "
+                                  + "hidden file created and removed; a file can be added only where it says "
+                                  + "files can be created. Symlinks whose target stays inside the chosen root "
+                                  + "are followed, which is what makes /var reachable.", checks: 1)
             },
             step("native.startup_signal", "Native integration", "Companion startup signal", .nativeObservation) {
                 // Read through Darwin notifications, not the status file, because writing that file

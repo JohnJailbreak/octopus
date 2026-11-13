@@ -1091,13 +1091,60 @@ void oct_native_probe_all_roots(oct_native_root_report *report)
     }
 }
 
+oct_status oct_native_probe_root_writable(const char *path, int *error)
+{
+    if (error) *error = 0;
+    if (!path || !*path) { if (error) *error = EINVAL; return OCT_E_INVALID_ARGUMENT; }
+    /* Hidden, and unique to this process and call, so it cannot meet a real file or another probe. */
+    static unsigned counter;
+    char probe[1024];
+    int written = snprintf(probe, sizeof probe, "%s%s.octopus-write-probe.%ld.%u", path,
+                           path[strlen(path) - 1] == '/' ? "" : "/", (long)getpid(), ++counter);
+    if (written < 0 || (size_t)written >= sizeof probe) { if (error) *error = ENAMETOOLONG; return OCT_E_INVALID_ARGUMENT; }
+    int fd = open(probe, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0600);
+    if (fd < 0) { if (error) *error = errno; return OCT_E_IO; }
+    close(fd);
+    if (unlink(probe) != 0) { if (error) *error = errno; return OCT_E_IO; }
+    return OCT_OK;
+}
+
+void oct_native_probe_all_roots_writable(oct_native_root_report *report)
+{
+    if (!report) return;
+    report->creatable = report->create_refused = report->read_only = 0;
+    for (unsigned i = 1; i < OCT_NATIVE_ROOT_COUNT; i++) {
+        const char *path = oct_native_root_path((oct_native_root)i);
+        if (!path) continue;
+        int error = 0;
+        uint8_t bit = (uint8_t)(1u << i);
+        if (oct_native_probe_root_writable(path, &error) == OCT_OK) report->creatable |= bit;
+        else if (error == EPERM) report->create_refused |= bit;
+        else if (error == EROFS) report->read_only |= bit;
+    }
+}
+
+const char *oct_native_root_write_name(const oct_native_root_report *report, oct_native_root root)
+{
+    if (!report || (unsigned)root >= OCT_NATIVE_ROOT_COUNT) return "not probed";
+    uint8_t bit = (uint8_t)(1u << (unsigned)root);
+    if (report->creatable & bit) return "files can be created";
+    if (report->create_refused & bit) return "writing refused by the sandbox";
+    if (report->read_only & bit) return "read-only volume";
+    /* Probed at all? Some root reports something once the probe has run; none means it never did. */
+    if (!(report->creatable | report->create_refused | report->read_only)) return "not probed";
+    return "not permitted";
+}
+
 uint64_t oct_native_roots_pack(const oct_native_root_report *report)
 {
     if (!report) return 0;
     uint64_t word = (uint64_t)(OCT_NATIVE_ROOTS_VERSION & 0xFu)
                   | (uint64_t)report->openable << 8
                   | (uint64_t)report->listable << 16
-                  | (uint64_t)report->refused << 24;
+                  | (uint64_t)report->refused << 24
+                  | (uint64_t)report->creatable << 32
+                  | (uint64_t)report->create_refused << 40
+                  | (uint64_t)report->read_only << 48;
     return word | (uint64_t)lease_check(word) << 56;
 }
 
@@ -1110,5 +1157,8 @@ bool oct_native_roots_unpack(uint64_t word, oct_native_root_report *out)
     out->openable = (uint8_t)(word >> 8);
     out->listable = (uint8_t)(word >> 16);
     out->refused = (uint8_t)(word >> 24);
+    out->creatable = (uint8_t)(word >> 32);
+    out->create_refused = (uint8_t)(word >> 40);
+    out->read_only = (uint8_t)(word >> 48);
     return true;
 }

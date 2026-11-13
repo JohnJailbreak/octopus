@@ -1,4 +1,6 @@
 #include "test_support.h"
+#include <sys/wait.h>
+#include <dirent.h>
 #include <stdio.h>
 #include <string.h>
 #include "../../Core/oct_native_io.h"
@@ -1113,6 +1115,90 @@ static void test_traffic_word(void)
     CHECK_EQ(out.delete_response, 0x200Fu);
 }
 
+/* The write probe, against real directories. It must say yes where a file can be created, leave
+ * nothing behind, and say why not where it cannot. */
+static unsigned leftover_probes(const char *path)
+{
+    unsigned found = 0;
+    DIR *dir = opendir(path);
+    if (!dir) return 0;
+    struct dirent *entry;
+    while ((entry = readdir(dir)) != NULL)
+        if (strncmp(entry->d_name, ".octopus-write-probe", 20) == 0) found++;
+    closedir(dir);
+    return found;
+}
+
+static void test_write_probe(void)
+{
+    char base[] = "/tmp/octopus-write-probe-XXXXXX";
+    CHECK(mkdtemp(base) != NULL);
+    int error = -1;
+    /* Writable: yes, and nothing left behind, however many times it runs. */
+    CHECK_OK(oct_native_probe_root_writable(base, &error));
+    CHECK_EQ(error, 0);
+    CHECK_OK(oct_native_probe_root_writable(base, &error));
+    CHECK_EQ(leftover_probes(base), 0u);
+    /* A trailing slash is the same directory. */
+    char slashed[sizeof base + 1];
+    snprintf(slashed, sizeof slashed, "%s/", base);
+    CHECK_OK(oct_native_probe_root_writable(slashed, &error));
+    CHECK_EQ(leftover_probes(base), 0u);
+    /* Missing: no, with the reason. */
+    char missing[sizeof base + 8];
+    snprintf(missing, sizeof missing, "%s/absent", base);
+    CHECK(oct_native_probe_root_writable(missing, &error) != OCT_OK);
+    CHECK_EQ(error, ENOENT);
+    CHECK(oct_native_probe_root_writable(NULL, &error) != OCT_OK);
+    CHECK(oct_native_probe_root_writable("", &error) != OCT_OK);
+
+    /* Not permitted: a directory without write permission, probed as an unprivileged user, since
+     * root writes through mode bits. In a child, so the privilege drop cannot affect the rest. */
+    char locked[sizeof base + 8];
+    snprintf(locked, sizeof locked, "%s/locked", base);
+    CHECK(mkdir(locked, 0555) == 0);
+    CHECK(chmod(locked, 0555) == 0);
+    pid_t child = fork();
+    if (child == 0) {
+        if (geteuid() == 0 && (setgid(65534) != 0 || setuid(65534) != 0)) _exit(3);
+        int why = 0;
+        oct_status st = oct_native_probe_root_writable(locked, &why);
+        _exit(st != OCT_OK && why == EACCES ? 0 : 1);
+    }
+    int status = 0;
+    CHECK(waitpid(child, &status, 0) == child);
+    CHECK(WIFEXITED(status) && WEXITSTATUS(status) == 0);
+    CHECK_EQ(leftover_probes(locked), 0u);
+    rmdir(locked);
+    rmdir(base);
+
+    /* The words the report turns into, for each case. */
+    oct_native_root_report report = {0};
+    CHECK(strcmp(oct_native_root_write_name(&report, OCT_NATIVE_ROOT_SYSTEM), "not probed") == 0);
+    report.creatable = (uint8_t)(1u << OCT_NATIVE_ROOT_TMP);
+    report.read_only = (uint8_t)(1u << OCT_NATIVE_ROOT_SYSTEM);
+    report.create_refused = (uint8_t)(1u << OCT_NATIVE_ROOT_DCIM);
+    CHECK(strcmp(oct_native_root_write_name(&report, OCT_NATIVE_ROOT_TMP), "files can be created") == 0);
+    CHECK(strcmp(oct_native_root_write_name(&report, OCT_NATIVE_ROOT_SYSTEM), "read-only volume") == 0);
+    CHECK(strcmp(oct_native_root_write_name(&report, OCT_NATIVE_ROOT_DCIM), "writing refused by the sandbox") == 0);
+    CHECK(strcmp(oct_native_root_write_name(&report, OCT_NATIVE_ROOT_MEDIA), "not permitted") == 0);
+    CHECK(strcmp(oct_native_root_write_name(NULL, OCT_NATIVE_ROOT_TMP), "not probed") == 0);
+
+    /* And they travel in the roots word, beside the read results, without disturbing them. */
+    report.openable = 0x1E; report.listable = 0x1A; report.refused = 0x04;
+    oct_native_root_report out;
+    uint64_t word = oct_native_roots_pack(&report);
+    CHECK(oct_native_roots_unpack(word, &out));
+    CHECK_EQ(out.openable, 0x1Eu); CHECK_EQ(out.listable, 0x1Au); CHECK_EQ(out.refused, 0x04u);
+    CHECK_EQ(out.creatable, report.creatable);
+    CHECK_EQ(out.create_refused, report.create_refused);
+    CHECK_EQ(out.read_only, report.read_only);
+    CHECK(!oct_native_roots_unpack(word ^ (1ull << 34), &out));   /* the check byte covers them */
+    oct_native_root_report older = { .openable = 0x1E, .listable = 0x1A };
+    CHECK(oct_native_roots_unpack(oct_native_roots_pack(&older), &out));
+    CHECK(strcmp(oct_native_root_write_name(&out, OCT_NATIVE_ROOT_TMP), "not probed") == 0);
+}
+
 void run_native_io_tests(void)
 {
     test_detailed_failures();
@@ -1130,6 +1216,7 @@ void run_native_io_tests(void)
     test_hook_report_writes();
     test_write_verdict();
     test_traffic_word();
+    test_write_probe();
     test_root_probe();
     test_root_table_and_report();
     char directory[512], path[1024];
