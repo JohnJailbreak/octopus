@@ -443,5 +443,80 @@ class MatchingSignatures(unittest.TestCase):
                             f"{path.name} calls {name} with {passed} arguments; it takes {expected}.")
 
 
+class ConstantsInScope(unittest.TestCase):
+    """Every OCT_ constant an Objective-C file uses must be defined in that file or in a header it
+    reaches through its own includes. The observer used OCT_NATIVE_STORAGE_ID, which only the
+    provider's header defines and the observer does not include, and the macOS job rejected it as an
+    undeclared identifier. The checks above follow functions across files, not constants, which is
+    how it went through. Includes are followed transitively; a system header is not, since no
+    OCT_ name comes from one."""
+
+    @staticmethod
+    def reachable(path, seen=None):
+        seen = set() if seen is None else seen
+        path = path.resolve()
+        if path in seen or not path.exists():
+            return seen
+        seen.add(path)
+        for include in re.findall(r'#\s*(?:include|import)\s+"([^"]+)"', path.read_text()):
+            ConstantsInScope.reachable(path.parent / include, seen)
+        return seen
+
+    @staticmethod
+    def defined_in(text):
+        names = set(re.findall(r"#\s*define\s+(OCT_[A-Z0-9_]+)", text))
+        # Enumerators, with or without a value, inside an enum body.
+        for body in re.findall(r"\benum\b[^{;]*\{(.*?)\}", text, flags=re.S):
+            names.update(re.findall(r"\b(OCT_[A-Z0-9_]+)\s*(?:=|,|$)", body, flags=re.M))
+        return names
+
+    def test_every_constant_is_in_scope(self):
+        sources = sorted(NATIVE.glob("*.m")) + sorted((NATIVE / "Tests").glob("*.m"))
+        self.assertTrue(sources)
+        for path in sources:
+            text = strip_comments(path.read_text())
+            available = set()
+            for header in self.reachable(path):
+                available |= self.defined_in(strip_comments(header.read_text()))
+            # A name tested only by #if, #ifdef or #ifndef is a build flag passed with -D, such as
+            # OCT_NATIVE_TEST, and needs no definition anywhere; only code uses count.
+            code = "\n".join(line for line in text.split("\n")
+                             if not re.match(r"\s*#\s*(?:if|ifdef|ifndef|elif|else|endif)\b", line))
+            used = set(re.findall(r"\b(OCT_[A-Z0-9_]+)\b", code))
+            for name in sorted(used - available):
+                with self.subTest(file=path.name, constant=name):
+                    self.fail(f"{path.name} uses {name}, which no header it includes defines. "
+                              f"Include the header that defines it, or keep the use in the file that does.")
+
+    def test_the_scan_finds_real_definitions(self):
+        # A canary, so a broken scan cannot pass by finding nothing at all.
+        observer = NATIVE / "OctopusObserver.m"
+        available = set()
+        for header in self.reachable(observer):
+            available |= self.defined_in(strip_comments(header.read_text()))
+        for expected in ("OCT_NATIVE_LEASE_NONE", "OCT_NATIVE_HOOK_DEVICE_INFO", "OCT_NATIVE_WRITE_ADVERTISED"):
+            self.assertIn(expected, available)
+        self.assertNotIn("OCT_NATIVE_STORAGE_ID", available,
+                         "the observer reaches the provider's header after all; the scan is wrong")
+
+
+class NoInitThroughMsgSend(unittest.TestCase):
+    """An initializer must never be called through objc_msgSend cast to a plain function. Under ARC,
+    init takes ownership of the object alloc returned, and the compiler cannot see that through a
+    cast, so it releases the object again after the call: the result is freed while still in use. It
+    compiles cleanly, which is what makes it dangerous; the event announcing a storage was sent this
+    way and would have crashed ptpd the first time it ran. Declare the method instead, as the
+    observer now does for Apple's event classes, so the init family's rules apply."""
+
+    def test_no_cast_objc_msgsend_in_native_code(self):
+        for path in sorted(NATIVE.glob("*.m")):
+            code = strip_comments(path.read_text())
+            for m in re.finditer(r"\)\s*objc_msgSend\s*\)", code):
+                with self.subTest(file=path.name):
+                    self.fail(f"{path.name} line {code.count(chr(10), 0, m.start()) + 1} calls "
+                              f"objc_msgSend through a cast. Declare the method instead; for an "
+                              f"initializer a cast frees the object it returns.")
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -185,13 +185,25 @@ int main(void) { @autoreleasepool {
      * and the last time it failed that was the whole of the evidence. */
     if(!OCTProviderValidate(&reason)){fprintf(stderr,"validate: %s\n",reason.UTF8String);abort();}
     /* The sample tree, which is what a grant naming no filesystem serves. */
+    lastAnnouncedStorage=0;
     if(!OCTProviderInstall(OCT_NATIVE_LEASE_EXPOSE_SYNTHETIC,&reason)){fprintf(stderr,"install: %s\n",reason.UTF8String);abort();}
+    /* Opening the store announced it. No camera has been seen yet, so it went the observer's way,
+     * the fallback; a host that has not reached a camera hook has not enumerated either. */
+    assert(lastAnnouncedStorage==OCT_NATIVE_STORAGE_ID);
+    /* And it keeps asking to be announced until a host reads the storage list. */
+    lastAnnouncedStorage=0;
+    OCTProviderAnnounceIfNeeded();
+    assert(lastAnnouncedStorage==OCT_NATIVE_STORAGE_ID);
     if(!OCTProviderInstall(OCT_NATIVE_LEASE_EXPOSE_SYNTHETIC,&reason)){fprintf(stderr,"reinstall: %s\n",reason.UTF8String);abort();}
     PTPVirtualCamera *camera=[PTPVirtualCamera new];
     assert([[camera allStorageIDs] isEqual:@[@0x10001]]);
     assert(object_getClass([camera deviceInfoDataset])==[PTPDeviceInfoDataset class]); /* untouched while unauthorized */
     authorized=true;
     assert(([[camera allStorageIDs] isEqual:@[@0x10001,@(OCT_NATIVE_STORAGE_ID)]]));
+    /* A host has now read the list, so the announcement stops. */
+    lastAnnouncedStorage=0;
+    OCTProviderAnnounceIfNeeded();
+    assert(lastAnnouncedStorage==0);
     assert([[camera storageInfoDatasetForStorageID:0x10001] isEqual:@"photo-storage"]);
     assert([[camera objectInfoDatasetForObjectHandle:42] isEqual:@"photo-info"]);
     NSData *storage=[[camera storageInfoDatasetForStorageID:OCT_NATIVE_STORAGE_ID] content];assert(storage.length>20);

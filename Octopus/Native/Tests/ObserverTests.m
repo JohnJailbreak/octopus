@@ -20,7 +20,7 @@ BOOL OCTProviderInstall(oct_native_lease_mode scope, NSString **reason) {
 BOOL OCTProviderValidate(NSString **reason) { if(reason)*reason=@"Observer-only fixture";return YES; }
 /* The observer selects a scope once a lease grants exposure. This build does not link the provider,
  * so this stands in for it, as the two stubs above do; the scope is accepted and not acted on. */
-bool OCTProviderNeedsAnnounce(void) { return false; }   /* the provider is not linked here */
+void OCTProviderAnnounceIfNeeded(void) {}   /* the provider is not linked here */
 BOOL OCTProviderSetScope(oct_native_lease_mode scope, NSString **reason) {
     (void)scope;if(reason)*reason=nil;return YES;
 }

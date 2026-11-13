@@ -8,7 +8,6 @@
 #include "../Core/oct_native_io.h"
 #include <stdatomic.h>
 #include <pthread.h>
-#import <objc/message.h>
 #include <sys/sysctl.h>
 #include <unistd.h>
 #include <string.h>
@@ -244,6 +243,22 @@ static void data(id self,SEL cmd,id packet){
  * would keep a dead transport alive and sending to it would be worse than not sending at all.
  */
 static __weak id usbTransport;
+
+/*
+ * Apple's two methods for sending an event, declared so the compiler sees them as what they are.
+ *
+ * They were called through objc_msgSend cast to a plain function, which compiles cleanly and is
+ * wrong under ARC for an initializer: init takes ownership of the object alloc returned, and ARC,
+ * unable to see that through the cast, released it again after the call, freeing the event while it
+ * was still being used, inside ptpd, the first time a storage was announced. Declared here, the
+ * init family's ownership rules apply and the compiler checks every argument's type. The encodings
+ * recorded from the device are @28@0:8S16I20I24 and B24@0:8@16.
+ */
+@interface NSObject (OctopusPTPEvent)
+- (instancetype)initWithEventCode:(unsigned short)code transactionID:(unsigned int)transaction
+                       parameter1:(unsigned int)parameter;
+- (BOOL)sendEvent:(id)event;
+@end
 static atomic_bool sessionUp;
 
 static void connected(id self,SEL cmd,bool value){
@@ -267,15 +282,13 @@ bool OCTNativeAnnounceStorage(uint32_t storage){
     if(!transport||!atomic_load(&sessionUp))return false;
     Class packet=objc_getClass("PTPEventPacket");
     if(!packet)return false;
-    SEL make=sel_registerName("initWithEventCode:transactionID:parameter1:");
-    if(![packet instancesRespondToSelector:make])return false;
-    SEL send=sel_registerName("sendEvent:");
-    if(![transport respondsToSelector:send])return false;
+    if(![packet instancesRespondToSelector:@selector(initWithEventCode:transactionID:parameter1:)])return false;
+    if(![transport respondsToSelector:@selector(sendEvent:)])return false;
     /* Transaction zero: an event outside any transaction, which is what a storage change is. */
-    id event=((id(*)(id,SEL,unsigned short,unsigned int,unsigned int))objc_msgSend)
-        ([packet alloc],make,(unsigned short)OCT_EVENT_STORE_ADDED,0u,storage);
+    id event=[[packet alloc] initWithEventCode:(unsigned short)OCT_EVENT_STORE_ADDED
+                                 transactionID:0u parameter1:storage];
     if(!event)return false;
-    bool ok=((bool(*)(id,SEL,id))objc_msgSend)(transport,send,event);
+    bool ok=[transport sendEvent:event];
     OCTNativeProviderEvent(ok?"provider-announced-storage":"provider-announce-failed",storage,
                            ok?OCT_RC_OK:OCT_RC_GENERAL_ERROR);
     return ok;
@@ -560,7 +573,7 @@ static void pollOnce(BOOL match)
                         os_log_error(startup_log(),"scope not served: %{public}s",scopeProblem.UTF8String);
                     }
                 }
-                if(OCTProviderNeedsAnnounce())OCTNativeAnnounceStorage(OCT_NATIVE_STORAGE_ID);
+                OCTProviderAnnounceIfNeeded();
             }
             pthread_mutex_lock(&lock);oct_native_authorize(&journal,authorized());pthread_mutex_unlock(&lock);
             publish();

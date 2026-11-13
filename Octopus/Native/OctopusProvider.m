@@ -34,6 +34,37 @@ static atomic_bool uploadHooked;
 /* Set when a store opens and cleared once a host has asked for the storage list, so the
  * announcement can be repeated meanwhile: an event sent before the session is up goes nowhere. */
 static atomic_bool announceWanted;
+
+/*
+ * The camera a host is talking to, kept from the first camera hook that runs. Apple's own
+ * sendEventAddStorageWithID:, recorded as v20@0:8I16, announces a storage exactly as Apple does when
+ * one appears, through its own responder and transport, with its own packet. It is preferred over
+ * the observer's hand-built event, which remains the fallback for a camera not yet seen.
+ *
+ * Weak: the camera is ptpd's, and keeping a released one alive to send to would be worse than not
+ * announcing at all. A host that has not reached a camera hook has not enumerated yet, and will see
+ * the storage when it does, so the camera being unknown costs nothing.
+ */
+static __weak id knownCamera;
+
+@interface NSObject (OctopusAddStorage)
+- (void)sendEventAddStorageWithID:(unsigned int)storage;
+@end
+
+static void rememberCamera(id camera) {
+    if (camera && !knownCamera) knownCamera = camera;
+}
+
+/* Announce the storage, through Apple's method when the camera is known, otherwise the observer's. */
+static void announce(void) {
+    id camera = knownCamera;
+    if (camera && [camera respondsToSelector:@selector(sendEventAddStorageWithID:)]) {
+        [camera sendEventAddStorageWithID:OCT_NATIVE_STORAGE_ID];
+        OCTNativeProviderEvent("provider-announced-by-camera", OCT_NATIVE_STORAGE_ID, OCT_RC_OK);
+        return;
+    }
+    (void)OCTNativeAnnounceStorage(OCT_NATIVE_STORAGE_ID);
+}
 static IMP originalAppendStorage, originalAppendFolder;
 /* The name and parent a host sent in SendObjectInfo, kept until the data arrives in SendObject.
  * PTP splits an upload across two operations and only the first carries the name. */
@@ -195,14 +226,19 @@ static BOOL available(id camera) {
     return YES;
 }
 
-/* Whether the storage still needs announcing, for the timer to retry. Cleared by storageIDs below,
- * because a host asking for the list is proof it does not need telling. */
-bool OCTProviderNeedsAnnounce(void) {
-    return atomic_load_explicit(&announceWanted, memory_order_acquire) &&
-           atomic_load_explicit(&installed, memory_order_acquire);
+/* Announce the storage again if a host has not yet read the list since a store opened. Called from
+ * the observer's timer. The storage ID stays here, the one place that serves it: the observer
+ * naming it would mean depending on the provider's header, which it does not include, and on 0.4.61
+ * that was a compile error. */
+void OCTProviderAnnounceIfNeeded(void) {
+    if (atomic_load_explicit(&announceWanted, memory_order_acquire) &&
+        atomic_load_explicit(&installed, memory_order_acquire)) {
+        announce();
+    }
 }
 
 static id storageIDs(id self, SEL cmd) {
+    rememberCamera(self);
     id base = ((id (*)(id,SEL))originalIDs)(self,cmd);
     if (!available(self) || ![base isKindOfClass:[NSArray class]]) return base;
     OCTNativeProviderEvent("provider-storage-enumeration", OCT_NATIVE_STORAGE_ID, OCT_RC_OK);
@@ -212,6 +248,7 @@ static id storageIDs(id self, SEL cmd) {
 }
 
 static id deviceInfo(id self, SEL cmd) {
+    rememberCamera(self);
     id base=((id (*)(id,SEL))originalDeviceInfo)(self,cmd);
     if (!available(self) || object_getClass(base)!=objc_getClass("PTPDeviceInfoDataset")) return base;
     id body=[(id<OCTNativeContent>)base content];
@@ -692,7 +729,7 @@ static BOOL openStoreLocked(oct_native_lease_mode scope, NSString **reason)
      * again. It does nothing when no session is up, and the announcement is retried from the timer
      * until a host actually asks, since one sent too early is simply missed. */
     atomic_store_explicit(&announceWanted,true,memory_order_release);
-    OCTNativeAnnounceStorage(OCT_NATIVE_STORAGE_ID);
+    announce();
     return YES;
 }
 
