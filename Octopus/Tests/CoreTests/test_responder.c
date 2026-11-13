@@ -1,4 +1,5 @@
 #include "test_support.h"
+#include "../../Core/oct_native_io.h"
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/stat.h>
@@ -700,8 +701,70 @@ static void test_whole_hierarchy_over_budget(void)
     oct_store_close(store);
 }
 
+/* The ObjectInfo a host sends with SendObjectInfo, built exactly as the provider test builds it.
+ * That test runs only on macOS, so a mistake in its fixture would make it assert the wrong thing
+ * about the upload handler; the same bytes are built and parsed here, where the parser runs. */
+static size_t host_object_info(uint8_t *out, const char *name, uint32_t size, uint32_t parent,
+                               uint16_t format)
+{
+    size_t n = 0;
+    uint32_t storage = 0x4f430001u;
+    memcpy(out + n, &storage, 4); n += 4;
+    memcpy(out + n, &format, 2); n += 2;
+    uint16_t protection = 0; memcpy(out + n, &protection, 2); n += 2;
+    memcpy(out + n, &size, 4); n += 4;
+    memset(out + n, 0, 2 + 4 * 6); n += 2 + 4 * 6;   /* thumb format, sizes, image dimensions */
+    memcpy(out + n, &parent, 4); n += 4;
+    uint16_t association = format == OCT_FORMAT_ASSOCIATION ? 1u : 0u;
+    memcpy(out + n, &association, 2); n += 2;
+    uint32_t desc = 0; memcpy(out + n, &desc, 4); n += 4;
+    uint32_t sequence = 0; memcpy(out + n, &sequence, 4); n += 4;
+    size_t length = strlen(name);
+    out[n++] = (uint8_t)(length + 1);                /* PTP counts the terminator */
+    for (size_t i = 0; i < length; i++) {
+        uint16_t unit = (uint16_t)name[i];
+        memcpy(out + n, &unit, 2); n += 2;
+    }
+    uint16_t terminator = 0; memcpy(out + n, &terminator, 2); n += 2;
+    out[n++] = 0; out[n++] = 0; out[n++] = 0;        /* created, modified, keywords */
+    return n;
+}
+
+static void test_host_object_info(void)
+{
+    uint8_t buffer[512];
+    oct_object_info_request parsed;
+    size_t n = host_object_info(buffer, "upload.txt", 299, 0x200, OCT_FORMAT_UNDEFINED);
+    CHECK_OK(oct_dataset_parse_object_info(buffer, n, &parsed));
+    CHECK_EQ(parsed.storage_id, 0x4f430001u);
+    CHECK_EQ(parsed.format, OCT_FORMAT_UNDEFINED);
+    CHECK_EQ(parsed.compressed_size, 299u);
+    CHECK_EQ(parsed.parent, 0x200u);
+    CHECK(strcmp(parsed.name, "upload.txt") == 0);
+
+    /* A folder, which a host sends as an association. */
+    n = host_object_info(buffer, "folder", 0, 0x200, OCT_FORMAT_ASSOCIATION);
+    CHECK_OK(oct_dataset_parse_object_info(buffer, n, &parsed));
+    CHECK_EQ(parsed.format, OCT_FORMAT_ASSOCIATION);
+    CHECK(strcmp(parsed.name, "folder") == 0);
+
+    /* The size the upload handler compares against the transport's limit. */
+    n = host_object_info(buffer, "big.bin", OCT_NATIVE_MAX_UPLOAD_BYTES + 1, 0x200, OCT_FORMAT_UNDEFINED);
+    CHECK_OK(oct_dataset_parse_object_info(buffer, n, &parsed));
+    CHECK(parsed.compressed_size > OCT_NATIVE_MAX_UPLOAD_BYTES);
+    n = host_object_info(buffer, "edge.bin", OCT_NATIVE_MAX_UPLOAD_BYTES, 0x200, OCT_FORMAT_UNDEFINED);
+    CHECK_OK(oct_dataset_parse_object_info(buffer, n, &parsed));
+    CHECK(parsed.compressed_size == OCT_NATIVE_MAX_UPLOAD_BYTES);
+
+    /* Malformed, which the handler must answer rather than ignore. */
+    uint8_t broken[3] = { 1, 2, 3 };
+    CHECK(oct_dataset_parse_object_info(broken, sizeof broken, &parsed) != OCT_OK);
+    CHECK(oct_dataset_parse_object_info(NULL, 0, &parsed) != OCT_OK);
+}
+
 void run_responder_tests(void)
 {
+    test_host_object_info();
     test_whole_hierarchy_over_budget();
     test_sessions();
     test_enumeration_operations();

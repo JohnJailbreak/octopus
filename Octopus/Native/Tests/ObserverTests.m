@@ -22,6 +22,8 @@ BOOL OCTProviderValidate(NSString **reason) { if(reason)*reason=@"Observer-only 
  * so this stands in for it, as the two stubs above do; the scope is accepted and not acted on. */
 void OCTProviderAnnounceIfNeeded(void) {}   /* the provider is not linked here */
 void OCTProviderSetWritesGranted(bool granted) { (void)granted; }
+BOOL OCTProviderHandleRequest(id packet, id *answer) { (void)packet; (void)answer; return NO; }
+BOOL OCTProviderHandleData(id packet) { (void)packet; return NO; }
 BOOL OCTProviderSetScope(oct_native_lease_mode scope, NSString **reason) {
     (void)scope;if(reason)*reason=nil;return YES;
 }

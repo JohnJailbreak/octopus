@@ -118,6 +118,22 @@ static IMP originalAppendStorage, originalAppendFolder;
 static pthread_mutex_t pendingLock = PTHREAD_MUTEX_INITIALIZER;
 static char pendingName[OCT_NAME_MAX + 1];
 static uint32_t pendingParent;
+/* The upload a host is in the middle of, which Apple's responder will not carry for us: it sends
+ * SendObjectInfo, then SendObject, and neither is answered by Apple's code, so the transaction and
+ * the handle created by the first have to be remembered between them. Under pendingLock. */
+static uint32_t pendingTransaction;    /* the SendObjectInfo transaction, 0 for none */
+static uint32_t pendingHandle;         /* the object created by it, 0 until created */
+static uint64_t pendingSize;           /* the size its ObjectInfo declared */
+static bool pendingAwaitingData;       /* an answer of YES was given; the data phase is expected */
+
+/* Apple's packet accessors, recorded as S16@0:8, I16@0:8 and @16@0:8. */
+@interface NSObject (OctopusPTPRequest)
+- (unsigned short)operationCode;
+- (unsigned int)transactionID;
+- (unsigned int)parameter1;
+- (unsigned int)parameter2;
+- (id)data;
+@end
 
 /* Dynamic class lookup avoids linking against private classes exported by the
  * executable. These are only the exact signatures verified in this image. */
@@ -518,6 +534,157 @@ static unsigned long long appendOnFolder(id self, SEL cmd, id data, unsigned sho
     return appendObject(self, cmd, data, format, association, contentType, originalAppendFolder);
 }
 
+/*
+ * The two halves of an upload, taken over from Apple's responder.
+ *
+ * Apple sends SendObjectInfo and SendObject to handleUnsupportedRequest:, and handleRequest:
+ * returns NO for them, which tells the transport not to read the data a host is about to send. So
+ * the host waits forever: that is the hang. Answering YES for an upload into our storage is what
+ * opens the data path, and then nothing but us will answer the request either.
+ *
+ * Everything that is not an upload into our storage is left entirely to Apple, including an upload
+ * into Apple's own, which goes to its code untouched.
+ */
+BOOL OCTProviderHandleRequest(id packet, id *answer) {
+    if (!packet || !answer) return NO;
+    if (!providerServing() || !atomic_load_explicit(&uploadHooked, memory_order_acquire)) return NO;
+    if (![packet respondsToSelector:@selector(operationCode)] ||
+        ![packet respondsToSelector:@selector(transactionID)]) return NO;
+    unsigned short operation = [packet operationCode];
+    if (operation != OCT_OP_SEND_OBJECT_INFO && operation != OCT_OP_SEND_OBJECT) return NO;
+
+    uint32_t transaction = [packet transactionID];
+    if (operation == OCT_OP_SEND_OBJECT_INFO) {
+        if (![packet respondsToSelector:@selector(parameter1)]) return NO;
+        /* Parameter 1 is the storage, parameter 2 the parent. A storage of zero means "anywhere the
+         * device likes", which for an upload is Apple's business, not ours. */
+        if ([packet parameter1] != OCT_NATIVE_STORAGE_ID) return NO;
+        uint32_t parent = [packet respondsToSelector:@selector(parameter2)] ? [packet parameter2] : 0;
+        pthread_mutex_lock(&pendingLock);
+        pendingTransaction = transaction;
+        pendingParent = parent == 0 ? OCT_NATIVE_FIRST_HANDLE : parent;
+        pendingHandle = 0;
+        pendingSize = 0;
+        pendingName[0] = '\0';
+        pendingAwaitingData = true;
+        pthread_mutex_unlock(&pendingLock);
+        OCTNativeProviderEvent("provider-upload-accepted", transaction, OCT_RC_OK);
+        *answer = @YES;      /* the transport now reads the ObjectInfo the host is sending */
+        return YES;
+    }
+
+    /* SendObject: only ours if its ObjectInfo was, and only once a file has been created for it. */
+    pthread_mutex_lock(&pendingLock);
+    bool ours = pendingHandle != 0;
+    if (ours) {
+        pendingTransaction = transaction;
+        pendingAwaitingData = true;
+    }
+    pthread_mutex_unlock(&pendingLock);
+    if (!ours) return NO;
+    OCTNativeProviderEvent("provider-upload-data-expected", transaction, OCT_RC_OK);
+    *answer = @YES;
+    return YES;
+}
+
+/*
+ * The data phase of an upload: the whole object in one packet, since the transport assembles every
+ * chunk before calling this. Answers the host itself, because Apple will not.
+ */
+BOOL OCTProviderHandleData(id packet) {
+    if (!packet) return NO;
+    pthread_mutex_lock(&pendingLock);
+    bool expected = pendingAwaitingData;
+    uint32_t transaction = pendingTransaction;
+    pthread_mutex_unlock(&pendingLock);
+    if (!expected || !providerServing()) return NO;
+    if (![packet respondsToSelector:@selector(operationCode)] ||
+        ![packet respondsToSelector:@selector(data)]) return NO;
+    unsigned short operation = [packet operationCode];
+    if (operation != OCT_OP_SEND_OBJECT_INFO && operation != OCT_OP_SEND_OBJECT) return NO;
+
+    id body = [packet data];
+    const void *bytes = [body isKindOfClass:[NSData class]] ? [body bytes] : NULL;
+    NSUInteger length = [body isKindOfClass:[NSData class]] ? [body length] : 0;
+
+    if (operation == OCT_OP_SEND_OBJECT_INFO) {
+        /* The ObjectInfo a host sends, parsed with the responder's own parser. */
+        oct_object_info_request parsed;
+        uint16_t response = OCT_RC_INVALID_PARAMETER;
+        uint32_t handle = 0, parent = 0;
+        if (bytes && oct_dataset_parse_object_info(bytes, length, &parsed) == OCT_OK) {
+            pthread_mutex_lock(&pendingLock);
+            parent = pendingParent;
+            pthread_mutex_unlock(&pendingLock);
+            if (parsed.compressed_size > OCT_NATIVE_MAX_UPLOAD_BYTES) {
+                /* Apple's transport drops a data phase larger than one USB read and answers
+                 * nothing, which hangs the host. Refused here instead, with a code it can report;
+                 * transient-sounding because a smaller file through the same path will work. */
+                response = OCT_RC_DEVICE_BUSY;
+                OCTNativeProviderEvent("provider-upload-too-large", parsed.compressed_size, response);
+            } else {
+                pthread_mutex_lock(&coreLock);
+                oct_status status = store ? oct_store_create(store, parent, parsed.name,
+                                                             parsed.format == OCT_FORMAT_ASSOCIATION,
+                                                             &handle)
+                                          : OCT_E_STATE;
+                pthread_mutex_unlock(&coreLock);
+                response = oct_response_for_status(status);
+                if (status == OCT_OK) {
+                    pthread_mutex_lock(&pendingLock);
+                    pendingHandle = handle;
+                    pendingSize = parsed.compressed_size;
+                    memcpy(pendingName, parsed.name, sizeof pendingName);
+                    pendingName[sizeof pendingName - 1] = '\0';
+                    pthread_mutex_unlock(&pendingLock);
+                }
+                OCTNativeProviderEvent(status == OCT_OK ? "provider-upload-named" : "provider-upload-refused",
+                                       handle, response);
+            }
+        }
+        pthread_mutex_lock(&pendingLock);
+        pendingAwaitingData = false;
+        if (response != OCT_RC_OK) { pendingHandle = 0; pendingTransaction = 0; }
+        pthread_mutex_unlock(&pendingLock);
+        /* A host needs the storage, the parent and the new handle to send the object next. */
+        (void)OCTNativeSendResponse(response, transaction, response == OCT_RC_OK ? 3u : 0u,
+                                    OCT_NATIVE_STORAGE_ID, parent, handle);
+        return YES;
+    }
+
+    /* SendObject: the bytes of the object created above. */
+    pthread_mutex_lock(&pendingLock);
+    uint32_t handle = pendingHandle;
+    pthread_mutex_unlock(&pendingLock);
+    uint16_t response = OCT_RC_INVALID_OBJECT_HANDLE;
+    if (handle != 0) {
+        oct_status status = OCT_OK;
+        pthread_mutex_lock(&coreLock);
+        if (!store) status = OCT_E_STATE;
+        else if (length > 0 && bytes) status = oct_store_write(store, handle, 0, bytes, (size_t)length);
+        /* A zero-length object is a legitimate empty file: created, nothing to write. */
+        pthread_mutex_unlock(&coreLock);
+        response = oct_response_for_status(status);
+        if (status != OCT_OK) {
+            /* Remove what was created rather than leave a file a host believes it uploaded. */
+            pthread_mutex_lock(&coreLock);
+            if (store) { uint32_t removed = 0; (void)oct_store_delete(store, handle, &removed); }
+            pthread_mutex_unlock(&coreLock);
+        }
+        OCTNativeProviderEvent(status == OCT_OK ? "provider-upload" : "provider-upload-failed",
+                               (uint32_t)length, response);
+    }
+    pthread_mutex_lock(&pendingLock);
+    pendingAwaitingData = false;
+    pendingHandle = 0;
+    pendingTransaction = 0;
+    pthread_mutex_unlock(&pendingLock);
+    (void)OCTNativeSendResponse(response, transaction, 0u, 0u, 0u, 0u);
+    /* The host may be showing the folder: tell it something was added. */
+    if (response == OCT_RC_OK) (void)OCTNativeSendEvent(OCT_EVENT_OBJECT_ADDED, handle);
+    return YES;
+}
+
 static id storageInfo(id self, SEL cmd, uint32_t storageID) {
     if (storageID != OCT_NATIVE_STORAGE_ID || !available(self))
         return ((id (*)(id,SEL,uint32_t))originalStorage)(self,cmd,storageID);
@@ -849,11 +1016,36 @@ BOOL OCTProviderSetScope(oct_native_lease_mode scope, NSString **reason)
  * typed delete method on any build disable browsing and downloads along with it; the macOS tests
  * caught that because their stand-in camera had no delete method.
  */
+/*
+ * handleRequest: and handleData: on Apple's responder. Each asks the upload logic first and falls
+ * through to Apple's implementation when the request is not an upload into our storage, so photo
+ * import, deletion and every read behave exactly as before.
+ */
+static IMP originalResponderRequest, originalResponderData;
+
+static id responderRequest(id self, SEL cmd, id packet) {
+    id answer = nil;
+    if (OCTProviderHandleRequest(packet, &answer) && answer) return answer;
+    return ((id (*)(id,SEL,id))originalResponderRequest)(self, cmd, packet);
+}
+
+static void responderData(id self, SEL cmd, id packet) {
+    if (OCTProviderHandleData(packet)) return;
+    ((void (*)(id,SEL,id))originalResponderData)(self, cmd, packet);
+}
+
 static void installOptionalHooks(void) {
     NSString *why=nil;
     /* The upload path, in three parts: the name arrives with the ObjectInfo, and the bytes arrive at
      * the storage or the folder they belong in. All three must be in place, or a host would be
      * offered an upload that fails part-way; the advertisement below depends on it. */
+    /* The upload path proper: Apple's responder refuses SendObjectInfo and SendObject before any
+     * storage is consulted, so these two are where an upload has to be taken over. Both are called
+     * through performSelector:, so an exchanged implementation is what runs. */
+    BOOL onRequest = OCTRuntimeHook("PTPResponder","handleRequest:","@24@0:8@16",
+                                    (IMP)responderRequest,&originalResponderRequest,&why);
+    BOOL onData = OCTRuntimeHook("PTPResponder","handleData:","v24@0:8@16",
+                                 (IMP)responderData,&originalResponderData,&why);
     BOOL named = OCTRuntimeHook("PTPObjectInfoDataset","initWithData:contentType:","@28@0:8@16i24",
                                 (IMP)incomingObjectInfo,&originalIncomingInfo,&why);
     BOOL onStorage = OCTRuntimeHook("PTPStorage",
@@ -862,9 +1054,13 @@ static void installOptionalHooks(void) {
     BOOL onFolder = OCTRuntimeHook("PTPFolder",
                                    "appendObjectData:forObjectFormatCode:inAssociation:withContentType:",
                                    "Q36@0:8@16S24I28I32",(IMP)appendOnFolder,&originalAppendFolder,&why);
-    if (named && (onStorage || onFolder)) {
+    /* Both responder hooks are required: answering a request without receiving its data would
+     * leave a host waiting exactly as Apple does. The storage and folder hooks are a bonus, for a
+     * ptpd that routes an upload to them after all. */
+    if (onRequest && onData) {
         atomic_store_explicit(&uploadHooked,true,memory_order_release);
-        OCTNativeProviderEvent("provider-upload-hooked",onStorage && onFolder ? 2u : 1u,OCT_RC_OK);
+        OCTNativeProviderEvent("provider-upload-hooked",
+                               (uint32_t)(2u + (named?1u:0u) + (onStorage?1u:0u) + (onFolder?1u:0u)),OCT_RC_OK);
     } else {
         OCTNativeProviderEvent("provider-upload-unavailable",0,OCT_RC_OPERATION_NOT_SUPPORTED);
     }

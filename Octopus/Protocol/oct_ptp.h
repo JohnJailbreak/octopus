@@ -83,6 +83,10 @@ enum {
     OCT_RC_NO_VALID_OBJECT_INFO = 0x2015,
     OCT_RC_INVALID_PARENT_OBJECT = 0x201A,
     OCT_RC_INVALID_PARAMETER = 0x201D,
+    /* Apple's responder answers this for a data phase it does not recognise, and it is the right
+     * answer for an upload too large for one USB read: a smaller file through the same path works,
+     * so a transient-sounding refusal is the honest one. */
+    OCT_RC_DEVICE_BUSY = 0x2019,
     OCT_RC_SESSION_ALREADY_OPEN = 0x201E,
     OCT_RC_INVALID_OBJECT_PROP_CODE = 0xA801,
     OCT_RC_INVALID_OBJECT_PROP_FORMAT = 0xA802,

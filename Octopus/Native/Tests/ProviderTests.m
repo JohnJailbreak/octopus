@@ -87,6 +87,21 @@ bool OCTNativeAnnounceStorage(uint32_t storage) {
     return false;   /* no session in a test, which is what the real one reports then too */
 }
 
+/* The last response the provider sent to a host, for the upload tests: the observer holds the
+ * transport and is not linked here. */
+static uint16_t lastResponseCode;
+static uint32_t lastResponseTransaction, lastResponseHandle;
+static unsigned lastResponseParameters;
+bool OCTNativeSendResponse(uint16_t code, uint32_t transaction, unsigned parameters,
+                           uint32_t one, uint32_t two, uint32_t three) {
+    (void)one; (void)two;
+    lastResponseCode = code;
+    lastResponseTransaction = transaction;
+    lastResponseParameters = parameters;
+    lastResponseHandle = three;
+    return true;
+}
+
 /* Every event the provider sends, in order, for the refresh sequence to be checked. */
 static uint16_t sentEvents[16];
 static unsigned sentEventCount;
@@ -123,6 +138,57 @@ static BOOL infoHas(NSData *d, unsigned index, uint16_t value) {
     for (uint32_t i = 0; i < count; i++)
         if ((uint16_t)(b[at + 2*i] | b[at + 2*i + 1] << 8) == value) return YES;
     return NO;
+}
+
+/* A request or data packet as Apple's responder would be given one: the operation, the transaction,
+ * the two parameters an upload uses, and the data phase's bytes. Encodings as recorded from the
+ * device: operationCode S16@0:8, transactionID and parameter1/2 I16@0:8, data @16@0:8. */
+@interface OctopusTestPacket : NSObject
+@property (nonatomic) unsigned short operation;
+@property (nonatomic) unsigned int transaction;
+@property (nonatomic) unsigned int one;
+@property (nonatomic) unsigned int two;
+@property (nonatomic, strong) NSData *body;
+@end
+@implementation OctopusTestPacket
+- (unsigned short)operationCode { return self.operation; }
+- (unsigned int)transactionID { return self.transaction; }
+- (unsigned int)parameter1 { return self.one; }
+- (unsigned int)parameter2 { return self.two; }
+- (id)data { return self.body; }
+@end
+
+/* An ObjectInfo as a host sends it with SendObjectInfo: the fixed fields, then the filename as a
+ * counted UTF-16 string, then three empty date/keyword strings. */
+static NSData *objectInfoFor(const char *name, uint32_t size, uint32_t parent, uint16_t format) {
+    NSMutableData *info = [NSMutableData data];
+    uint32_t storage = OCT_NATIVE_STORAGE_ID;
+    [info appendBytes:&storage length:4];
+    [info appendBytes:&format length:2];
+    uint16_t protection = 0;
+    [info appendBytes:&protection length:2];
+    [info appendBytes:&size length:4];
+    uint8_t zeros[2 + 4 * 6] = {0};            /* thumb format, sizes, image dimensions */
+    [info appendBytes:zeros length:sizeof zeros];
+    [info appendBytes:&parent length:4];
+    uint16_t association = format == OCT_FORMAT_ASSOCIATION ? 1 : 0;
+    [info appendBytes:&association length:2];
+    uint32_t associationDesc = 0;
+    [info appendBytes:&associationDesc length:4];
+    uint32_t sequence = 0;
+    [info appendBytes:&sequence length:4];
+    size_t length = strlen(name);
+    uint8_t count = (uint8_t)(length + 1);     /* PTP counts the terminator */
+    [info appendBytes:&count length:1];
+    for (size_t i = 0; i < length; i++) {
+        uint16_t unit = (uint16_t)name[i];
+        [info appendBytes:&unit length:2];
+    }
+    uint16_t terminator = 0;
+    [info appendBytes:&terminator length:2];
+    uint8_t empty = 0;
+    for (int i = 0; i < 3; i++) [info appendBytes:&empty length:1];  /* created, modified, keywords */
+    return info;
 }
 
 /* The last handle Apple's own delete was asked about, or zero. */
@@ -335,6 +401,87 @@ int main(void) { @autoreleasepool {
     /* And the object count is unchanged: nothing was created by any of that. */
     NSArray *afterUpload=[camera objectHandlesInStorage:UINT32_MAX forObjectFormatCode:0 inAssociation:docs responseCode:&code];
     assert(code==OCT_RC_OK&&afterUpload.count==children.count);
+
+    /* Uploads through Apple's responder. The sample tree accepts no changes, so the file cannot be
+     * created, which is the right answer for a read-only store and still exercises the whole path:
+     * the request is taken over, the data is received, and the host is answered rather than left
+     * waiting as Apple leaves it. */
+    OctopusTestPacket *request = [OctopusTestPacket new];
+    request.operation = OCT_OP_SEND_OBJECT_INFO;
+    request.transaction = 77;
+    request.one = OCT_NATIVE_STORAGE_ID;
+    request.two = docs;
+    id answer = nil;
+    assert(OCTProviderHandleRequest(request, &answer));
+    assert([answer isKindOfClass:[NSNumber class]] && [answer boolValue]);   /* read the data phase */
+
+    /* An upload to Apple's own storage is not ours: Apple must answer it. */
+    OctopusTestPacket *theirs = [OctopusTestPacket new];
+    theirs.operation = OCT_OP_SEND_OBJECT_INFO;
+    theirs.transaction = 78;
+    theirs.one = 0x10001;
+    id theirAnswer = nil;
+    assert(!OCTProviderHandleRequest(theirs, &theirAnswer));
+    assert(theirAnswer == nil);
+    /* And neither is a read. */
+    OctopusTestPacket *read = [OctopusTestPacket new];
+    read.operation = OCT_OP_GET_OBJECT;
+    read.transaction = 79;
+    assert(!OCTProviderHandleRequest(read, &theirAnswer));
+
+    /* The ObjectInfo arrives. The store refuses, so the host is told so with no handle. */
+    lastResponseCode = 0; lastResponseTransaction = 0; lastResponseParameters = 99;
+    OctopusTestPacket *info = [OctopusTestPacket new];
+    info.operation = OCT_OP_SEND_OBJECT_INFO;
+    info.transaction = 77;
+    info.body = objectInfoFor("upload.txt", 299, docs, OCT_FORMAT_UNDEFINED);
+    assert(OCTProviderHandleData(info));
+    assert(lastResponseTransaction == 77);
+    assert(lastResponseCode != OCT_RC_OK);          /* the sample tree accepts no changes */
+    assert(lastResponseParameters == 0);            /* and no handle is offered */
+
+    /* A second data phase with nothing pending is Apple's, not ours. */
+    assert(!OCTProviderHandleData(info));
+
+    /* An object larger than one USB read is refused when its ObjectInfo arrives, not left to
+     * vanish in the transport, which is what hangs a host. */
+    lastResponseCode = 0;
+    assert(OCTProviderHandleRequest(request, &answer));
+    OctopusTestPacket *big = [OctopusTestPacket new];
+    big.operation = OCT_OP_SEND_OBJECT_INFO;
+    big.transaction = 77;
+    big.body = objectInfoFor("big.bin", OCT_NATIVE_MAX_UPLOAD_BYTES + 1, docs, OCT_FORMAT_UNDEFINED);
+    assert(OCTProviderHandleData(big));
+    assert(lastResponseCode == OCT_RC_DEVICE_BUSY);
+    /* Exactly at the limit is not refused for size: it reaches the store, which refuses it. */
+    lastResponseCode = 0;
+    assert(OCTProviderHandleRequest(request, &answer));
+    OctopusTestPacket *edge = [OctopusTestPacket new];
+    edge.operation = OCT_OP_SEND_OBJECT_INFO;
+    edge.transaction = 77;
+    edge.body = objectInfoFor("edge.bin", OCT_NATIVE_MAX_UPLOAD_BYTES, docs, OCT_FORMAT_UNDEFINED);
+    assert(OCTProviderHandleData(edge));
+    assert(lastResponseCode != OCT_RC_DEVICE_BUSY);
+
+    /* SendObject with no accepted ObjectInfo before it is Apple's too. */
+    OctopusTestPacket *orphan = [OctopusTestPacket new];
+    orphan.operation = OCT_OP_SEND_OBJECT;
+    orphan.transaction = 80;
+    assert(!OCTProviderHandleRequest(orphan, &theirAnswer));
+
+    /* Malformed ObjectInfo: answered, not ignored, so the host is never left waiting. */
+    lastResponseCode = 0;
+    assert(OCTProviderHandleRequest(request, &answer));
+    OctopusTestPacket *broken = [OctopusTestPacket new];
+    broken.operation = OCT_OP_SEND_OBJECT_INFO;
+    broken.transaction = 77;
+    broken.body = [NSData dataWithBytes:"\x01\x02\x03" length:3];
+    assert(OCTProviderHandleData(broken));
+    assert(lastResponseCode != OCT_RC_OK);
+
+    /* Nothing was created by any of that. */
+    NSArray *afterUploads=[camera objectHandlesInStorage:UINT32_MAX forObjectFormatCode:0 inAssociation:docs responseCode:&code];
+    assert(code==OCT_RC_OK&&afterUploads.count==children.count);
 
     id source=[camera dataSourceForObjectHandle:example responseCode:&code size:&size];
     assert(code==OCT_RC_OK&&size==76&&[source length]==76);

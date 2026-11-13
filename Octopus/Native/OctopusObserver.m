@@ -292,6 +292,16 @@ static void data(id self,SEL cmd,id packet){
  * init family's ownership rules apply and the compiler checks every argument's type. The encodings
  * recorded from the device are @28@0:8S16I20I24 and B24@0:8@16.
  */
+@interface NSObject (OctopusPTPResponse)
+/* How ptpd answers a host, recorded as @24@0:8S16I20, @36@0:8S16I20I24I28I32 and B24@0:8@16.
+ * Declared rather than sent through a cast, so the init family's ownership rules apply. */
+- (instancetype)initWithResponseCode:(unsigned short)code transactionID:(unsigned int)transaction;
+- (instancetype)initWithResponseCode:(unsigned short)code transactionID:(unsigned int)transaction
+                          parameter1:(unsigned int)one parameter2:(unsigned int)two
+                          parameter3:(unsigned int)three;
+- (BOOL)sendResponse:(id)response;
+@end
+
 @interface NSObject (OctopusPTPEvent)
 - (instancetype)initWithEventCode:(unsigned short)code transactionID:(unsigned int)transaction
                        parameter1:(unsigned int)parameter;
@@ -303,6 +313,43 @@ static void connected(id self,SEL cmd,bool value){
     captureTransport(self);
     atomic_store(&sessionUp,value);
     if(authorized()){pthread_mutex_lock(&lock);oct_native_connect(&journal,tokenFor(self),value);pthread_mutex_unlock(&lock);}
+}
+
+/*
+ * Answer a host's request, the way Apple's own responder does: build a PTPOperationResponsePacket
+ * and hand it to the transport. Used by the upload handler, which takes over a transaction Apple
+ * would otherwise leave unanswered, and must therefore answer it itself.
+ *
+ * `parameters` is how many of the three are meaningful, so a plain OK is not padded with zeroes a
+ * host might read as a storage of 0. Returns whether the transport accepted it.
+ */
+bool OCTNativeSendResponse(uint16_t code,uint32_t transaction,unsigned parameters,
+                           uint32_t one,uint32_t two,uint32_t three){
+    id transport=usbTransport;
+    if(!transport||![transport respondsToSelector:@selector(sendResponse:)]){
+        OCTNativeProviderEvent("provider-response-no-transport",code,OCT_RC_GENERAL_ERROR);
+        return false;
+    }
+    Class packet=objc_getClass("PTPOperationResponsePacket");
+    if(!packet){
+        OCTNativeProviderEvent("provider-response-no-class",code,OCT_RC_GENERAL_ERROR);
+        return false;
+    }
+    id response=nil;
+    if(parameters==0&&[packet instancesRespondToSelector:@selector(initWithResponseCode:transactionID:)]){
+        response=[[packet alloc] initWithResponseCode:(unsigned short)code transactionID:transaction];
+    }else if([packet instancesRespondToSelector:@selector(initWithResponseCode:transactionID:parameter1:parameter2:parameter3:)]){
+        response=[[packet alloc] initWithResponseCode:(unsigned short)code transactionID:transaction
+                                           parameter1:one parameter2:two parameter3:three];
+    }
+    if(!response){
+        OCTNativeProviderEvent("provider-response-no-packet",code,OCT_RC_GENERAL_ERROR);
+        return false;
+    }
+    bool ok=[transport sendResponse:response];
+    OCTNativeProviderEvent(ok?"provider-response-sent":"provider-response-refused",code,
+                           ok?OCT_RC_OK:OCT_RC_GENERAL_ERROR);
+    return ok;
 }
 
 /*
