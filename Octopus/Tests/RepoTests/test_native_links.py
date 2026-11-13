@@ -572,5 +572,24 @@ class NoRedeclaredLocals(unittest.TestCase):
             self.assertIn(expected, found)
 
 
+class EveryHookedClassHasAStandIn(unittest.TestCase):
+    """Every class the provider hooks needs a stand-in in the provider tests, or the hook cannot
+    install there. The upload handler added hooks on PTPResponder without one: the hooks failed to
+    install, uploads counted as unhooked, the handler rightly refused every upload, and the test's
+    first assertion failed on CI. Nothing about the handler was wrong; the test lacked the class."""
+
+    def test_each_hooked_class_is_declared_in_the_provider_tests(self):
+        provider = strip_comments((NATIVE / "OctopusProvider.m").read_text())
+        tests = strip_comments((NATIVE / "Tests/ProviderTests.m").read_text())
+        hooked = set(re.findall(r'OCTRuntimeHook\("(\w+)"', provider))
+        self.assertTrue(hooked, "found no hooked classes; the scan is broken")
+        declared = set(re.findall(r"@interface\s+(\w+)\s*:", tests))
+        for name in sorted(hooked):
+            with self.subTest(hooked=name):
+                self.assertIn(name, declared,
+                    f"the provider hooks {name}, which ProviderTests.m declares no stand-in for, so "
+                    f"that hook cannot install in the tests and whatever depends on it is refused.")
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -140,6 +140,30 @@ static BOOL infoHas(NSData *d, unsigned index, uint16_t value) {
     return NO;
 }
 
+/* Apple's responder, which the upload handler hooks: handleRequest: recorded as @24@0:8@16 and
+ * handleData: as v24@0:8@16. Without it the two hooks cannot install, uploads count as unhooked,
+ * and the handler rightly refuses every upload, which is how the first run of these tests failed.
+ * Each records what reached Apple's own implementation, so forwarding is tested as well. */
+static unsigned short lastAppleRequest, lastAppleData;
+/* Declared before the responder sends it to an id: under ARC an undeclared selector sent to id is
+ * an error, and the packet class that implements it comes later in this file. S16@0:8, as recorded. */
+@interface NSObject (OctopusTestOperationCode)
+- (unsigned short)operationCode;
+@end
+@interface PTPResponder : NSObject
+- (id)handleRequest:(id)packet;
+- (void)handleData:(id)packet;
+@end
+@implementation PTPResponder
+- (id)handleRequest:(id)packet {
+    lastAppleRequest = [packet respondsToSelector:@selector(operationCode)] ? [packet operationCode] : 0;
+    return @NO;      /* as Apple returns for every request without a data phase */
+}
+- (void)handleData:(id)packet {
+    lastAppleData = [packet respondsToSelector:@selector(operationCode)] ? [packet operationCode] : 0;
+}
+@end
+
 /* A request or data packet as Apple's responder would be given one: the operation, the transaction,
  * the two parameters an upload uses, and the data phase's bytes. Encodings as recorded from the
  * device: operationCode S16@0:8, transactionID and parameter1/2 I16@0:8, data @16@0:8. */
@@ -478,6 +502,28 @@ int main(void) { @autoreleasepool {
     broken.body = [NSData dataWithBytes:"\x01\x02\x03" length:3];
     assert(OCTProviderHandleData(broken));
     assert(lastResponseCode != OCT_RC_OK);
+
+    /* Through the hooks themselves. ptpd's transport reaches these with performSelector:, and a
+     * direct message dispatches through the same method table the hooks replaced, so it reaches
+     * them identically. Direct calls are used here because handleData: returns nothing: through
+     * performSelector:, ARC would treat the garbage left in the return register as an object.
+     * An upload into ours is answered YES by us and never reaches Apple; one into Apple's storage,
+     * and a read, go to Apple's implementation and get Apple's answer. */
+    PTPResponder *responder = [PTPResponder new];
+    lastAppleRequest = 0;
+    id ourVerdict = [responder handleRequest:request];
+    assert([ourVerdict boolValue] && lastAppleRequest == 0);
+    id appleVerdict = [responder handleRequest:appleUpload];
+    assert(![appleVerdict boolValue] && lastAppleRequest == OCT_OP_SEND_OBJECT_INFO);
+    lastAppleRequest = 0;
+    (void)[responder handleRequest:read];
+    assert(lastAppleRequest == OCT_OP_GET_OBJECT);
+    /* The data phase for ours is taken; one with nothing pending goes to Apple. */
+    lastAppleData = 0;
+    [responder handleData:infoPacket];
+    assert(lastAppleData == 0);
+    [responder handleData:infoPacket];
+    assert(lastAppleData == OCT_OP_SEND_OBJECT_INFO);
 
     /* Nothing was created by any of that. */
     NSArray *afterUploads=[camera objectHandlesInStorage:UINT32_MAX forObjectFormatCode:0 inAssociation:docs responseCode:&code];
