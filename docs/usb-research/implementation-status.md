@@ -308,3 +308,63 @@ Encodings recorded from the device:
 Still unknown before implementing: whether handleData: is called once per data phase or once per
 chunk, which decides how a large file is assembled; and what handleStartData: is given, which may
 carry the total length. Decompiling handleData: from the device's ptpd answers both.
+
+## How ptpd dispatches a packet, and what a data phase needs (from the binary, 0.4.68)
+
+Decoded from the device's own ptpd with tools/macho_parse.py and tools/macho_disassemble.py,
+written here because no disassembler in this environment reads Mach-O arm64e. The decoded
+PTPResponder handleData: is kept at evidence/ptpd/100023998.txt.
+
+PTPDeviceUSBTransport handleBulkData:result: (0x1000093bc, 2120 bytes) does not call the responder
+through a compiled selector at all. It builds a packet with initWithUSBBuffer:, then:
+
+    NSSelectorFromString(...) -> objc_opt_respondsToSelector -> performSelector:withObject: -> boolValue
+
+The handler names are plain C strings in __cstring: "handleRequest:" at 0x100035db1,
+"handleData:" at 0x100035ded, "handleResponse:" at 0x100035e22, "handleEvent:" at 0x100035e95.
+Two consequences, both decisive:
+
+- Replacing handleRequest: or handleData: on PTPResponder is picked up. performSelector: goes
+  through ordinary dispatch, so an exchanged implementation is what runs. There is no cached
+  function pointer to defeat it.
+- The id that handleRequest: returns is read with boolValue, and that is what tells the transport
+  whether to read a host-to-device data phase next. handleRequest: returns
+  [NSNumber numberWithBool:], NO on every path but Apple's own 0x900B and 0x900E. So for
+  SendObjectInfo the transport is told there is no data to read, the ObjectInfo Windows sends is
+  never read, and because the unsupported path answers nothing while the host is still waiting to
+  send, Windows hangs at "Copying...". That is 0.4.68 exactly.
+
+handleData: (0x100023998, 320 bytes) takes ONE packet holding the WHOLE data phase: it calls
+[packet data] once and passes that object on, with no loop, no offset and no accumulation. The
+transport assembles every chunk first. A handler of ours therefore receives a complete file in one
+call, which was the open question. handleStartData: (0x100023994) is a single ret: nothing arrives
+there, so the total length does not come that way either.
+
+handleData: dispatches on [packet operationCode], knows 0x900E and 0x900B, and answers everything
+else 0x2019 DeviceBusy. So returning YES from handleRequest: without also handling handleData:
+would make Apple answer DeviceBusy rather than hang, which is a safe failure to fall back to.
+
+Apple answers a host like this, and so must we:
+
+    resp = [[PTPOperationResponsePacket alloc] initWithResponseCode:code transactionID:tid];
+    [transport sendResponse:resp];                     // transport is the responder's ivar at 0x8
+
+with initWithResponseCode:transactionID:parameter1: for the three-parameter form, the responder
+keeping its transport at ivar 0x8 and the current transaction ID at ivar 0x38. Reading another
+process's ivars by offset is brittle, so the handler should take the transaction from the request
+packet it was given and the transport from the observer, which already holds it for events.
+
+### The upload handler this implies
+
+1. handleRequest: for SendObjectInfo 0x100C whose storage parameter is Octopus's: record the
+   pending transaction and return [NSNumber numberWithBool:YES] without calling Apple's, so the
+   transport reads the data phase. Every other request, including an upload to Apple's own storage,
+   goes to Apple's implementation untouched.
+2. handleData: for a packet whose transaction is the pending one: take [packet data], parse the
+   ObjectInfo with the responder's own parser, create the file, and answer OK with storage, parent
+   and the new handle through sendResponse:. Everything else forwards.
+3. SendObject 0x100D after an accepted SendObjectInfo: the same, with the bytes written to the file
+   just created, and the store's refusal returned as the response code if it fails.
+
+What remains unknown: whether the transport imposes a maximum data-phase size before calling
+handleData:, which would matter for a large file. A small file tests the path either way.

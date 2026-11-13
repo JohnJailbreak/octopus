@@ -1,0 +1,108 @@
+===== PTPResponder handleData: and handleStartData: =====
+Decoded from the device's own /usr/libexec/ptpd, SHA-256
+a1742358da3e257204a0f190211cda26a155dfe0dabb3c9fa572117460085dcb, 417184 bytes, with a reader
+written for this purpose: no disassembler here reads Mach-O arm64e. Call targets named from
+functions.tsv; "xzr" in a load or store is the stack pointer, which register 31 means there.
+
+What it establishes, which decides how uploads can be received:
+
+- handleStartData: is a single ret. Nothing is given to it, so the total length does not arrive
+  that way, and there is nothing to hook for the start of a transfer.
+- handleData: takes ONE packet holding the WHOLE data phase. It calls [packet data] once and hands
+  that object straight on. There is no loop, no offset, no accumulation, no second call. So the
+  transport assembles every chunk before calling it, and a handler of ours receives a complete file
+  in one call. That was the open question before writing one.
+- It dispatches on [packet operationCode] and knows exactly two: 0x900E, which passes the data to
+  assignHostSupportedFormats:, and 0x900B, to assignHostMediaCapabilities:. Both are Apple's own
+  vendor operations, and both are the pattern an upload must follow.
+- Anything else answers 0x2019 DeviceBusy and clears a flag at ivar 0x8c. So returning YES from
+  handleRequest: without also handling handleData: would make Apple answer DeviceBusy, not hang.
+- The responder holds its transport at ivar 0x8 and the current transaction ID at ivar 0x38.
+- A response is [[PTPOperationResponsePacket alloc] initWithResponseCode:transactionID:] or the
+  parameter1: form, then [transport sendResponse:]. That is the whole of how ptpd answers a host.
+
+
+===== 0x100023994 (4 bytes) PTPResponder handleStartData: =====
+0x100023994  ret
+
+===== 0x100023998 (320 bytes) PTPResponder handleData: =====
+0x100023998  pacibsp
+0x10002399c  sub    xzr, xzr, #0x40
+0x1000239a0  stp    x22, x21, [xzr, #0x10]
+0x1000239a4  stp    x20, x19, [xzr, #0x20]
+0x1000239a8  stp    x29, x30, [xzr, #0x30]
+0x1000239ac  add    x29, xzr, #0x30
+0x1000239b0  mov    x20, x2
+0x1000239b4  mov    x19, x0
+0x1000239b8  mov    x0, x2
+0x1000239bc  bl     0x100031180
+0x1000239c0  mov    w8, #0x900e
+0x1000239c4  cmp    w0, w8
+0x1000239c8  b.eq   0x100023a28
+0x1000239cc  mov    w8, #0x900b
+0x1000239d0  cmp    w0, w8
+0x1000239d4  b.ne   0x100023a94
+0x1000239d8  mov    x0, x19
+0x1000239dc  bl     0x1000326a0
+0x1000239e0  ldr    x21, [x19, #0x10]
+0x1000239e4  mov    x0, x20
+0x1000239e8  bl     0x10002f6e0
+0x1000239ec  mov    x2, x0
+0x1000239f0  mov    x0, x21
+0x1000239f4  bl     0x10002f120
+0x1000239f8  .word  0x10137800
+0x1000239fc  nop
+0x100023a00  bl     0x10002e610   ; __os_log_error_impl
+0x100023a04  mov    x20, x0
+0x100023a08  nop
+0x100023a0c  ldr    x0, 0x100059760
+0x100023a10  bl     0x10002e920
+0x100023a14  ldr    w3, [x19, #0x38]
+0x100023a18  mov    w2, #0x2001
+0x100023a1c  mov    x4, x20
+0x100023a20  bl     0x100030740
+0x100023a24  b      0x100023a58
+0x100023a28  ldr    x21, [x19, #0x10]
+0x100023a2c  mov    x0, x20
+0x100023a30  bl     0x10002f6e0
+0x100023a34  mov    x2, x0
+0x100023a38  mov    x0, x21
+0x100023a3c  bl     0x10002f140
+0x100023a40  nop
+0x100023a44  ldr    x0, 0x100059760
+0x100023a48  bl     0x10002e920
+0x100023a4c  ldr    w3, [x19, #0x38]
+0x100023a50  mov    w2, #0x2001
+0x100023a54  bl     0x100030720
+0x100023a58  mov    x1, x0
+0x100023a5c  ldr    x0, [x19, #0x8]
+0x100023a60  str    x1, [xzr, #0x8]
+0x100023a64  mov    x2, x1
+0x100023a68  bl     0x100031b60
+0x100023a6c  ldr    x0, [xzr, #0x8]
+0x100023a70  ldp    x29, x30, [xzr, #0x30]
+0x100023a74  ldp    x20, x19, [xzr, #0x20]
+0x100023a78  ldp    x22, x21, [xzr, #0x10]
+0x100023a7c  add    xzr, xzr, #0x40
+0x100023a80  .word  0xd50323ff
+0x100023a84  .word  0xca1e07d0
+0x100023a88  tbz    x16, #62, 0x100023a90
+0x100023a8c  .word  0xd4388e20
+0x100023a90  b      0x10002ea20
+0x100023a94  nop
+0x100023a98  ldr    x0, 0x100059760
+0x100023a9c  bl     0x10002e920
+0x100023aa0  ldr    w3, [x19, #0x38]
+0x100023aa4  mov    w2, #0x2019
+0x100023aa8  bl     0x100030720
+0x100023aac  mov    x20, x0
+0x100023ab0  ldr    x0, [x19, #0x8]
+0x100023ab4  mov    x2, x20
+0x100023ab8  bl     0x100031b60
+0x100023abc  bl     0x10002ea50
+0x100023ac0  str    wzr, [x19, #0x8c]
+0x100023ac4  ldp    x29, x30, [xzr, #0x30]
+0x100023ac8  ldp    x20, x19, [xzr, #0x20]
+0x100023acc  ldp    x22, x21, [xzr, #0x10]
+0x100023ad0  add    xzr, xzr, #0x40
+0x100023ad4  ret
