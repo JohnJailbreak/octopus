@@ -479,6 +479,106 @@ bool oct_native_runtime_unpack(uint64_t word, oct_native_runtime *out)
     return true;
 }
 
+uint64_t oct_native_traffic_pack(const oct_native_traffic *t)
+{
+    if (!t) return 0;
+    uint64_t word = (uint64_t)OCT_NATIVE_TRAFFIC_VERSION
+                  | (uint64_t)t->seen << 4
+                  | (uint64_t)t->send_info_count << 12
+                  | (uint64_t)t->send_info_response << 20
+                  | (uint64_t)(t->send_object_response & 0xFFu) << 36
+                  | (uint64_t)(t->delete_response & 0xFFu) << 44
+                  | (uint64_t)(t->announced & 0xFu) << 52;
+    return word | (uint64_t)lease_check(word) << 56;
+}
+
+bool oct_native_traffic_unpack(uint64_t word, oct_native_traffic *out)
+{
+    if (!out) return false;
+    memset(out, 0, sizeof *out);
+    if ((word & 0xFu) != OCT_NATIVE_TRAFFIC_VERSION) return false;
+    if ((uint8_t)(word >> 56) != lease_check(word & 0x00FFFFFFFFFFFFFFull)) return false;
+    out->seen = (uint8_t)(word >> 4);
+    out->send_info_count = (uint8_t)(word >> 12);
+    out->send_info_response = (uint16_t)(word >> 20);
+    /* Only the low byte travels for these two; every response they can draw is a PTP one, 0x20xx. */
+    uint8_t object = (uint8_t)(word >> 36), removed = (uint8_t)(word >> 44);
+    out->send_object_response = object ? (uint16_t)(0x2000u | object) : 0;
+    out->delete_response = removed ? (uint16_t)(0x2000u | removed) : 0;
+    out->announced = (uint8_t)((word >> 52) & 0xFu);
+    return true;
+}
+
+const char *oct_native_response_name(uint16_t response)
+{
+    switch (response) {
+    case 0x2001: return "OK";
+    case 0x2002: return "GeneralError";
+    case 0x2005: return "OperationNotSupported";
+    case 0x2008: return "InvalidStorageID";
+    case 0x2009: return "InvalidObjectHandle";
+    case 0x200B: return "InvalidObjectFormatCode";
+    case 0x200C: return "StoreFull";
+    case 0x200D: return "ObjectWriteProtected";
+    case 0x200E: return "StoreReadOnly";
+    case 0x200F: return "AccessDenied";
+    case 0x2013: return "StoreNotAvailable";
+    case 0x2019: return "DeviceBusy";
+    case 0x201A: return "InvalidParentObject";
+    case 0x201D: return "InvalidParameter";
+    }
+    return "unrecognised";
+}
+
+void oct_native_traffic_describe(const oct_native_traffic *t, char *out, size_t capacity)
+{
+    if (!out || capacity == 0) return;
+    if (!t) { snprintf(out, capacity, "No write traffic recorded."); return; }
+    bool info = t->seen & OCT_NATIVE_TRAFFIC_SEND_OBJECT_INFO;
+    bool list = t->seen & OCT_NATIVE_TRAFFIC_SEND_PROP_LIST;
+    char head[200];
+    if (!info && !list) {
+        /* The decisive case: the host never tried, so nothing on the phone could have refused it. */
+        snprintf(head, sizeof head, "The computer never asked to add a file or folder: it decided "
+                                    "from what the device reported not to offer it.");
+    } else if (info && t->send_info_response != 0x2001) {
+        snprintf(head, sizeof head, "The computer asked to add something %u time%s, and ptpd answered "
+                 "0x%04X %s before Octopus was asked.", (unsigned)t->send_info_count,
+                 t->send_info_count == 1 ? "" : "s", (unsigned)t->send_info_response,
+                 oct_native_response_name(t->send_info_response));
+    } else if (info && t->send_object_response && t->send_object_response != 0x2001) {
+        snprintf(head, sizeof head, "ptpd accepted the name of an upload, then answered its data "
+                 "0x%04X %s.", (unsigned)t->send_object_response,
+                 oct_native_response_name(t->send_object_response));
+    } else if (info) {
+        snprintf(head, sizeof head, "The computer added something %u time%s and ptpd accepted it.",
+                 (unsigned)t->send_info_count, t->send_info_count == 1 ? "" : "s");
+    } else {
+        snprintf(head, sizeof head, "The computer tried the MTP way of adding a file, "
+                                    "SendObjectPropList, which ptpd does not support.");
+    }
+    char tail[160] = "";
+    size_t used = 0;
+    if (t->seen & OCT_NATIVE_TRAFFIC_DELETE_OBJECT)
+        used += (size_t)snprintf(tail + used, sizeof tail - used, " Delete answered 0x%04X %s.",
+                                 (unsigned)t->delete_response, oct_native_response_name(t->delete_response));
+    if ((t->seen & OCT_NATIVE_TRAFFIC_SET_PROP_VALUE) && used < sizeof tail)
+        used += (size_t)snprintf(tail + used, sizeof tail - used, " A rename was attempted.");
+    if ((t->seen & OCT_NATIVE_TRAFFIC_PROPS_SUPPORTED) && used < sizeof tail)
+        used += (size_t)snprintf(tail + used, sizeof tail - used, " The computer probed for MTP properties.");
+    /* Whether a host already connected was told anything changed. */
+    if (used < sizeof tail) {
+        const char *how = (t->announced & OCT_NATIVE_ANNOUNCE_CAMERA) ? " The drive was announced through Apple's own method"
+                        : (t->announced & OCT_NATIVE_ANNOUNCE_EVENT) ? " The drive was announced by event"
+                        : (t->announced & OCT_NATIVE_ANNOUNCE_FAILED) ? " The drive could not be announced: no session was up"
+                        : " The drive was never announced";
+        used += (size_t)snprintf(tail + used, sizeof tail - used, "%s%s.", how,
+                                 (t->announced & OCT_NATIVE_ANNOUNCE_DEVICE_INFO) ? ", and DeviceInfoChanged was sent" : "");
+        (void)used;
+    }
+    snprintf(out, capacity, "%s%s", head, tail);
+}
+
 const char *oct_native_write_name(unsigned bit)
 {
     switch (bit) {
@@ -770,6 +870,23 @@ oct_status oct_native_runtime_publish(const oct_native_runtime *runtime)
     return notify_write(OCT_NATIVE_RUNTIME_NAME, &token, oct_native_runtime_pack(runtime));
 }
 
+oct_status oct_native_traffic_publish(const oct_native_traffic *traffic)
+{
+    static int token = -1;
+    if (!traffic) return OCT_E_INVALID_ARGUMENT;
+    return notify_write(OCT_NATIVE_TRAFFIC_NAME, &token, oct_native_traffic_pack(traffic));
+}
+
+oct_status oct_native_traffic_read(oct_native_traffic *out)
+{
+    if (!out) return OCT_E_INVALID_ARGUMENT;
+    memset(out, 0, sizeof *out);
+    uint64_t word = 0;
+    oct_status status = notify_read(OCT_NATIVE_TRAFFIC_NAME, &word);
+    if (status != OCT_OK) return status;
+    return oct_native_traffic_unpack(word, out) ? OCT_OK : OCT_E_STATE;
+}
+
 oct_status oct_native_hooks_publish(const oct_native_hook_report *report)
 {
     static int token = -1;
@@ -848,6 +965,16 @@ oct_status oct_native_runtime_publish(const oct_native_runtime *runtime)
 oct_status oct_native_hooks_publish(const oct_native_hook_report *report)
 {
     (void)report;
+    return OCT_E_UNSUPPORTED;
+}
+oct_status oct_native_traffic_publish(const oct_native_traffic *traffic)
+{
+    (void)traffic;
+    return OCT_E_UNSUPPORTED;
+}
+oct_status oct_native_traffic_read(oct_native_traffic *out)
+{
+    if (out) memset(out, 0, sizeof *out);
     return OCT_E_UNSUPPORTED;
 }
 oct_status oct_native_roots_publish(const oct_native_root_report *report)

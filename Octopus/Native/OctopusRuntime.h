@@ -22,3 +22,6 @@ void OCTProviderAnnounceIfNeeded(void);
 /* Tell the host its storage list changed, so it reads it again without the cable being pulled.
  * Defined in the observer, which holds the transport; does nothing when no session is up. */
 bool OCTNativeAnnounceStorage(uint32_t storage);
+/* Any PTP event with one parameter, through the transport the host is on. Does nothing without a
+ * session. Defined in the observer. */
+bool OCTNativeSendEvent(uint16_t code, uint32_t parameter);

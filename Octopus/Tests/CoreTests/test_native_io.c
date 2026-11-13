@@ -1040,6 +1040,79 @@ static void test_write_verdict(void)
     oct_native_write_verdict(0, NULL, 16);   /* tolerated */
 }
 
+/* The traffic word and the sentence it becomes. */
+static void test_traffic_word(void)
+{
+    oct_native_traffic t = { .seen = OCT_NATIVE_TRAFFIC_SEND_OBJECT_INFO | OCT_NATIVE_TRAFFIC_DELETE_OBJECT,
+                             .send_info_count = 3, .send_info_response = 0x2005,
+                             .send_object_response = 0, .delete_response = 0x200F };
+    oct_native_traffic out;
+    uint64_t word = oct_native_traffic_pack(&t);
+    CHECK(oct_native_traffic_unpack(word, &out));
+    CHECK_EQ(out.seen, t.seen);
+    CHECK_EQ(out.send_info_count, 3u);
+    CHECK_EQ(out.send_info_response, 0x2005u);
+    CHECK_EQ(out.send_object_response, 0u);   /* never answered stays zero, not 0x2000 */
+    CHECK_EQ(out.delete_response, 0x200Fu);
+    /* Altered in transit, refused; a word of another kind, refused. */
+    CHECK(!oct_native_traffic_unpack(word ^ (1ull << 22), &out));
+    CHECK(!oct_native_traffic_unpack(word ^ 1ull, &out));
+    CHECK(!oct_native_traffic_unpack(0, &out));
+
+    char text[400];
+    /* The decisive case: offered uploads, never tried one. */
+    oct_native_traffic none = {0};
+    oct_native_traffic_describe(&none, text, sizeof text);
+    CHECK(strstr(text, "never asked to add") != NULL);
+    /* Tried, and ptpd refused before Octopus was asked, named. */
+    oct_native_traffic_describe(&t, text, sizeof text);
+    CHECK(strstr(text, "3 times") != NULL);
+    CHECK(strstr(text, "0x2005 OperationNotSupported") != NULL);
+    CHECK(strstr(text, "Delete answered 0x200F AccessDenied") != NULL);
+    /* The name accepted, the data refused. */
+    oct_native_traffic data = { .seen = OCT_NATIVE_TRAFFIC_SEND_OBJECT_INFO | OCT_NATIVE_TRAFFIC_SEND_OBJECT,
+                                .send_info_count = 1, .send_info_response = 0x2001,
+                                .send_object_response = 0x200C };
+    oct_native_traffic_describe(&data, text, sizeof text);
+    CHECK(strstr(text, "answered its data 0x200C StoreFull") != NULL);
+    /* Accepted end to end. */
+    data.send_object_response = 0x2001;
+    oct_native_traffic_describe(&data, text, sizeof text);
+    CHECK(strstr(text, "added something 1 time and ptpd accepted it") != NULL);
+    /* The MTP route, which ptpd does not support. */
+    oct_native_traffic mtp = { .seen = OCT_NATIVE_TRAFFIC_SEND_PROP_LIST | OCT_NATIVE_TRAFFIC_PROPS_SUPPORTED };
+    oct_native_traffic_describe(&mtp, text, sizeof text);
+    CHECK(strstr(text, "SendObjectPropList") != NULL);
+    CHECK(strstr(text, "probed for MTP") != NULL);
+    /* Bounded and terminated. */
+    char tiny[12];
+    oct_native_traffic_describe(&t, tiny, sizeof tiny);
+    CHECK_EQ(strlen(tiny), 11u);
+    oct_native_traffic_describe(NULL, text, sizeof text);
+    CHECK(strstr(text, "No write traffic") != NULL);
+    CHECK(strcmp(oct_native_response_name(0x1234), "unrecognised") == 0);
+
+    /* The announcement route: carried in the spare bits, and said in words. */
+    oct_native_traffic told = { .announced = OCT_NATIVE_ANNOUNCE_CAMERA | OCT_NATIVE_ANNOUNCE_DEVICE_INFO };
+    CHECK(oct_native_traffic_unpack(oct_native_traffic_pack(&told), &out));
+    CHECK_EQ(out.announced, told.announced);
+    oct_native_traffic_describe(&told, text, sizeof text);
+    CHECK(strstr(text, "announced through Apple's own method, and DeviceInfoChanged was sent") != NULL);
+    told.announced = OCT_NATIVE_ANNOUNCE_FAILED;
+    oct_native_traffic_describe(&told, text, sizeof text);
+    CHECK(strstr(text, "could not be announced: no session was up") != NULL);
+    told.announced = 0;
+    oct_native_traffic_describe(&told, text, sizeof text);
+    CHECK(strstr(text, "never announced") != NULL);
+    /* All four bits, and the existing fields untouched by them. */
+    oct_native_traffic every = t;
+    every.announced = 0xF;
+    CHECK(oct_native_traffic_unpack(oct_native_traffic_pack(&every), &out));
+    CHECK_EQ(out.announced, 0xFu);
+    CHECK_EQ(out.send_info_response, 0x2005u);
+    CHECK_EQ(out.delete_response, 0x200Fu);
+}
+
 void run_native_io_tests(void)
 {
     test_detailed_failures();
@@ -1056,6 +1129,7 @@ void run_native_io_tests(void)
     test_hook_report();
     test_hook_report_writes();
     test_write_verdict();
+    test_traffic_word();
     test_root_probe();
     test_root_table_and_report();
     char directory[512], path[1024];

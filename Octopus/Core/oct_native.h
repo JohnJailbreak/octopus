@@ -43,7 +43,44 @@ typedef struct oct_native_event {
     oct_native_event_kind kind;
 } oct_native_event;
 
+/*
+ * The write operations a host sent and what ptpd answered, across every command, not only the last
+ * sixty-four the event ring holds. It answers the question the hook report cannot: whether a host
+ * that was offered uploads ever tried one. If it never sent SendObjectInfo, it decided from what the
+ * device reported not to offer adding a file; if it sent one and ptpd refused, the refusal happened
+ * inside Apple's responder before Octopus was asked. Those need opposite fixes.
+ */
+enum {
+    OCT_NATIVE_TRAFFIC_SEND_OBJECT_INFO = 1u << 0, /* 0x100C */
+    OCT_NATIVE_TRAFFIC_SEND_OBJECT      = 1u << 1, /* 0x100D */
+    OCT_NATIVE_TRAFFIC_DELETE_OBJECT    = 1u << 2, /* 0x100B */
+    OCT_NATIVE_TRAFFIC_SET_PROP_VALUE   = 1u << 3, /* 0x9804, an MTP rename */
+    OCT_NATIVE_TRAFFIC_SEND_PROP_LIST   = 1u << 4, /* 0x9808, an MTP upload */
+    OCT_NATIVE_TRAFFIC_PROPS_SUPPORTED  = 1u << 5, /* 0x9801, a host probing for MTP */
+    OCT_NATIVE_TRAFFIC_MOVE_OBJECT      = 1u << 6, /* 0x1019 */
+    OCT_NATIVE_TRAFFIC_COPY_OBJECT      = 1u << 7, /* 0x101A */
+};
+
+/* How the companion told a connected host the device changed, so an export shows whether a phone
+ * plugged in before USB access was enabled was ever told. Set by the observer, not the journal. */
+enum {
+    OCT_NATIVE_ANNOUNCE_CAMERA      = 1u << 0, /* through Apple's sendEventAddStorageWithID: */
+    OCT_NATIVE_ANNOUNCE_EVENT       = 1u << 1, /* through a StoreAdded event on the transport */
+    OCT_NATIVE_ANNOUNCE_DEVICE_INFO = 1u << 2, /* DeviceInfoChanged sent */
+    OCT_NATIVE_ANNOUNCE_FAILED      = 1u << 3, /* an event could not be sent: no session or transport */
+};
+
+typedef struct oct_native_traffic {
+    uint8_t  announced;            /* OCT_NATIVE_ANNOUNCE_* bits, four of them */
+    uint8_t  seen;                 /* OCT_NATIVE_TRAFFIC_* bits */
+    uint8_t  send_info_count;      /* SendObjectInfo commands, saturating */
+    uint16_t send_info_response;   /* the last response to SendObjectInfo, zero if none */
+    uint16_t send_object_response; /* the last response to SendObject */
+    uint16_t delete_response;      /* the last response to DeleteObject */
+} oct_native_traffic;
+
 typedef struct oct_native_snapshot {
+    oct_native_traffic traffic;
     uint64_t generation;
     uint64_t epoch;
     uint64_t transport;
@@ -100,6 +137,8 @@ uint64_t oct_native_receive_begin(oct_native_journal *journal, uint64_t transpor
                                   int32_t io_result, uint32_t byte_count);
 void oct_native_receive_end(oct_native_journal *journal, uint64_t scope);
 bool oct_native_command(oct_native_journal *journal, uint64_t scope, uint16_t operation, uint32_t transaction);
+/* The traffic bit for a write operation, or zero for one that is not. */
+unsigned oct_native_traffic_bit(uint16_t operation);
 bool oct_native_data_submitted(oct_native_journal *journal, uint64_t transport, uint32_t transaction, uint64_t bytes);
 bool oct_native_response(oct_native_journal *journal, uint64_t transport, uint32_t transaction,
                          uint16_t response, bool accepted);

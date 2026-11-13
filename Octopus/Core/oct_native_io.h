@@ -1,6 +1,7 @@
 #ifndef OCT_NATIVE_IO_H
 #define OCT_NATIVE_IO_H
 #include "oct_store.h"
+#include "oct_native.h"   /* oct_native_traffic, carried by the traffic word below */
 #define OCT_NATIVE_DIRECTORY "/var/mobile/Library/Caches/Octopus/native"
 #define OCT_NATIVE_LEASE_MS 15000u
 /* Both peers are mobile. This is not an authentication boundary against other
@@ -310,6 +311,19 @@ bool oct_native_lease_is_writable(oct_native_lease_mode mode);
  *
  * version:4 fired:10 formats_added:1 device_info:8 handles:8 object_info:8 get_object:8 check:8. */
 #define OCT_NATIVE_HOOKS_NAME    "com.parv.octopus.native.hooks"
+
+/* The write traffic, by notification like the others: what a host sent of each write operation and
+ * what ptpd answered. Version, the seen bits, the SendObjectInfo count, that response in full, and
+ * the low bytes of the SendObject and DeleteObject responses, with a check byte. */
+#define OCT_NATIVE_TRAFFIC_NAME  "com.parv.octopus.native.traffic"
+#define OCT_NATIVE_TRAFFIC_VERSION 1u
+uint64_t   oct_native_traffic_pack(const oct_native_traffic *traffic);
+bool       oct_native_traffic_unpack(uint64_t word, oct_native_traffic *out);
+oct_status oct_native_traffic_publish(const oct_native_traffic *traffic);
+oct_status oct_native_traffic_read(oct_native_traffic *out);
+/* One sentence saying what a host did about writes and what ptpd answered, always terminated. */
+void       oct_native_traffic_describe(const oct_native_traffic *traffic, char *out, size_t capacity);
+const char *oct_native_response_name(uint16_t response);
 #define OCT_NATIVE_HOOKS_VERSION 1u
 
 enum {

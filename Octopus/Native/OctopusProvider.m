@@ -49,21 +49,43 @@ static __weak id knownCamera;
 
 @interface NSObject (OctopusAddStorage)
 - (void)sendEventAddStorageWithID:(unsigned int)storage;
+- (void)sendEventRemoveStorageWithID:(unsigned int)storage;   /* v20@0:8I16, as the add */
 @end
+
+/* Set when a store opens, cleared by the first announcement after it. That first one is a full
+ * refresh, a disconnect of this storage alone: remove, add, and tell the host to read DeviceInfo
+ * again. Later retries only add, so a host slow to answer does not see the drive flicker. */
+static atomic_bool freshStore;
 
 static void rememberCamera(id camera) {
     if (camera && !knownCamera) knownCamera = camera;
 }
 
-/* Announce the storage, through Apple's method when the camera is known, otherwise the observer's. */
+/*
+ * Announce the storage: the way to make a host that is already connected see a change, without a
+ * cable pulled or a daemon restarted, which on 0.4.59 left Windows not talking to the new ptpd at
+ * all. Through Apple's own methods when the camera is known, otherwise the observer's events.
+ *
+ * The first announcement after a store opens is the full refresh: StoreRemoved, then StoreAdded,
+ * then DeviceInfoChanged, which makes a host plugged in before USB access was enabled read the
+ * device's capabilities again and find the uploads it was not offered at the start of its session.
+ */
 static void announce(void) {
+    bool fresh = atomic_exchange_explicit(&freshStore, false, memory_order_acq_rel);
     id camera = knownCamera;
     if (camera && [camera respondsToSelector:@selector(sendEventAddStorageWithID:)]) {
+        if (fresh && [camera respondsToSelector:@selector(sendEventRemoveStorageWithID:)]) {
+            [camera sendEventRemoveStorageWithID:OCT_NATIVE_STORAGE_ID];
+            OCTNativeProviderEvent("provider-removed-by-camera", OCT_NATIVE_STORAGE_ID, OCT_RC_OK);
+        }
         [camera sendEventAddStorageWithID:OCT_NATIVE_STORAGE_ID];
         OCTNativeProviderEvent("provider-announced-by-camera", OCT_NATIVE_STORAGE_ID, OCT_RC_OK);
-        return;
+    } else {
+        if (fresh) (void)OCTNativeSendEvent(OCT_EVENT_STORE_REMOVED, OCT_NATIVE_STORAGE_ID);
+        (void)OCTNativeAnnounceStorage(OCT_NATIVE_STORAGE_ID);
     }
-    (void)OCTNativeAnnounceStorage(OCT_NATIVE_STORAGE_ID);
+    /* Apple has no method for this one, so it always goes the observer's way. */
+    if (fresh) (void)OCTNativeSendEvent(OCT_EVENT_DEVICE_INFO_CHANGED, 0);
 }
 static IMP originalAppendStorage, originalAppendFolder;
 /* The name and parent a host sent in SendObjectInfo, kept until the data arrives in SendObject.
@@ -263,19 +285,15 @@ static id deviceInfo(id self, SEL cmd) {
      * Each operation is gated on its own hook below. This used to sit inside a condition on the
      * delete hook alone, written before uploads existed, so a missing delete hook would also have
      * hidden uploads whose hooks were in place. */
-    if (storeWritable) {
-        /* Recorded separately from what was advertised, because the two failing differ: a store not
-         * yet writable when a host asked is a timing fault, an operation missing from the list with
-         * the store writable is a hook that did not install. */
-        OCTNativeProviderEvent("provider-device-info-writable",0,OCT_RC_OK);
-        /* Each append grows the dataset by two bytes, so each is its own call on the result of the
-         * last. An operation is advertised only when the hook that serves it is in place: a host
-         * offered one that cannot be served fails part-way through a copy instead of not offering. */
-        /* The events, in the array before the operations. A host ignores an event it was not told
-         * to expect, so StoreAdded has to be advertised for the announcement to mean anything, and
-         * ObjectAdded for a file uploaded or deleted to appear without a refresh. */
-        uint16_t events[2]={OCT_EVENT_STORE_ADDED,OCT_EVENT_OBJECT_ADDED};
-        for (unsigned i=0;i<2;i++) {
+    /* The events, for every store, read-only or not: a host ignores an event it was not told to
+     * expect. StoreAdded and StoreRemoved make a storage that starts being served mid-session appear,
+     * the pair being a disconnect of that storage alone, and DeviceInfoChanged makes a host read this
+     * list again, which is the only way a phone plugged in before USB access was enabled can tell it
+     * uploads are now possible. ObjectAdded lets a new file appear without a refresh. */
+    {
+        uint16_t events[4]={OCT_EVENT_STORE_ADDED,OCT_EVENT_STORE_REMOVED,
+                            OCT_EVENT_DEVICE_INFO_CHANGED,OCT_EVENT_OBJECT_ADDED};
+        for (unsigned i=0;i<4;i++) {
             NSMutableData *withEvent=[NSMutableData dataWithLength:copy.length+2];
             size_t grownBy=0;
             if (oct_native_device_info_add_event(copy.bytes,copy.length,events[i],
@@ -285,6 +303,36 @@ static id deviceInfo(id self, SEL cmd) {
                 OCTNativeProviderEvent("provider-advertised-event",events[i],OCT_RC_OK);
             }
         }
+    }
+    if (storeWritable) {
+        /* Recorded separately from what was advertised, because the two failing differ: a store not
+         * yet writable when a host asked is a timing fault, an operation missing from the list with
+         * the store writable is a hook that did not install. */
+        OCTNativeProviderEvent("provider-device-info-writable",0,OCT_RC_OK);
+        /* The formats a host may create. A host offers New Folder and Paste only for formats it
+         * finds here: Association, 0x3001, is a folder, and Undefined, 0x3000, is any other file.
+         * Apple's list names the photo formats, so neither was offered. Added to both the playback
+         * and capture lists; an append of one already present does nothing. */
+        uint16_t creatable[2]={OCT_FORMAT_UNDEFINED,OCT_FORMAT_ASSOCIATION};
+        for (unsigned i=0;i<2;i++) {
+            for (unsigned list=0;list<2;list++) {
+                NSMutableData *withFormat=[NSMutableData dataWithLength:copy.length+2];
+                size_t grownTo=0;
+                int added=list==0
+                    ? oct_native_device_info_add_format(copy.bytes,copy.length,creatable[i],
+                                                        withFormat.mutableBytes,withFormat.length,&grownTo)
+                    : oct_native_device_info_add_capture_format(copy.bytes,copy.length,creatable[i],
+                                                        withFormat.mutableBytes,withFormat.length,&grownTo);
+                if (added==1) {
+                    withFormat.length=grownTo;
+                    copy=withFormat;
+                    OCTNativeProviderEvent("provider-advertised-format",creatable[i],OCT_RC_OK);
+                }
+            }
+        }
+        /* Each append grows the dataset by two bytes, so each is its own call on the result of the
+         * last. An operation is advertised only when the hook that serves it is in place: a host
+         * offered one that cannot be served fails part-way through a copy instead of not offering. */
         uint16_t operations[3];
         unsigned count=0;
         if (atomic_load_explicit(&deleteHooked,memory_order_acquire)) operations[count++]=OCT_OP_DELETE_OBJECT;
@@ -729,7 +777,11 @@ static BOOL openStoreLocked(oct_native_lease_mode scope, NSString **reason)
      * again. It does nothing when no session is up, and the announcement is retried from the timer
      * until a host actually asks, since one sent too early is simply missed. */
     atomic_store_explicit(&announceWanted,true,memory_order_release);
-    announce();
+    atomic_store_explicit(&freshStore,true,memory_order_release);
+    /* Not announced from here. This runs holding coreLock, and Apple's sendEventAddStorageWithID:
+     * may well ask for the storage's info while building the event, which would reach storageInfo
+     * above and take coreLock again on the same thread: a lock that is not recursive, so ptpd would
+     * freeze. The observer's timer announces instead, holding no lock, within a second. */
     return YES;
 }
 

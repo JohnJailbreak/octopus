@@ -518,5 +518,24 @@ class NoInitThroughMsgSend(unittest.TestCase):
                               f"initializer a cast frees the object it returns.")
 
 
+class NoAnnouncementUnderTheLock(unittest.TestCase):
+    """announce() calls Apple's sendEventAddStorageWithID:, which may ask for the storage's info
+    while building the event and so reach the storageInfo hook, which takes coreLock. coreLock is
+    not recursive, so announcing from code that already holds it would freeze ptpd on that thread.
+    The stand-in camera does not call back, so no test would see it; this reads the source instead.
+    Neither openStoreLocked, whose name says it runs locked, nor any region between a lock and an
+    unlock of coreLock, may call announce()."""
+
+    def test_announce_is_not_called_while_coreLock_is_held(self):
+        text = strip_comments((NATIVE / "OctopusProvider.m").read_text())
+        opener = text[text.index("static BOOL openStoreLocked("):]
+        opener = opener[:opener.index("\n}\n")]
+        self.assertNotIn("announce()", opener, "openStoreLocked runs holding coreLock and announces")
+        for m in re.finditer(r"pthread_mutex_lock\(&coreLock\);(.*?)pthread_mutex_unlock\(&coreLock\);", text, re.S):
+            with self.subTest(at=text.count("\n", 0, m.start()) + 1):
+                self.assertNotIn("announce()", m.group(1))
+                self.assertNotIn("OCTProviderAnnounceIfNeeded()", m.group(1))
+
+
 if __name__ == "__main__":
     unittest.main()

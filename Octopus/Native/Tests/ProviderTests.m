@@ -87,6 +87,15 @@ bool OCTNativeAnnounceStorage(uint32_t storage) {
     return false;   /* no session in a test, which is what the real one reports then too */
 }
 
+/* Every event the provider sends, in order, for the refresh sequence to be checked. */
+static uint16_t sentEvents[16];
+static unsigned sentEventCount;
+bool OCTNativeSendEvent(uint16_t code, uint32_t parameter) {
+    (void)parameter;
+    if (sentEventCount < 16) sentEvents[sentEventCount++] = code;
+    return false;
+}
+
 /* The last handle Apple's own delete was asked about, or zero. */
 static uint32_t lastAppleDelete;
 /* The association Apple's own upload receiver was asked about, or zero: an upload into Apple's own
@@ -186,7 +195,20 @@ int main(void) { @autoreleasepool {
     if(!OCTProviderValidate(&reason)){fprintf(stderr,"validate: %s\n",reason.UTF8String);abort();}
     /* The sample tree, which is what a grant naming no filesystem serves. */
     lastAnnouncedStorage=0;
+    sentEventCount=0;
     if(!OCTProviderInstall(OCT_NATIVE_LEASE_EXPOSE_SYNTHETIC,&reason)){fprintf(stderr,"install: %s\n",reason.UTF8String);abort();}
+    /* Nothing is announced while the store opens: that runs holding coreLock, and an announcement
+     * that called back into a hook taking it would freeze ptpd. The timer does it instead. */
+    assert(sentEventCount==0);
+    assert(lastAnnouncedStorage==0);
+    OCTProviderAnnounceIfNeeded();
+    /* The first announcement after a store opens is a disconnect of that storage alone: removed,
+     * then added, then DeviceInfo to be read again. No camera seen yet, so all by the observer. */
+    assert(sentEventCount==2);
+    assert(sentEvents[0]==OCT_EVENT_STORE_REMOVED);
+    assert(sentEvents[1]==OCT_EVENT_DEVICE_INFO_CHANGED);
+    /* Retries only add: no second removal, no second DeviceInfoChanged, so the drive does not flicker. */
+    sentEventCount=0;
     /* Opening the store announced it. No camera has been seen yet, so it went the observer's way,
      * the fallback; a host that has not reached a camera hook has not enumerated either. */
     assert(lastAnnouncedStorage==OCT_NATIVE_STORAGE_ID);
@@ -194,6 +216,7 @@ int main(void) { @autoreleasepool {
     lastAnnouncedStorage=0;
     OCTProviderAnnounceIfNeeded();
     assert(lastAnnouncedStorage==OCT_NATIVE_STORAGE_ID);
+    assert(sentEventCount==0);   /* a retry adds only: no removal, no DeviceInfoChanged */
     if(!OCTProviderInstall(OCT_NATIVE_LEASE_EXPOSE_SYNTHETIC,&reason)){fprintf(stderr,"reinstall: %s\n",reason.UTF8String);abort();}
     PTPVirtualCamera *camera=[PTPVirtualCamera new];
     assert([[camera allStorageIDs] isEqual:@[@0x10001]]);

@@ -150,8 +150,76 @@ static void test_bounds(void)
     CHECK(!command(&j, 0x1004, 1));
 }
 
+/* Write traffic: what a host sent of each write operation and what ptpd answered, kept across every
+ * command. This is the record that separates a host that never tried to add a file from one ptpd
+ * turned away, which need opposite fixes. */
+static void test_write_traffic(void)
+{
+    oct_native_journal j;
+    start(&j);
+    oct_native_snapshot snap;
+    oct_native_get_snapshot(&j, &snap);
+    CHECK_EQ(snap.traffic.seen, 0u);
+
+    /* Reads leave it alone. */
+    CHECK(command(&j, 0x1007, 1));
+    CHECK(oct_native_response(&j, TRANSPORT, 1, 0x2001, true));
+    oct_native_get_snapshot(&j, &snap);
+    CHECK_EQ(snap.traffic.seen, 0u);
+
+    /* An upload ptpd refuses: the attempt and the refusal are both recorded. */
+    CHECK(command(&j, 0x100C, 2));
+    CHECK(oct_native_response(&j, TRANSPORT, 2, 0x2005, true));
+    oct_native_get_snapshot(&j, &snap);
+    CHECK(snap.traffic.seen & OCT_NATIVE_TRAFFIC_SEND_OBJECT_INFO);
+    CHECK_EQ(snap.traffic.send_info_count, 1u);
+    CHECK_EQ(snap.traffic.send_info_response, 0x2005u);
+
+    /* A second attempt counts, and the last answer wins. */
+    CHECK(command(&j, 0x100C, 3));
+    CHECK(oct_native_response(&j, TRANSPORT, 3, 0x2001, true));
+    CHECK(command(&j, 0x100D, 4));
+    CHECK(oct_native_response(&j, TRANSPORT, 4, 0x2001, true));
+    CHECK(command(&j, 0x100B, 5));
+    CHECK(oct_native_response(&j, TRANSPORT, 5, 0x200F, true));
+    oct_native_get_snapshot(&j, &snap);
+    CHECK_EQ(snap.traffic.send_info_count, 2u);
+    CHECK_EQ(snap.traffic.send_info_response, 0x2001u);
+    CHECK_EQ(snap.traffic.send_object_response, 0x2001u);
+    CHECK_EQ(snap.traffic.delete_response, 0x200Fu);
+    CHECK(snap.traffic.seen & OCT_NATIVE_TRAFFIC_SEND_OBJECT);
+    CHECK(snap.traffic.seen & OCT_NATIVE_TRAFFIC_DELETE_OBJECT);
+
+    /* An MTP host's probes are recorded too. */
+    CHECK(command(&j, 0x9801, 6));
+    CHECK(command(&j, 0x9808, 7));
+    oct_native_get_snapshot(&j, &snap);
+    CHECK(snap.traffic.seen & OCT_NATIVE_TRAFFIC_PROPS_SUPPORTED);
+    CHECK(snap.traffic.seen & OCT_NATIVE_TRAFFIC_SEND_PROP_LIST);
+
+    /* Opening a new session does not erase it: the record is for the whole process. */
+    CHECK(command(&j, 0x1003, 8));
+    CHECK(oct_native_response(&j, TRANSPORT, 8, 0x2001, true));
+    oct_native_get_snapshot(&j, &snap);
+    CHECK_EQ(snap.traffic.send_info_count, 2u);
+
+    /* Every operation maps to its own bit, and nothing else maps at all. */
+    const uint16_t ops[] = { 0x100C, 0x100D, 0x100B, 0x9804, 0x9808, 0x9801, 0x1019, 0x101A };
+    unsigned all = 0;
+    for (size_t i = 0; i < sizeof ops / sizeof ops[0]; i++) {
+        unsigned bit = oct_native_traffic_bit(ops[i]);
+        CHECK(bit != 0);
+        CHECK((all & bit) == 0);
+        all |= bit;
+    }
+    CHECK_EQ(all, 0xFFu);
+    CHECK_EQ(oct_native_traffic_bit(0x1001), 0u);
+    CHECK_EQ(oct_native_traffic_bit(0x1009), 0u);
+}
+
 void run_native_tests(void)
 {
+    test_write_traffic();
     test_provenance();
     test_lifecycle();
     test_bounds();

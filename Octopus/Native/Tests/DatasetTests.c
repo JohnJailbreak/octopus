@@ -124,7 +124,39 @@ static void test_event_append(void)
     assert(output[19] == 0x01);   /* events count did not */
 }
 
+/* The capture-format list, the fourth array, beside the playback list at the fifth. A host offers
+ * New Folder and Paste only for formats it finds listed, so Association and Undefined go in both. */
+static void test_capture_format_append(void)
+{
+    const unsigned char input[] = {
+        0x64,0x00, 0x00,0x00,0x00,0x00, 0x64,0x00, 0x00, 0x00,0x00,
+        0x00,0x00,0x00,0x00,                            /* operations: none */
+        0x00,0x00,0x00,0x00,                            /* events: none */
+        0x00,0x00,0x00,0x00,                            /* device properties: none */
+        0x01,0x00,0x00,0x00, 0x01,0x38,                 /* capture: JPEG */
+        0x01,0x00,0x00,0x00, 0x01,0x38,                 /* playback: JPEG */
+        0x00, 0x00, 0x00, 0x00,
+    };
+    unsigned char output[sizeof input + 8];
+    size_t produced = 0;
+    assert(oct_native_device_info_add_capture_format(input, sizeof input, 0x3001, output,
+                                                     sizeof output, &produced) == 1);
+    assert(produced == sizeof input + 2);
+    assert(output[23] == 0x02);                       /* capture count grew */
+    assert(output[29] == 0x01 && output[30] == 0x30);  /* Association appended there */
+    assert(output[31] == 0x01);                       /* playback count did not */
+    assert(memcmp(output, input, 23) == 0);           /* everything before it untouched */
+    /* And the playback append still goes to the fifth array, not this one. */
+    assert(oct_native_device_info_add_format(input, sizeof input, 0x3000, output,
+                                             sizeof output, &produced) == 1);
+    assert(output[23] == 0x01 && output[29] == 0x02);
+    /* A format already listed is not added twice. */
+    assert(oct_native_device_info_add_capture_format(input, sizeof input, 0x3801, output,
+                                                     sizeof output, &produced) == 0);
+}
+
 int main(void){
+    test_capture_format_append();
     test_event_append();
     test_operation_append();
     test_object_info_format();

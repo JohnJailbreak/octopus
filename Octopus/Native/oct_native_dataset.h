@@ -49,6 +49,11 @@ int oct_native_device_info_add_operation(const uint8_t *input, size_t length,
 /* The same, for EventsSupported, the second array in a DeviceInfo dataset. A host acts only on
  * events it was told to expect, so an announcement of a storage change means nothing unless
  * StoreAdded appears there. */
+/* The same, for CaptureFormats, the fourth array, beside the playback list add_format appends to. */
+int oct_native_device_info_add_capture_format(const uint8_t *input, size_t length,
+                                              uint16_t format, uint8_t *output,
+                                              size_t capacity, size_t *output_length);
+
 int oct_native_device_info_add_event(const uint8_t *input, size_t length,
                                      uint16_t event, uint8_t *output,
                                      size_t capacity, size_t *output_length);

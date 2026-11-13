@@ -59,6 +59,12 @@ int oct_native_device_info_add_format(const uint8_t *input,size_t length,
     return add_to_array(input,length,format,4,output,capacity,output_length); /* playback formats */
 }
 
+int oct_native_device_info_add_capture_format(const uint8_t *input,size_t length,
+                                              uint16_t format,uint8_t *output,
+                                              size_t capacity,size_t *output_length) {
+    return add_to_array(input,length,format,3,output,capacity,output_length); /* capture formats */
+}
+
 int oct_native_device_info_add_event(const uint8_t *input,size_t length,
                                      uint16_t event,uint8_t *output,
                                      size_t capacity,size_t *output_length) {

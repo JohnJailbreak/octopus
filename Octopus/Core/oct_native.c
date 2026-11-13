@@ -135,9 +135,32 @@ void oct_native_receive_end(oct_native_journal *j, uint64_t scope)
         if (j->scopes[i].id == scope) j->scopes[i].active = false;
 }
 
+unsigned oct_native_traffic_bit(uint16_t operation)
+{
+    switch (operation) {
+    case 0x100C: return OCT_NATIVE_TRAFFIC_SEND_OBJECT_INFO;
+    case 0x100D: return OCT_NATIVE_TRAFFIC_SEND_OBJECT;
+    case 0x100B: return OCT_NATIVE_TRAFFIC_DELETE_OBJECT;
+    case 0x9804: return OCT_NATIVE_TRAFFIC_SET_PROP_VALUE;
+    case 0x9808: return OCT_NATIVE_TRAFFIC_SEND_PROP_LIST;
+    case 0x9801: return OCT_NATIVE_TRAFFIC_PROPS_SUPPORTED;
+    case 0x1019: return OCT_NATIVE_TRAFFIC_MOVE_OBJECT;
+    case 0x101A: return OCT_NATIVE_TRAFFIC_COPY_OBJECT;
+    }
+    return 0;
+}
+
 bool oct_native_command(oct_native_journal *j, uint64_t scope, uint16_t operation, uint32_t transaction)
 {
     if (!j || !live(j, j->state.transport)) return false;
+    /* Counted before any check that might refuse the command, so a host's attempt is recorded even
+     * when the rest of the journal declines to pair it. */
+    unsigned bit = oct_native_traffic_bit(operation);
+    if (bit) {
+        j->state.traffic.seen |= (uint8_t)bit;
+        if (bit == OCT_NATIVE_TRAFFIC_SEND_OBJECT_INFO && j->state.traffic.send_info_count < 255)
+            j->state.traffic.send_info_count++;
+    }
     bool found = false;
     for (size_t i = 0; i < OCT_NATIVE_SCOPES; i++) {
         if (scope && j->scopes[i].active && j->scopes[i].id == scope && j->scopes[i].epoch == j->state.epoch) {
@@ -213,6 +236,10 @@ bool oct_native_response(oct_native_journal *j, uint64_t transport, uint32_t tra
     if (accepted && valid_code && !poisoned(j, transaction)) j->state.paired_responses++;
     else { j->state.failed_responses++; poison(j, transaction); accepted = false; }
     record(j, OCT_NATIVE_RESPONSE, sequence, operation, transaction, response, accepted ? 1 : 0, 0);
+    /* What ptpd answered to a write, whatever the journal made of the pairing. */
+    if (operation == 0x100C) j->state.traffic.send_info_response = response;
+    else if (operation == 0x100D) j->state.traffic.send_object_response = response;
+    else if (operation == 0x100B) j->state.traffic.delete_response = response;
     if (accepted && operation == 0x1003 && response == 0x2001) invalidate(j);
     return accepted;
 }

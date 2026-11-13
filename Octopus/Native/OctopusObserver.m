@@ -144,9 +144,18 @@ static void recordHook(const char *event){
     }
 }
 
+/* How the drive was announced, for the traffic word. Under `lock`, like the rest of this. */
+static uint8_t announceFlags;
+
 void OCTNativeProviderEvent(const char *event,uint32_t handle,int32_t result){
     pthread_mutex_lock(&lock);
     recordHook(event);
+    if(!strcmp(event,"provider-announced-by-camera"))announceFlags|=OCT_NATIVE_ANNOUNCE_CAMERA;
+    else if(!strcmp(event,"provider-event-sent")){
+        if(handle==OCT_EVENT_STORE_ADDED)announceFlags|=OCT_NATIVE_ANNOUNCE_EVENT;
+        else if(handle==OCT_EVENT_DEVICE_INFO_CHANGED)announceFlags|=OCT_NATIVE_ANNOUNCE_DEVICE_INFO;
+    }
+    else if(!strcmp(event,"provider-event-failed"))announceFlags|=OCT_NATIVE_ANNOUNCE_FAILED;
     providerEvents++;lastProviderEvent=[NSString stringWithFormat:@"%s handle=%u result=%d",event,handle,result];
     if(!providerJournal)providerJournal=[NSMutableArray array];
     if(providerJournal.count==64)[providerJournal removeObjectAtIndex:0];
@@ -278,6 +287,13 @@ static void connected(id self,SEL cmd,bool value){
  * Returns whether it was handed to the transport, not whether the host acted on it.
  */
 bool OCTNativeAnnounceStorage(uint32_t storage){
+    return OCTNativeSendEvent(OCT_EVENT_STORE_ADDED,storage);
+}
+
+/* Any event, with one parameter. DeviceInfoChanged is the one that matters beside StoreAdded: a
+ * host reads DeviceInfo once per session, so a phone plugged in before USB access was enabled had
+ * already told it no uploads were possible, and only this makes it read the list again. */
+bool OCTNativeSendEvent(uint16_t code,uint32_t parameter){
     id transport=usbTransport;
     if(!transport||!atomic_load(&sessionUp))return false;
     Class packet=objc_getClass("PTPEventPacket");
@@ -285,11 +301,11 @@ bool OCTNativeAnnounceStorage(uint32_t storage){
     if(![packet instancesRespondToSelector:@selector(initWithEventCode:transactionID:parameter1:)])return false;
     if(![transport respondsToSelector:@selector(sendEvent:)])return false;
     /* Transaction zero: an event outside any transaction, which is what a storage change is. */
-    id event=[[packet alloc] initWithEventCode:(unsigned short)OCT_EVENT_STORE_ADDED
-                                 transactionID:0u parameter1:storage];
+    id event=[[packet alloc] initWithEventCode:(unsigned short)code
+                                 transactionID:0u parameter1:parameter];
     if(!event)return false;
     bool ok=[transport sendEvent:event];
-    OCTNativeProviderEvent(ok?"provider-announced-storage":"provider-announce-failed",storage,
+    OCTNativeProviderEvent(ok?"provider-event-sent":"provider-event-failed",code,
                            ok?OCT_RC_OK:OCT_RC_GENERAL_ERROR);
     return ok;
 }
@@ -601,6 +617,11 @@ static void pollOnce(BOOL match)
                 oct_native_hook_report hooks=hookReport;
                 pthread_mutex_unlock(&lock);
                 oct_native_hooks_publish(&hooks);
+                /* What the host sent of each write operation and what ptpd answered: the record
+                 * that says whether a host offered uploads ever tried one. */
+                oct_native_traffic traffic=live.traffic;
+                pthread_mutex_lock(&lock);traffic.announced=announceFlags;pthread_mutex_unlock(&lock);
+                oct_native_traffic_publish(&traffic);
                 /* Which of the fixed roots this process can actually open and read. Probed once,
                  * because the answer is a property of ptpd's sandbox rather than of the moment,
                  * and published so the app can say which scopes are worth granting. Until this ran

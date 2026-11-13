@@ -23,13 +23,6 @@ final class NativeIntegration: ObservableObject {
     private var active = false
     private var foreground = true
     private var leasedMode: UInt32 = 0
-    /// Set by serveFilesystem and consumed by the first publish of a grant that serves storage. The
-    /// restart has to follow the grant, never precede it: a ptpd restarted before there is a grant
-    /// comes back with nothing to serve, a host reads an empty list, and the grant then arrives too
-    /// late for that session. The last build restarted at once on tapping Enable USB Access, while
-    /// the grant was still waiting for the service to finish starting, and so defeated itself
-    /// whenever the phone was already plugged in.
-    private var restartWhenGranted = false
 
     /// What the last restart of Apple's responder did, for the enable sheet to report specifically.
     enum RestartOutcome: Equatable {
@@ -76,8 +69,6 @@ final class NativeIntegration: ObservableObject {
         // sealed and owned by root, stays out of reach whatever this grants.
         allowWrites = true
         synchronize()
-        // The restart happens in renew(), once the grant has actually gone out. If the service has
-        // not finished starting, that is when sync(serviceActive:) runs; if it has, it is now.
         renew()
     }
 
@@ -171,7 +162,7 @@ final class NativeIntegration: ObservableObject {
         guard let left = leftForeground else { return false }
         return Date().timeIntervalSince(left) < Self.backgroundGrace
     }
-    func revoke() { restartWhenGranted = false; active = false; observe = false; synthetic = false; allowWrites = false; scope = OCT_NATIVE_ROOT_SYNTHETIC; synchronize() }
+    func revoke() { active = false; observe = false; synthetic = false; allowWrites = false; scope = OCT_NATIVE_ROOT_SYNTHETIC; synchronize() }
 
     private func synchronize() {
         let wanted: UInt32 = observe && active && authorizationAllowed ? (synthetic ? 2 : 1) : 0
@@ -339,6 +330,18 @@ struct NativeCapture: Codable, Sendable {
                 oct_native_write_verdict(hooks.writes, &verdict, capacity)
                 let writeText = verdict.withUnsafeBufferPointer { String(cString: $0.baseAddress!) }
                 hookText += " Writes: \(writeText)"
+                // What the computer actually sent, which separates a computer that never tried to
+                // add a file from one ptpd turned away: they need opposite fixes.
+                var traffic = oct_native_traffic()
+                if oct_native_traffic_read(&traffic) == OCT_OK {
+                    let trafficCapacity = 400
+                    var trafficText = [CChar](repeating: 0, count: trafficCapacity)
+                    oct_native_traffic_describe(&traffic, &trafficText, trafficCapacity)
+                    let said = trafficText.withUnsafeBufferPointer { String(cString: $0.baseAddress!) }
+                    hookText += " Computer's write requests: \(said)"
+                } else {
+                    hookText += " Computer's write requests: not reported by this companion."
+                }
             }
             let live = transactions
                 ? "\(runtime.commands) commands inside native USB receive callbacks; \(runtime.responses) paired response writes; \(runtime.provider_events) provider events. Reported by notification, not the status file.\(hookText) Host receipt, Explorer visibility and the downloaded SHA-256 still need Windows verification."

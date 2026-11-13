@@ -58,6 +58,7 @@ enum {
     OCT_EVENT_OBJECT_REMOVED = 0x4003,
     OCT_EVENT_STORE_ADDED    = 0x4004,
     OCT_EVENT_STORE_REMOVED  = 0x4005,
+    OCT_EVENT_DEVICE_INFO_CHANGED = 0x4008, /* re-read DeviceInfo: what the device supports changed */
     OCT_EVENT_STORE_FULL     = 0x400A,
     OCT_EVENT_STORAGE_INFO_CHANGED = 0x400C
 };

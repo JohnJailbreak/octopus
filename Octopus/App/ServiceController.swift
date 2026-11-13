@@ -650,7 +650,7 @@ final class ServiceController: ObservableObject {
         let connected = NativeTransport.shared.live
         note(await nativeStep("Checking for a connected computer") {
             connected
-                ? (true, "A computer is connected: the companion announces the drive to it")
+                ? (true, "A computer is connected: the companion tells it the drive changed")
                 : (true, "No computer connected yet: / appears when one is")
         })
 
