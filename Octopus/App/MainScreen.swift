@@ -137,6 +137,14 @@ struct MainScreen: View {
                     .frame(height: layout.updateLinkHeight)
                     .position(x: layout.size.width / 2, y: layout.updateLinkTop + layout.updateLinkHeight / 2)
                     .transition(.offset(y: 25).combined(with: .opacity))
+            } else if let confirmation = companion.confirmation, !sheetOpen {
+                // The same slot, for a few seconds after installing: the answer appears where the
+                // question was, instead of the button disappearing with nothing said. Not a button,
+                // because there is nothing left to tap.
+                CompanionConfirmation(title: confirmation)
+                    .frame(height: layout.updateLinkHeight)
+                    .position(x: layout.size.width / 2, y: layout.updateLinkTop + layout.updateLinkHeight / 2)
+                    .transition(.offset(y: 25).combined(with: .opacity))
             }
             if sheetOpen {
                 ActivitySheetView(sheet: service.sheet, layout: layout)

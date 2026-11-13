@@ -294,7 +294,8 @@ enum Diagnostics {
                 var report = oct_native_install_report()
                 guard oct_native_install_read(&report) == OCT_OK else {
                     return result("native.hooks", "Native integration", "Optional hooks inside Apple's responder",
-                                  .blocked, "No hook report yet. Enable USB Access, connect a computer, and "
+                                  .nativeObservation, .blocked,
+                                  "No hook report yet. Enable USB Access, connect a computer, and "
                                   + "let the companion load into Apple's responder.", checks: 1)
                 }
                 let capacity = 400
@@ -304,7 +305,7 @@ enum Diagnostics {
                 let pair = UInt8(OCT_NATIVE_INSTALLED_UPLOAD_REQUEST.rawValue | OCT_NATIVE_INSTALLED_UPLOAD_DATA.rawValue)
                 let uploadsReady = (report.installed & pair) == pair
                 return result("native.hooks", "Native integration", "Optional hooks inside Apple's responder",
-                              uploadsReady ? .pass : .fail,
+                              .nativeObservation, uploadsReady ? .pass : .fail,
                               sentence + " Adding files needs both upload hooks; deleting needs the delete hook. "
                               + "A hook that did not install usually means this ptpd differs from the one its "
                               + "signature was recorded from.", checks: 1)

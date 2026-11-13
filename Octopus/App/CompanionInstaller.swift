@@ -78,6 +78,28 @@ final class CompanionInstaller: ObservableObject {
     @Published private(set) var state: State = .unknown
 
     /// What the button should say, or nil when there is nothing to offer.
+    /// What to show in the action's own slot for a few seconds after a successful install, so the
+    /// answer appears where the question was rather than the button simply vanishing. Nil at every
+    /// other time, including a failure, which keeps its Retry Companion button instead.
+    @Published private(set) var confirmation: String?
+
+    /// How long that confirmation stays. Long enough to read, short enough not to sit in the way of
+    /// Enable USB Access, which is the next thing to tap.
+    static let confirmationSeconds: TimeInterval = 5
+
+    private var confirmationTask: Task<Void, Never>?
+
+    /// Show it, and take it away again. A second install restarts the clock rather than stacking.
+    private func confirm(_ version: String) {
+        confirmationTask?.cancel()
+        confirmation = "Companion \(version) installed"
+        confirmationTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(Self.confirmationSeconds * 1_000_000_000))
+            guard !Task.isCancelled else { return }
+            self?.confirmation = nil
+        }
+    }
+
     var action: String? {
         switch state {
         case .notInstalled: return "Install Companion"
@@ -168,6 +190,7 @@ final class CompanionInstaller: ObservableObject {
                      "Helper exit \(outcome.status)\(outcome.errors.last.map { ": \($0)" } ?? "")")
         if outcome.status == 0 {
             state = .installed(CompanionPackage.appVersion)
+            confirm(CompanionPackage.appVersion)
             // A newly installed companion loads into the next ptpd, which starts when a computer is
             // next connected. Ending the current one does not help: the phone stays on the bus and
             // the computer does not reconnect, as 0.4.59 showed, so it would only break the session.

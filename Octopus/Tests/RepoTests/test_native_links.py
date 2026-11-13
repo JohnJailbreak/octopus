@@ -620,5 +620,40 @@ class EnumsTheAppReadsAreNamed(unittest.TestCase):
                     f"imports it as a plain integer with no rawValue.")
 
 
+class DiagnosticResultsPassKindBeforeStatus(unittest.TestCase):
+    """Diagnostics.result takes its kind before its status, and both are enums whose cases do not
+    overlap, so getting them the wrong way round is a compile error only the macOS job sees. The
+    hooks step was added with the kind omitted entirely and cost a CI round."""
+
+    KINDS = {"local", "simulated", "external", "nativeObservation", "realUSB"}
+    STATUSES = {"pass", "fail", "skipped", "blocked"}
+
+    def test_every_result_call_names_a_kind_before_a_status(self):
+        text = strip_comments((ROOT / "Octopus/App/Diagnostics.swift").read_text())
+        calls = list(re.finditer(r"\bresult\(\s*\"([^\"]+)\"\s*,", text))
+        self.assertTrue(calls, "found no result() calls; the scan is broken")
+        for call in calls:
+            # To the end of the call: balanced parentheses from the opening one.
+            depth, end = 0, call.end()
+            for i in range(call.start() + len("result"), len(text)):
+                if text[i] == "(":
+                    depth += 1
+                elif text[i] == ")":
+                    depth -= 1
+                    if depth == 0:
+                        end = i
+                        break
+            chunk = text[call.start():end]
+            kinds = [m.start() for m in re.finditer(r"\.(\w+)\b", chunk) if m.group(1) in self.KINDS]
+            statuses = [m.start() for m in re.finditer(r"\.(\w+)\b", chunk) if m.group(1) in self.STATUSES]
+            with self.subTest(result=call.group(1)):
+                self.assertTrue(kinds, f"result(\"{call.group(1)}\") names no kind; it takes one before the status.")
+                # A status passed as a variable is invisible here, which is fine: the order is what
+                # this checks, and a literal status before the kind is the mistake worth catching.
+                if statuses:
+                    self.assertLess(kinds[0], statuses[0],
+                        f"result(\"{call.group(1)}\") passes its status before its kind.")
+
+
 if __name__ == "__main__":
     unittest.main()

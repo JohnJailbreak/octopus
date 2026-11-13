@@ -13,6 +13,29 @@ import UIKit
 
 /// A borderless menu-style button (DOActionMenuButton without a chevron): "Update Available" on the main screen and
 /// "Update" under the changelog.
+/// The companion's install, confirmed in the slot its button occupied. Shaped like that button so
+/// nothing shifts when one replaces the other, but inert: the work is done.
+struct CompanionConfirmation: View {
+    let title: String
+
+    var body: some View {
+        HStack(spacing: 10) {
+            // A plain tick, the same weight and size as the button's own box icon, so the slot keeps
+            // its shape: mockup 1. A filled disc would introduce a second colour the home screen
+            // otherwise avoids.
+            Image(systemName: "checkmark")
+                .font(.system(size: 19, weight: .medium))
+            Text(title)
+                .font(.system(size: 17))
+        }
+        .foregroundStyle(.white)
+        .padding(.horizontal, 12)
+        .frame(maxHeight: .infinity)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isStaticText)
+    }
+}
+
 struct UpdateLinkButton: View {
     let title: String
     let symbol: String
