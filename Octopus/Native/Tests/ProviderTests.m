@@ -416,32 +416,32 @@ int main(void) { @autoreleasepool {
     assert([answer isKindOfClass:[NSNumber class]] && [answer boolValue]);   /* read the data phase */
 
     /* An upload to Apple's own storage is not ours: Apple must answer it. */
-    OctopusTestPacket *theirs = [OctopusTestPacket new];
-    theirs.operation = OCT_OP_SEND_OBJECT_INFO;
-    theirs.transaction = 78;
-    theirs.one = 0x10001;
-    id theirAnswer = nil;
-    assert(!OCTProviderHandleRequest(theirs, &theirAnswer));
-    assert(theirAnswer == nil);
+    OctopusTestPacket *appleUpload = [OctopusTestPacket new];
+    appleUpload.operation = OCT_OP_SEND_OBJECT_INFO;
+    appleUpload.transaction = 78;
+    appleUpload.one = 0x10001;
+    id appleAnswer = nil;
+    assert(!OCTProviderHandleRequest(appleUpload, &appleAnswer));
+    assert(appleAnswer == nil);
     /* And neither is a read. */
     OctopusTestPacket *read = [OctopusTestPacket new];
     read.operation = OCT_OP_GET_OBJECT;
     read.transaction = 79;
-    assert(!OCTProviderHandleRequest(read, &theirAnswer));
+    assert(!OCTProviderHandleRequest(read, &appleAnswer));
 
     /* The ObjectInfo arrives. The store refuses, so the host is told so with no handle. */
     lastResponseCode = 0; lastResponseTransaction = 0; lastResponseParameters = 99;
-    OctopusTestPacket *info = [OctopusTestPacket new];
-    info.operation = OCT_OP_SEND_OBJECT_INFO;
-    info.transaction = 77;
-    info.body = objectInfoFor("upload.txt", 299, docs, OCT_FORMAT_UNDEFINED);
-    assert(OCTProviderHandleData(info));
+    OctopusTestPacket *infoPacket = [OctopusTestPacket new];
+    infoPacket.operation = OCT_OP_SEND_OBJECT_INFO;
+    infoPacket.transaction = 77;
+    infoPacket.body = objectInfoFor("upload.txt", 299, docs, OCT_FORMAT_UNDEFINED);
+    assert(OCTProviderHandleData(infoPacket));
     assert(lastResponseTransaction == 77);
     assert(lastResponseCode != OCT_RC_OK);          /* the sample tree accepts no changes */
     assert(lastResponseParameters == 0);            /* and no handle is offered */
 
     /* A second data phase with nothing pending is Apple's, not ours. */
-    assert(!OCTProviderHandleData(info));
+    assert(!OCTProviderHandleData(infoPacket));
 
     /* An object larger than one USB read is refused when its ObjectInfo arrives, not left to
      * vanish in the transport, which is what hangs a host. */
@@ -467,7 +467,7 @@ int main(void) { @autoreleasepool {
     OctopusTestPacket *orphan = [OctopusTestPacket new];
     orphan.operation = OCT_OP_SEND_OBJECT;
     orphan.transaction = 80;
-    assert(!OCTProviderHandleRequest(orphan, &theirAnswer));
+    assert(!OCTProviderHandleRequest(orphan, &appleAnswer));
 
     /* Malformed ObjectInfo: answered, not ignored, so the host is never left waiting. */
     lastResponseCode = 0;

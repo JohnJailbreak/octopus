@@ -537,5 +537,40 @@ class NoAnnouncementUnderTheLock(unittest.TestCase):
                 self.assertNotIn("OCTProviderAnnounceIfNeeded()", m.group(1))
 
 
+class NoRedeclaredLocals(unittest.TestCase):
+    """A name declared twice in the same scope does not compile, and these tests run only on macOS.
+    Adding the upload tests reused 'theirs' and 'info', both already declared in the same function,
+    which cost a CI round for eight errors that were all the same mistake. Every declaration at the
+    top level of a test's main() is collected here and duplicates are named."""
+
+    DECLARATION = re.compile(
+        r"^\s{4}(?:[A-Za-z_]\w*\s+\*?|NSArray\s+\*|NSData\s+\*|NSMutableData\s+\*|id\s+)"
+        r"([a-z]\w*)\s*(?:=|;)", re.M)
+
+    def test_no_name_is_declared_twice_in_main(self):
+        for path in sorted((NATIVE / "Tests").glob("*.m")):
+            text = strip_comments(path.read_text())
+            if "int main(" not in text:
+                continue
+            body = text[text.index("int main("):]
+            seen = {}
+            for m in self.DECLARATION.finditer(body):
+                seen.setdefault(m.group(1), []).append(body.count("\n", 0, m.start()) + 1)
+            for name, lines in sorted(seen.items()):
+                if len(lines) > 1:
+                    with self.subTest(file=path.name, name=name):
+                        self.fail(f"{path.name} declares {name} {len(lines)} times at the top level "
+                                  f"of main(), around lines {lines}. That does not compile; the "
+                                  f"second one needs its own name.")
+
+    def test_the_scan_sees_the_declarations_it_should(self):
+        # A canary: the upload tests' own names must be found, or the pattern has stopped matching.
+        text = strip_comments((NATIVE / "Tests/ProviderTests.m").read_text())
+        body = text[text.index("int main("):]
+        found = {m.group(1) for m in self.DECLARATION.finditer(body)}
+        for expected in ("request", "appleUpload", "infoPacket", "orphan"):
+            self.assertIn(expected, found)
+
+
 if __name__ == "__main__":
     unittest.main()
