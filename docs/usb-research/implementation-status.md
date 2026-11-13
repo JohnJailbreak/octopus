@@ -368,3 +368,53 @@ packet it was given and the transport from the observer, which already holds it 
 
 What remains unknown: whether the transport imposes a maximum data-phase size before calling
 handleData:, which would matter for a large file. A small file tests the path either way.
+
+## The transport's own limit on a data phase, and what it forces (verified)
+
+PTPDeviceUSBTransport handleBulkData:result: (0x1000093bc, 2120 bytes) was decoded separately by
+another model from the same binary, and every load-bearing instruction below was then re-read here
+byte for byte with tools/macho_disassemble.py. Each matched. The conclusions are the other
+analysis's; the verification and the consequence for Octopus are this one's.
+
+How a host-to-device data phase is accumulated and gated:
+
+- The method's byte count N arrives as its first argument and is saved at 0x1000093e0
+  (mov x19, x2, aa0203f3). On a connected transport the whole of N is appended to _cdData
+  (ivar 0xd0) with increaseLengthBy: and memcpy at 0x1000094b4-0x1000094d4, with no size test
+  before it. There is no constant cap on the accumulation in this function.
+- The packet is built once at least 12 bytes are present and the declared length L has arrived
+  (cmp w25, #0xc at 0x1000096f8; cmp x28, x8 at 0x100009704, A against L).
+- PTPDataPacket initWithUSBBuffer: stores L - 12 as _bufferSize (subs w19, w8, #0xc at 0x10002a45c,
+  71003113; stp x19, xzr, [x20, #0x30] at 0x10002a4d4, a9037e93), and bufferSize returns it
+  (ldr x0, [x0, #0x30] at 0x10002aa28, f9401800).
+- The gate is at 0x100009854: cmp x0, x19 (eb13001f), b.hi to 0x100009ad4. That compares the
+  payload length against N, the CURRENT callback's byte count, not against the accumulated length.
+  Above it, the packet is released and CFDataDeleteBytes removes the whole accumulated snapshot
+  (mov x2, x28 at 0x100009ae0, aa1c03e2). No response is sent on that path.
+- handleData: is dispatched only when _delegateNeedsData (ivar 0xec) is set
+  (ldrb at 0x100009898, 38686a88; cbz to 0x100009ad4 at 0x10000989c), and that byte is written
+  from the boolValue of whatever handleRequest: returned (strb w0, [x20, x8] at 0x1000097c4,
+  38286a80). So returning YES from handleRequest: is exactly what opens the data path, which is
+  what the handler design above depends on, now confirmed from the other side.
+
+_readBufferSize (ivar 0xa8) is set to 0x4000, 16384 bytes, in initWithDelegate:, and nothing
+stores to it afterwards: activate: and readBulkData only read it.
+
+The consequence for uploads, which changes the plan:
+
+A single USB read therefore delivers at most 16384 bytes, so N can never exceed that. A PTP data
+phase whose payload is larger than N on its completing read is dropped by the transport before
+handleData: is reached, silently and with no response, which is precisely the state that leaves a
+host waiting. For a payload over 16372 bytes (16384 - 12) that is unconditional: every read is at
+most 16384, so the payload always exceeds N.
+
+So an upload handler cannot accept a file of arbitrary size through Apple's transport. It must
+refuse an object larger than the limit at SendObjectInfo, with a response the host can report,
+rather than accepting it and letting the data phase vanish. OCT_NATIVE_MAX_UPLOAD_BYTES carries
+that limit, derived from the two facts above rather than guessed, and the responder answers
+0x2019 DeviceBusy for anything larger: a transient-sounding refusal is the honest one, since a
+smaller file through the same path will succeed.
+
+Receiving a larger file would mean taking over the accumulation in handleBulkData:result: itself,
+which is a much deeper change: that method owns the buffer, the completion loop and the connected
+state. Not attempted, and not needed to prove the path.

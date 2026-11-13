@@ -335,6 +335,14 @@ bool oct_native_lease_is_writable(oct_native_lease_mode mode);
 /* The write traffic, by notification like the others: what a host sent of each write operation and
  * what ptpd answered. Version, the seen bits, the SendObjectInfo count, that response in full, and
  * the low bytes of the SendObject and DeleteObject responses, with a check byte. */
+/* The largest object a host can upload through Apple's transport, derived from its own code: a USB
+ * read delivers at most _readBufferSize, 16384 bytes, and handleBulkData:result: drops a data phase
+ * whose payload exceeds the bytes delivered by the read that completed it, silently and with no
+ * response. Twelve bytes of that are the PTP data header. A larger object has to be refused when
+ * its ObjectInfo arrives, or its data phase vanishes and the host waits for an answer that never
+ * comes. See docs/usb-research/implementation-status.md. */
+#define OCT_NATIVE_MAX_UPLOAD_BYTES 16372u
+
 #define OCT_NATIVE_TRAFFIC_NAME  "com.parv.octopus.native.traffic"
 #define OCT_NATIVE_TRAFFIC_VERSION 1u
 uint64_t   oct_native_traffic_pack(const oct_native_traffic *traffic);
