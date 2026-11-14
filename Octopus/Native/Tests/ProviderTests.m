@@ -315,6 +315,9 @@ int main(void) { @autoreleasepool {
     /* The sample tree, which is what a grant naming no filesystem serves. */
     lastAnnouncedStorage=0;
     sentEventCount=0;
+    /* The observer's handleRequest: hook routes uploads here; it is not linked in this build, so the
+     * test says what the observer would. Without it uploads count as unhooked, which is right. */
+    OCTProviderSetRequestRouted(true);
     if(!OCTProviderInstall(OCT_NATIVE_LEASE_EXPOSE_SYNTHETIC,&reason)){fprintf(stderr,"install: %s\n",reason.UTF8String);abort();}
     /* Nothing is announced while the store opens: that runs holding coreLock, and an announcement
      * that called back into a hook taking it would freeze ptpd. The timer does it instead. */
@@ -503,22 +506,16 @@ int main(void) { @autoreleasepool {
     assert(OCTProviderHandleData(broken));
     assert(lastResponseCode != OCT_RC_OK);
 
-    /* Through the hooks themselves. ptpd's transport reaches these with performSelector:, and a
-     * direct message dispatches through the same method table the hooks replaced, so it reaches
-     * them identically. Direct calls are used here because handleData: returns nothing: through
-     * performSelector:, ARC would treat the garbage left in the return register as an object.
-     * An upload into ours is answered YES by us and never reaches Apple; one into Apple's storage,
-     * and a read, go to Apple's implementation and get Apple's answer. */
+    /* Through the provider's own hook, handleData:. The request half is the observer's hook, which
+     * calls OCTProviderHandleRequest exactly as tested above; the provider no longer hooks
+     * handleRequest: itself, because a second hook on it was refused on the device. So Apple's
+     * handleRequest: on the stand-in is reached untouched here, and that is correct. */
     PTPResponder *responder = [PTPResponder new];
     lastAppleRequest = 0;
-    id ourVerdict = [responder handleRequest:request];
-    assert([ourVerdict boolValue] && lastAppleRequest == 0);
-    id appleVerdict = [responder handleRequest:appleUpload];
-    assert(![appleVerdict boolValue] && lastAppleRequest == OCT_OP_SEND_OBJECT_INFO);
-    lastAppleRequest = 0;
     (void)[responder handleRequest:read];
-    assert(lastAppleRequest == OCT_OP_GET_OBJECT);
+    assert(lastAppleRequest == OCT_OP_GET_OBJECT);         /* not hooked by the provider */
     /* The data phase for ours is taken; one with nothing pending goes to Apple. */
+    assert(OCTProviderHandleRequest(request, &answer));   /* opens a pending upload, as the observer would */
     lastAppleData = 0;
     [responder handleData:infoPacket];
     assert(lastAppleData == 0);

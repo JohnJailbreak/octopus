@@ -524,6 +524,8 @@ static const char *install_reason_name(uint8_t reason)
     case OCT_NATIVE_INSTALL_ENCODING: return "the method's type differs from the recorded one";
     case OCT_NATIVE_INSTALL_EXCHANGE: return "the implementation could not be exchanged";
     case OCT_NATIVE_INSTALL_UNKNOWN: return "the runtime did not say why";
+    case OCT_NATIVE_INSTALL_REPLACED: return "another hook already replaced the method";
+    case OCT_NATIVE_INSTALL_NOT_ROUTED: return "the observer's request hook is not in place";
     }
     return "no failure";
 }

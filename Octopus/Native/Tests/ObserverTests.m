@@ -24,6 +24,7 @@ void OCTProviderAnnounceIfNeeded(void) {}   /* the provider is not linked here *
 void OCTProviderSetWritesGranted(bool granted) { (void)granted; }
 BOOL OCTProviderHandleRequest(id packet, id *answer) { (void)packet; (void)answer; return NO; }
 BOOL OCTProviderHandleData(id packet) { (void)packet; return NO; }
+void OCTProviderSetRequestRouted(bool routed) { (void)routed; }
 BOOL OCTProviderSetScope(oct_native_lease_mode scope, NSString **reason) {
     (void)scope;if(reason)*reason=nil;return YES;
 }

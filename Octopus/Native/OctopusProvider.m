@@ -3,6 +3,7 @@
 #include "oct_native_dataset.h"
 #include "../Core/oct_readonly.h"
 #include <pthread.h>
+#include <dlfcn.h>
 #include <stdatomic.h>
 #include <string.h>
 
@@ -1025,12 +1026,15 @@ BOOL OCTProviderSetScope(oct_native_lease_mode scope, NSString **reason)
  * through to Apple's implementation when the request is not an upload into our storage, so photo
  * import, deletion and every read behave exactly as before.
  */
-static IMP originalResponderRequest, originalResponderData;
+static IMP originalResponderData;
 
-static id responderRequest(id self, SEL cmd, id packet) {
-    id answer = nil;
-    if (OCTProviderHandleRequest(packet, &answer) && answer) return answer;
-    return ((id (*)(id,SEL,id))originalResponderRequest)(self, cmd, packet);
+/* Whether the observer's handleRequest: hook is in place and routing uploads here. The provider no
+ * longer hooks handleRequest: itself: the observer already does, and a second hook on the same
+ * method was refused by the provenance check, which is the fault 0.4.79 reported. Set by the
+ * observer as an atomic only, before install. */
+static atomic_bool requestRouted;
+void OCTProviderSetRequestRouted(bool routed) {
+    atomic_store_explicit(&requestRouted, routed, memory_order_release);
 }
 
 static void responderData(id self, SEL cmd, id packet) {
@@ -1052,6 +1056,12 @@ static uint8_t hookFailureReason(const char *className, const char *selector, co
     if (!method) return OCT_NATIVE_INSTALL_NO_METHOD;
     const char *found = method_getTypeEncoding(method);
     if (!found || strcmp(found, encoding) != 0) return OCT_NATIVE_INSTALL_ENCODING;
+    /* Already replaced by another hook: the implementation no longer lives in ptpd itself. 0.4.79
+     * reported this as an exchange that failed, which hid that the observer had got there first. */
+    Dl_info info;
+    IMP current = method_getImplementation(method);
+    if (current && dladdr((const void *)current, &info) && info.dli_fname &&
+        strcmp(info.dli_fname, "/usr/libexec/ptpd") != 0) return OCT_NATIVE_INSTALL_REPLACED;
     return OCT_NATIVE_INSTALL_EXCHANGE;
 }
 
@@ -1079,8 +1089,14 @@ static void installOptionalHooks(void) {
     /* The upload path proper: Apple's responder refuses SendObjectInfo and SendObject before any
      * storage is consulted, so these two are where an upload has to be taken over. Both are called
      * through performSelector:, so an exchanged implementation is what runs. */
-    BOOL onRequest = hookRecorded(OCT_NATIVE_INSTALLED_UPLOAD_REQUEST,"PTPResponder","handleRequest:",
-                                  "@24@0:8@16",(IMP)responderRequest,&originalResponderRequest,&why);
+    /* The request half is the observer's hook, which routes uploads here; see requestRouted. */
+    BOOL onRequest = atomic_load_explicit(&requestRouted, memory_order_acquire);
+    installReport.attempted |= (uint8_t)OCT_NATIVE_INSTALLED_UPLOAD_REQUEST;
+    if (onRequest) installReport.installed |= (uint8_t)OCT_NATIVE_INSTALLED_UPLOAD_REQUEST;
+    else if (installReport.first_failure == 0) {
+        installReport.first_failure = (uint8_t)OCT_NATIVE_INSTALLED_UPLOAD_REQUEST;
+        installReport.reason = OCT_NATIVE_INSTALL_NOT_ROUTED;
+    }
     BOOL onData = hookRecorded(OCT_NATIVE_INSTALLED_UPLOAD_DATA,"PTPResponder","handleData:",
                                "v24@0:8@16",(IMP)responderData,&originalResponderData,&why);
     BOOL named = hookRecorded(OCT_NATIVE_INSTALLED_INCOMING_INFO,"PTPObjectInfoDataset",

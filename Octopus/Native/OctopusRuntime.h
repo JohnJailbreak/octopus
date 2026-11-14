@@ -26,6 +26,8 @@ void OCTProviderSetWritesGranted(bool granted);
  * storage is consulted. Each returns whether it handled the request; when it did not, the caller
  * must fall through to Apple's implementation. See docs/usb-research/implementation-status.md. */
 BOOL OCTProviderHandleRequest(id packet, id *answer);
+/* Whether the observer's handleRequest: hook is in place and routes uploads to the provider. */
+void OCTProviderSetRequestRouted(bool routed);
 BOOL OCTProviderHandleData(id packet);
 /* Tell the host its storage list changed, so it reads it again without the cable being pulled.
  * Defined in the observer, which holds the transport; does nothing when no session is up. */

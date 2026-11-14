@@ -239,7 +239,17 @@ static id request(id self,SEL cmd,id packet){
         }
         pthread_mutex_unlock(&lock);
     }
-    @try{return ((id(*)(id,SEL,id))originalRequest)(self,cmd,packet);}
+    @try{
+        /* An upload into Octopus's storage is answered by the provider rather than Apple, which
+         * sends SendObjectInfo to handleUnsupportedRequest: and returns NO, so the data a host sends
+         * is never read. This hook does both jobs because there can be only one: the provider used
+         * to hook handleRequest: as well, found this hook already in place, and was refused by the
+         * provenance check, which is what 0.4.79 reported as the upload request hook not
+         * installing. The command is still journaled above either way. */
+        id answer=nil;
+        if(OCTProviderHandleRequest(packet,&answer)&&answer)return answer;
+        return ((id(*)(id,SEL,id))originalRequest)(self,cmd,packet);
+    }
     @finally{currentOperation=previousOp;currentTransaction=previousTransaction;}
 }
 static bool response(id self,SEL cmd,id packet){
@@ -659,6 +669,8 @@ static void pollOnce(BOOL match)
             pthread_mutex_unlock(&lock);
             atomic_store(&deadline,until);atomic_store(&mode,wanted);
             if(wanted&&!attemptedHooks){attemptedHooks=true;NSString *reason=nil;BOOL ok=install(&reason);hookState=ok?@"Installed":reason;atomic_store(&ready,ok);
+                /* handleRequest: is hooked here, and routes uploads to the provider. */
+                OCTProviderSetRequestRouted(ok);
                 startup.hooks=ok?OCT_NATIVE_HOOKS_INSTALLED:OCT_NATIVE_HOOKS_REFUSED;if(ok)raise_phase(OCT_NATIVE_PHASE_HOOKED);
                 os_log(startup_log(),"observer hooks %{public}s",ok?"installed":"refused");}
             /* Not gated on the observer hooks or on a lease: the provider's hooks forward to Apple
@@ -798,7 +810,7 @@ __attribute__((constructor)) static void startObserver(void){
 
 #ifdef OCT_NATIVE_TEST
 BOOL OCTObserverTestInstall(NSString **reason){
-    oct_native_init(&journal,1);BOOL ok=install(reason);atomic_store(&ready,ok);return ok;
+    oct_native_init(&journal,1);BOOL ok=install(reason);atomic_store(&ready,ok);OCTProviderSetRequestRouted(ok);return ok;
 }
 void OCTObserverTestAuthorize(unsigned wanted,uint64_t until){
     atomic_fetch_add(&leaseEpoch,1);atomic_store(&deadline,until);atomic_store(&mode,wanted);

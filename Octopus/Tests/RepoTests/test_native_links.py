@@ -678,5 +678,37 @@ class ExportedNamesCarryNoAppName(unittest.TestCase):
                         f"longer uses.")
 
 
+class NoMethodHookedTwice(unittest.TestCase):
+    """The observer and the provider both hooked PTPResponder handleRequest:. The observer installs
+    first, so the provider found a non-Apple implementation in place and its own provenance check
+    refused the hook: on 0.4.79 that left the upload request half missing and no upload possible. The
+    tests never saw it because each runs without the other. A method may be hooked by one of them."""
+
+    def hooks(self, path, table_only=False):
+        text = strip_comments(path.read_text())
+        found = set()
+        # The observer's install table: {"Class","selector","encoding",...}
+        for m in re.finditer(r'\{\s*"(PTP\w+)"\s*,\s*"([\w:]+)"\s*,\s*"[^"]*"\s*,\s*\(IMP\)', text):
+            found.add((m.group(1), m.group(2)))
+        # The provider's: OCTRuntimeHook("Class","selector",...) and hookRecorded(BIT,"Class","selector",...)
+        for m in re.finditer(r'OCTRuntimeHook\(\s*"(\w+)"\s*,\s*"([\w:]+)"', text):
+            found.add((m.group(1), m.group(2)))
+        for m in re.finditer(r'hookRecorded\(\s*\w+\s*,\s*"(\w+)"\s*,\s*\n?\s*"([\w:]+)"', text):
+            found.add((m.group(1), m.group(2)))
+        return found
+
+    def test_no_method_is_hooked_by_both(self):
+        observer = self.hooks(NATIVE / "OctopusObserver.m")
+        provider = self.hooks(NATIVE / "OctopusProvider.m")
+        self.assertIn(("PTPResponder", "handleRequest:"), observer,
+                      "the observer's handleRequest: hook was not found; the scan is broken")
+        self.assertIn(("PTPResponder", "handleData:"), provider,
+                      "the provider's handleData: hook was not found; the scan is broken")
+        both = sorted(observer & provider)
+        self.assertEqual(both, [],
+            f"hooked by both the observer and the provider: {both}. Whichever installs second is "
+            f"refused by the provenance check, since it finds the other's implementation in place.")
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -366,6 +366,8 @@ typedef enum oct_native_install_reason {
     OCT_NATIVE_INSTALL_ENCODING,      /* the method's type encoding differs from the recorded one */
     OCT_NATIVE_INSTALL_EXCHANGE,      /* adding or exchanging the implementation failed */
     OCT_NATIVE_INSTALL_UNKNOWN,
+    OCT_NATIVE_INSTALL_REPLACED,      /* another hook already replaced the method */
+    OCT_NATIVE_INSTALL_NOT_ROUTED,    /* the observer's request hook, which routes uploads, is absent */
 } oct_native_install_reason;
 
 typedef struct oct_native_install_report {

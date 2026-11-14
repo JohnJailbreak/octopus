@@ -452,6 +452,16 @@ static void test_chunked_streaming_reads(void)
     }
     free(buffer);
     oct_store_close(store);
+    /* Remove the fixture. big.bin is 32 MB, and leaving it on every run filled a development disk
+     * after a few hundred runs, at which point mkdtemp failed and unrelated tests crashed reading
+     * empty directories. These are exactly the three entries the test created above. */
+    snprintf(path, sizeof path, "%s/folder", root);
+    rmdir(path);
+    snprintf(path, sizeof path, "%s/big.bin", root);
+    unlink(path);
+    snprintf(path, sizeof path, "%s/%s", root, OCT_DISPOSABLE_MARKER);
+    unlink(path);
+    rmdir(root);
 }
 
 /* The probe objects: absent unless asked for, so the seed tree keeps its six, and when asked for,
